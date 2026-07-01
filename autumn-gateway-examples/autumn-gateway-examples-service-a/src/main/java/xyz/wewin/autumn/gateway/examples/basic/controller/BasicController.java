@@ -1,0 +1,23 @@
+package xyz.wewin.autumn.gateway.examples.basic.controller;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.util.StringUtils;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+public class BasicController {
+    private Logger log = LoggerFactory.getLogger(this.getClass());
+
+    @GetMapping("/hello")
+    public String hello(String name) {
+        if(!StringUtils.hasText(name)) {
+            name = "hello";
+        }
+        log.info("===hello===: {}", name);
+        return "service-a: ".concat(name);
+    }
+
+
+}
