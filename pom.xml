@@ -23,6 +23,7 @@
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 		<java.version>25</java.version>
 		<spring-cloud.version>2025.1.2</spring-cloud.version>
+		<jjwt-api.version>0.13.0</jjwt-api.version>
 	</properties>
 
 	<dependencies>
@@ -45,18 +46,18 @@
 			<dependency>
 				<groupId>io.jsonwebtoken</groupId>
 				<artifactId>jjwt-api</artifactId>
-				<version>0.12.6</version>
+				<version>${jjwt-api.version}</version>
 			</dependency>
 			<dependency>
 				<groupId>io.jsonwebtoken</groupId>
 				<artifactId>jjwt-impl</artifactId>
-				<version>0.12.6</version>
+				<version>${jjwt-api.version}</version>
 				<scope>runtime</scope>
 			</dependency>
 			<dependency>
 				<groupId>io.jsonwebtoken</groupId>
 				<artifactId>jjwt-jackson</artifactId>
-				<version>0.12.6</version>
+				<version>${jjwt-api.version}</version>
 				<scope>runtime</scope>
 			</dependency>
 		</dependencies>
