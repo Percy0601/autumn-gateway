@@ -1,5 +1,6 @@
 package xyz.wewin.autumn.gateway.examples.security.config;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -17,6 +18,8 @@ import java.security.interfaces.RSAPublicKey;
 @EnableWebFluxSecurity
 public class SecurityConfig {
 
+    @Autowired
+    DynamicReactiveAuthorizationManager dynamicAuthManager;
     /**
      * 配置安全过滤链
      */
@@ -34,14 +37,26 @@ public class SecurityConfig {
                 )
 
                 // 3. 配置请求授权规则
+//                .authorizeExchange(exchanges -> exchanges
+//                        // OPTIONS 请求放行（解决跨域预检请求被拦截的问题）
+//                        .pathMatchers(HttpMethod.OPTIONS).permitAll()
+//                        // 登录接口放行
+//                        .pathMatchers("/auth/**").permitAll()
+//                        // 其他所有请求都需要认证
+//                        .anyExchange().authenticated()
+//                )
+
                 .authorizeExchange(exchanges -> exchanges
                         // OPTIONS 请求放行（解决跨域预检请求被拦截的问题）
                         .pathMatchers(HttpMethod.OPTIONS).permitAll()
                         // 登录接口放行
-                        .pathMatchers("/auth/**").permitAll()
+//                        .pathMatchers("/auth/**").permitAll()
                         // 其他所有请求都需要认证
-                        .anyExchange().authenticated()
-                );
+                        .anyExchange().access(dynamicAuthManager)
+                )
+
+
+        ;
 
         return http.build();
     }
