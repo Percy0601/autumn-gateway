@@ -13,6 +13,7 @@
     <modules>
         <module>autumn-gateway-examples-basic</module>
         <module>autumn-gateway-examples-security</module>
+        <module>autumn-gateway-examples-consul</module>
         <module>autumn-gateway-examples-service-a</module>
         <module>autumn-gateway-examples-service-b</module>
     </modules>
