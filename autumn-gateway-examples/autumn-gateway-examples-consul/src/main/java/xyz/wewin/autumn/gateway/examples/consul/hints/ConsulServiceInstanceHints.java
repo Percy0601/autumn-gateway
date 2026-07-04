@@ -5,8 +5,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.aot.hint.MemberCategory;
 import org.springframework.aot.hint.RuntimeHints;
 import org.springframework.aot.hint.RuntimeHintsRegistrar;
+import org.springframework.cloud.client.ServiceInstance;
 import org.springframework.context.annotation.ImportRuntimeHints;
-import org.springframework.core.NestedExceptionUtils;
 import org.springframework.stereotype.Component;
 
 /**
@@ -20,26 +20,26 @@ public class ConsulServiceInstanceHints implements RuntimeHintsRegistrar {
     private Logger log = LoggerFactory.getLogger(this.getClass());
     @Override
     public void registerHints(RuntimeHints hints, ClassLoader cl) {
-        // ConsulServiceInstance - SpEL 读 serviceId/instanceId/port 等 getter
+        // ===== 1. ServiceInstance 接口 —— 本次 MissingReflectionRegistrationError 根因 =====
+        // DiscoveryClientRouteDefinitionLocator 的 SpEL root object 是 ServiceInstance（接口类型）
+        // ReflectivePropertyAccessor 反射读 getServiceId() 时，接口方法必须进 hints
+        hints.reflection().registerType(ServiceInstance.class,
+                b -> b.withMembers(MemberCategory.INVOKE_PUBLIC_METHODS)
+        );
+
+        // ===== 2. ConsulServiceInstance —— 实现类，SpEL 可能 also 走实现类路径 =====
         hints.reflection().registerType(
                 org.springframework.cloud.consul.discovery.ConsulServiceInstance.class,
                 b -> b.withMembers(
-                        MemberCategory.INVOKE_PUBLIC_METHODS,   // getServiceId/getInstanceId/getPort/getAddress...
-                        MemberCategory.ACCESS_DECLARED_FIELDS// 如果 SpEL 走字段也兜底
+                        MemberCategory.INVOKE_PUBLIC_METHODS,
+                        MemberCategory.ACCESS_DECLARED_FIELDS
                 )
         );
 
-        // ConsulService - 如果 locator 里还读了 ConsulService (tags/address 等)
-        // 看你 SCG 版本，5.0.2 的 DiscoveryClientRouteDefinitionLocator 内部可能还会过 ConsulService
-        // 保险起见一起补
-        try {
-            Class<?> consulService = cl.loadClass("org.springframework.cloud.consul.discovery.ConsulService");
-            hints.reflection()
-                    .registerType(consulService, b -> b.withMembers(MemberCategory.INVOKE_PUBLIC_METHODS))
-                    .registerType(consulService, b -> b.withMembers(MemberCategory.INVOKE_PUBLIC_CONSTRUCTORS));
-        } catch (ClassNotFoundException e) {
-            // 忽略，某些 consul 版本可能类名略有差异
-            log.warn("Config Consul Hints, Error:", e);
-        }
+        // ===== 3. ConsulDiscoveryClient —— 注册阶段 / HealthIndicator =====
+        hints.reflection().registerType(
+                org.springframework.cloud.consul.discovery.ConsulDiscoveryClient.class,
+                b -> b.withMembers(MemberCategory.INVOKE_PUBLIC_CONSTRUCTORS)
+        );
     }
 }
