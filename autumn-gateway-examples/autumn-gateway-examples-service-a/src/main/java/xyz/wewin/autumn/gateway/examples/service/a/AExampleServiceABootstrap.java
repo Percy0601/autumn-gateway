@@ -1,13 +1,13 @@
-package xyz.wewin.autumn.gateway.examples.basic;
+package xyz.wewin.autumn.gateway.examples.service.a;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class ExampleServiceABootstrap {
+public class AExampleServiceABootstrap {
 
 	static void main(String[] args) {
-		SpringApplication.run(ExampleServiceABootstrap.class, args);
+		SpringApplication.run(AExampleServiceABootstrap.class, args);
 	}
 
 

@@ -1,4 +1,4 @@
-package xyz.wewin.autumn.gateway.examples.basic.controller;
+package xyz.wewin.autumn.gateway.examples.service.a.controller;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,7 +16,7 @@ public class BasicController {
             name = "hello";
         }
         log.info("===hello===: {}", name);
-        return "service-b: ".concat(name);
+        return "service-a: ".concat(name);
     }
 
 

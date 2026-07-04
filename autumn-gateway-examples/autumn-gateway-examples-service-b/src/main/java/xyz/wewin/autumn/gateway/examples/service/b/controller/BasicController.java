@@ -1,10 +1,12 @@
-package xyz.wewin.autumn.gateway.examples.basic.controller;
+package xyz.wewin.autumn.gateway.examples.service.b.controller;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.Map;
 
 @RestController
 public class BasicController {
@@ -16,8 +18,16 @@ public class BasicController {
             name = "hello";
         }
         log.info("===hello===: {}", name);
-        return "service-a: ".concat(name);
+        return "service-b: ".concat(name);
     }
 
 
+    @RestController
+    public static class HealthController {
+
+        @GetMapping("/health")
+        public Map<String, String> health() {
+            return Map.of("status", "UP");
+        }
+    }
 }
