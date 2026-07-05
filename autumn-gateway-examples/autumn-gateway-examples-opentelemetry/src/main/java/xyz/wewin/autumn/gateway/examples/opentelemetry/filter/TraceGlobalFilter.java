@@ -1,5 +1,7 @@
 package xyz.wewin.autumn.gateway.examples.opentelemetry.filter;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
@@ -20,7 +22,7 @@ import reactor.core.publisher.Mono;
 
 @Component
 public class TraceGlobalFilter implements GlobalFilter, Ordered {
-
+    private Logger log = LoggerFactory.getLogger(this.getClass());
     private final Tracer tracer;
 
     // 注入我们手动创建的 OpenTelemetry Bean
@@ -33,11 +35,14 @@ public class TraceGlobalFilter implements GlobalFilter, Ordered {
         Span span = tracer.spanBuilder("gateway.request")
                 .setSpanKind(SpanKind.SERVER)
                 .startSpan();
-
+        log.info(">>> Span started: {}", span.getSpanContext().getTraceId());
         span.setAttribute("http.path", exchange.getRequest().getPath().value());
 
         return chain.filter(exchange)
-                .doFinally(signalType -> span.end());
+                .doFinally(signalType -> {
+                    span.end();
+                    log.info(">>> Span ended");
+                });
     }
 
     @Override
