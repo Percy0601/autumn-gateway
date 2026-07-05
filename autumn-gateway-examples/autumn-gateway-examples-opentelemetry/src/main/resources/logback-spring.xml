@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <!-- 在日志格式中加入 traceId 和 spanId -->
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - [%X{traceId:-},%X{spanId:-}] %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+</configuration>
