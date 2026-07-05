@@ -24,22 +24,43 @@
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-gateway-server-webflux</artifactId>
         </dependency>
-        <!-- SB4 官方 OTel starter（重点：不是 io.opentelemetry.instrumentation 那个！） -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-opentelemetry</artifactId>
-        </dependency>
 
-        <!-- OTel 桥 + OTLP exporter（starter 内部已有，但显式锁版本更稳） -->
-<!--        <dependency>-->
-<!--            <groupId>io.micrometer</groupId>-->
-<!--            <artifactId>micrometer-tracing-bridge-otel</artifactId>-->
-<!--        </dependency>-->
+        <dependency>
+            <groupId>io.opentelemetry</groupId>
+            <artifactId>opentelemetry-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.opentelemetry</groupId>
+            <artifactId>opentelemetry-sdk</artifactId>
+        </dependency>
         <dependency>
             <groupId>io.opentelemetry</groupId>
             <artifactId>opentelemetry-exporter-otlp</artifactId>
         </dependency>
+        <dependency>
+            <groupId>io.opentelemetry</groupId>
+            <artifactId>opentelemetry-sdk-extension-autoconfigure</artifactId>
+        </dependency>
+<!--        &lt;!&ndash; SB4 官方 OTel starter（重点：不是 io.opentelemetry.instrumentation 那个！） &ndash;&gt;-->
+<!--        <dependency>-->
+<!--            <groupId>org.springframework.boot</groupId>-->
+<!--            <artifactId>spring-boot-starter-opentelemetry</artifactId>-->
+<!--        </dependency>-->
 
+<!--        &lt;!&ndash; OTel 桥 + OTLP exporter（starter 内部已有，但显式锁版本更稳） &ndash;&gt;-->
+<!--&lt;!&ndash;        <dependency>&ndash;&gt;-->
+<!--&lt;!&ndash;            <groupId>io.micrometer</groupId>&ndash;&gt;-->
+<!--&lt;!&ndash;            <artifactId>micrometer-tracing-bridge-otel</artifactId>&ndash;&gt;-->
+<!--&lt;!&ndash;        </dependency>&ndash;&gt;-->
+        <dependency>
+            <groupId>io.opentelemetry</groupId>
+            <artifactId>opentelemetry-exporter-otlp</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.opentelemetry.semconv</groupId>
+            <artifactId>opentelemetry-semconv</artifactId>
+            <version>1.27.0-alpha</version>
+        </dependency>
 <!--        &lt;!&ndash; 日志走 OTLP 可选 &ndash;&gt;-->
 <!--        <dependency>-->
 <!--            <groupId>io.opentelemetry.instrumentation</groupId>-->
