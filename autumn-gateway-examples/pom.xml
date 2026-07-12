@@ -15,6 +15,7 @@
         <module>autumn-gateway-examples-security</module>
         <module>autumn-gateway-examples-consul</module>
         <module>autumn-gateway-examples-consul-config</module>
+        <module>autumn-gateway-examples-limit</module>
         <module>autumn-gateway-examples-opentelemetry</module>
         <module>autumn-gateway-examples-service-a</module>
         <module>autumn-gateway-examples-service-b</module>

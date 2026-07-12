@@ -1,0 +1,444 @@
+2026-07-12 18:53:32.638 [service-a] [main] [] INFO  x.w.a.g.e.service.a.AExampleServiceABootstrap.logStarting - Starting AExampleServiceABootstrap using Java 25.0.2 with PID 13559 (/Users/mac/work/project/autumn-gateway/autumn-gateway-examples/autumn-gateway-examples-service-a/target/classes started by mac in /Users/mac/work/project/autumn-gateway)
+2026-07-12 18:53:32.641 [service-a] [main] [] INFO  x.w.a.g.e.service.a.AExampleServiceABootstrap.logStartupProfileInfo - No active profile set, falling back to 1 default profile: "default"
+2026-07-12 18:53:32.756 [service-a] [background-preinit] [] INFO  org.hibernate.validator.internal.util.Version.<clinit> - HV000001: Hibernate Validator 9.1.0.Final
+2026-07-12 18:53:33.185 [service-a] [main] [] INFO  o.springframework.cloud.context.scope.GenericScope.setSerializationId - BeanFactory id=d599cb69-c648-33e4-855c-c525396ee83e
+2026-07-12 18:53:33.385 [service-a] [main] [] INFO  org.springframework.boot.tomcat.TomcatWebServer.initialize - Tomcat initialized with port 8081 (http)
+2026-07-12 18:53:33.397 [service-a] [main] [] INFO  org.apache.coyote.http11.Http11NioProtocol.log - Initializing ProtocolHandler ["http-nio-8081"]
+2026-07-12 18:53:33.400 [service-a] [main] [] INFO  org.apache.catalina.core.StandardService.log - Starting service [Tomcat]
+2026-07-12 18:53:33.400 [service-a] [main] [] INFO  org.apache.catalina.core.StandardEngine.log - Starting Servlet engine: [Apache Tomcat/11.0.22]
+2026-07-12 18:53:33.441 [service-a] [main] [] INFO  o.s.b.w.c.servlet.WebApplicationContextInitializer.prepareWebApplicationContext - Root WebApplicationContext: initialization completed in 766 ms
+2026-07-12 18:53:34.013 [service-a] [main] [] WARN  o.s.c.l.c.LoadBalancerCacheAutoConfiguration$LoadBalancerCaffeineWarnLogger.afterPropertiesSet - Spring Cloud LoadBalancer is currently working with the default cache. While this cache implementation is useful for development and tests, it's recommended to use Caffeine cache in production.You can switch to using Caffeine cache, by adding it and org.springframework.cache.caffeine.CaffeineCacheManager to the classpath.
+2026-07-12 18:53:34.026 [service-a] [main] [] INFO  org.apache.coyote.http11.Http11NioProtocol.log - Starting ProtocolHandler ["http-nio-8081"]
+2026-07-12 18:53:34.033 [service-a] [main] [] INFO  org.springframework.boot.tomcat.TomcatWebServer.start - Tomcat started on port 8081 (http) with context path '/'
+2026-07-12 18:53:34.035 [service-a] [main] [] INFO  o.s.c.consul.serviceregistry.ConsulServiceRegistry.register - Registering service with consul: [NewService@1eb9bf60 id = 'service-a-8081', name = 'service-a', tags = list[[empty]], address = '192.168.1.39', meta = map['secure' -> 'false'], port = 8081, enableTagOverride = [null], check = [NewService.Check@341c6ac2 args = [null], dockerContainerID = [null], shell = [null], interval = '10s', ttl = [null], http = 'http://192.168.1.39:8081/health', method = [null], header = map[[empty]], tcp = [null], timeout = '3s', deregisterCriticalServiceAfter = [null], tlsSkipVerify = [null], status = [null], grpc = [null], grpcUseTLS = [null]], checks = [null]]
+2026-07-12 18:53:39.080 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:53:39.080 [service-a] [main] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:53:39.088 [service-a] [main] [] INFO  x.w.a.g.e.service.a.AExampleServiceABootstrap.logStarted - Started AExampleServiceABootstrap in 6.973 seconds (process running for 7.44)
+2026-07-12 18:53:43.653 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:53:47.883 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:53:52.122 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:53:57.007 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:53:59.468 [service-a] [http-nio-8081-exec-1] [] INFO  o.a.c.core.ContainerBase.[Tomcat].[localhost].[/].log - Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-07-12 18:53:59.468 [service-a] [http-nio-8081-exec-1] [] INFO  org.springframework.web.servlet.DispatcherServlet.initServletBean - Initializing Servlet 'dispatcherServlet'
+2026-07-12 18:53:59.469 [service-a] [http-nio-8081-exec-1] [] INFO  org.springframework.web.servlet.DispatcherServlet.initServletBean - Completed initialization in 1 ms
+2026-07-12 18:53:59.494 [service-a] [http-nio-8081-exec-1] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 18:54:00.944 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:54:06.953 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:54:11.404 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:54:15.657 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:54:20.125 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:54:24.448 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:54:30.456 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:54:36.463 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:54:40.239 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:54:44.191 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:54:47.862 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:54:52.158 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:54:58.165 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:55:01.313 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:55:04.721 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:55:08.060 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:55:12.277 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:55:17.045 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:55:23.051 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:55:29.061 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:55:33.030 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:55:37.039 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:55:41.258 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:55:45.540 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:55:51.548 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:55:55.714 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:55:59.632 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:56:02.856 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:56:06.796 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:56:11.588 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:56:17.596 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:56:22.491 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:56:26.601 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:56:30.831 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:56:34.304 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:56:40.309 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:56:46.317 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:56:49.290 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:56:53.696 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:56:57.090 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:57:00.756 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:57:04.270 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:57:10.275 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:57:14.261 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:57:19.106 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:57:23.748 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:57:27.242 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:57:29.548 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:57:35.552 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:57:38.788 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:57:43.497 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:57:46.688 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:57:50.974 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:57:54.638 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:58:00.646 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:58:04.737 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:58:09.667 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:58:13.302 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:58:16.946 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:58:20.223 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:58:26.230 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:58:30.718 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:58:34.795 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:58:39.452 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:58:43.494 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:58:47.199 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:58:53.205 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:58:57.940 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:59:02.055 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:59:06.468 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:59:10.791 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:59:13.724 [service-a] [http-nio-8081-exec-6] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 18:59:14.875 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:59:19.875 [service-a] [http-nio-8081-exec-7] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 18:59:20.298 [service-a] [http-nio-8081-exec-8] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 18:59:20.492 [service-a] [http-nio-8081-exec-9] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 18:59:20.702 [service-a] [http-nio-8081-exec-10] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 18:59:20.883 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:59:20.907 [service-a] [http-nio-8081-exec-1] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 18:59:21.109 [service-a] [http-nio-8081-exec-2] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 18:59:21.332 [service-a] [http-nio-8081-exec-3] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 18:59:21.528 [service-a] [http-nio-8081-exec-4] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 18:59:21.759 [service-a] [http-nio-8081-exec-5] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 18:59:21.958 [service-a] [http-nio-8081-exec-6] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 18:59:22.108 [service-a] [http-nio-8081-exec-7] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 18:59:22.288 [service-a] [http-nio-8081-exec-8] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 18:59:22.440 [service-a] [http-nio-8081-exec-9] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 18:59:22.625 [service-a] [http-nio-8081-exec-10] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 18:59:22.812 [service-a] [http-nio-8081-exec-1] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 18:59:22.973 [service-a] [http-nio-8081-exec-2] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 18:59:25.263 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:59:28.023 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:59:32.340 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:59:36.714 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:59:42.717 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:59:48.725 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:59:52.061 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:59:56.363 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 18:59:57.428 [service-a] [http-nio-8081-exec-4] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 18:59:58.145 [service-a] [http-nio-8081-exec-5] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 18:59:58.777 [service-a] [http-nio-8081-exec-6] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 18:59:58.999 [service-a] [http-nio-8081-exec-7] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 18:59:59.223 [service-a] [http-nio-8081-exec-8] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 18:59:59.397 [service-a] [http-nio-8081-exec-9] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 18:59:59.570 [service-a] [http-nio-8081-exec-10] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 18:59:59.721 [service-a] [http-nio-8081-exec-1] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 18:59:59.908 [service-a] [http-nio-8081-exec-2] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:00:00.059 [service-a] [http-nio-8081-exec-3] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:00:00.225 [service-a] [http-nio-8081-exec-4] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:00:00.388 [service-a] [http-nio-8081-exec-5] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:00:00.484 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:00:00.570 [service-a] [http-nio-8081-exec-6] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:00:00.724 [service-a] [http-nio-8081-exec-7] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:00:00.888 [service-a] [http-nio-8081-exec-8] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:00:01.059 [service-a] [http-nio-8081-exec-9] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:00:01.226 [service-a] [http-nio-8081-exec-10] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:00:01.385 [service-a] [http-nio-8081-exec-1] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:00:01.574 [service-a] [http-nio-8081-exec-2] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:00:01.760 [service-a] [http-nio-8081-exec-3] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:00:01.910 [service-a] [http-nio-8081-exec-4] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:00:02.086 [service-a] [http-nio-8081-exec-5] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:00:02.271 [service-a] [http-nio-8081-exec-6] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:00:02.424 [service-a] [http-nio-8081-exec-7] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:00:02.620 [service-a] [http-nio-8081-exec-8] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:00:02.795 [service-a] [http-nio-8081-exec-9] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:00:02.979 [service-a] [http-nio-8081-exec-10] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:00:03.130 [service-a] [http-nio-8081-exec-1] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:00:03.338 [service-a] [http-nio-8081-exec-2] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:00:03.505 [service-a] [http-nio-8081-exec-3] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:00:03.723 [service-a] [http-nio-8081-exec-4] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:00:03.897 [service-a] [http-nio-8081-exec-5] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:00:05.102 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:00:11.109 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:00:15.047 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:00:19.656 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:00:24.092 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:00:28.050 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:00:32.597 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:00:36.882 [service-a] [http-nio-8081-exec-7] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:00:37.252 [service-a] [http-nio-8081-exec-9] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:00:37.481 [service-a] [http-nio-8081-exec-10] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:00:37.697 [service-a] [http-nio-8081-exec-1] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:00:37.929 [service-a] [http-nio-8081-exec-2] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:00:38.181 [service-a] [http-nio-8081-exec-3] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:00:38.396 [service-a] [http-nio-8081-exec-4] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:00:38.603 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:00:38.613 [service-a] [http-nio-8081-exec-5] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:00:38.831 [service-a] [http-nio-8081-exec-6] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:00:39.031 [service-a] [http-nio-8081-exec-7] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:00:39.247 [service-a] [http-nio-8081-exec-8] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:00:39.464 [service-a] [http-nio-8081-exec-9] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:00:39.714 [service-a] [http-nio-8081-exec-10] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:00:39.964 [service-a] [http-nio-8081-exec-1] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:00:40.179 [service-a] [http-nio-8081-exec-2] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:00:40.396 [service-a] [http-nio-8081-exec-3] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:00:40.596 [service-a] [http-nio-8081-exec-4] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:00:40.812 [service-a] [http-nio-8081-exec-5] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:00:41.013 [service-a] [http-nio-8081-exec-6] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:00:41.214 [service-a] [http-nio-8081-exec-7] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:00:41.431 [service-a] [http-nio-8081-exec-8] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:00:41.630 [service-a] [http-nio-8081-exec-9] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:00:41.829 [service-a] [http-nio-8081-exec-10] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:00:42.031 [service-a] [http-nio-8081-exec-1] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:00:42.246 [service-a] [http-nio-8081-exec-2] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:00:42.449 [service-a] [http-nio-8081-exec-3] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:00:42.645 [service-a] [http-nio-8081-exec-4] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:00:42.863 [service-a] [http-nio-8081-exec-5] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:00:43.155 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:00:47.590 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:00:51.623 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:00:55.585 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:00:59.543 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:01:05.552 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:01:09.567 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:01:14.014 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:01:18.327 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:01:22.582 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:01:28.589 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:01:34.595 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:01:38.867 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:01:42.896 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:01:46.789 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:01:50.686 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:01:56.695 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:02:00.908 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:02:04.818 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:02:09.615 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:02:14.049 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:02:20.056 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:02:26.063 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:02:29.892 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:02:33.880 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:02:37.757 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:02:38.543 [service-a] [http-nio-8081-exec-7] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:02:39.125 [service-a] [http-nio-8081-exec-8] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:02:39.439 [service-a] [http-nio-8081-exec-9] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:02:39.671 [service-a] [http-nio-8081-exec-10] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:02:39.890 [service-a] [http-nio-8081-exec-1] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:02:40.122 [service-a] [http-nio-8081-exec-2] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:02:40.339 [service-a] [http-nio-8081-exec-3] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:02:40.572 [service-a] [http-nio-8081-exec-4] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:02:40.790 [service-a] [http-nio-8081-exec-5] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:02:41.489 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:02:47.239 [service-a] [http-nio-8081-exec-6] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:02:47.496 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:02:47.790 [service-a] [http-nio-8081-exec-7] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:02:48.541 [service-a] [http-nio-8081-exec-8] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:02:48.790 [service-a] [http-nio-8081-exec-9] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:02:49.024 [service-a] [http-nio-8081-exec-10] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:02:49.507 [service-a] [http-nio-8081-exec-1] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:02:49.740 [service-a] [http-nio-8081-exec-2] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:02:49.955 [service-a] [http-nio-8081-exec-3] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:02:50.158 [service-a] [http-nio-8081-exec-4] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:02:52.522 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:02:55.855 [service-a] [http-nio-8081-exec-5] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:02:56.186 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:02:56.189 [service-a] [http-nio-8081-exec-6] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:02:56.405 [service-a] [http-nio-8081-exec-7] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:02:56.622 [service-a] [http-nio-8081-exec-8] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:02:56.805 [service-a] [http-nio-8081-exec-9] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:02:57.024 [service-a] [http-nio-8081-exec-10] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:02:57.221 [service-a] [http-nio-8081-exec-1] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:02:57.455 [service-a] [http-nio-8081-exec-2] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:02:57.672 [service-a] [http-nio-8081-exec-3] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:02:57.927 [service-a] [http-nio-8081-exec-4] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:02:58.633 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:03:02.344 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:03:06.017 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:03:12.023 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:03:16.200 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:03:19.718 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:03:23.786 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:03:27.587 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:03:31.413 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:03:37.420 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:03:41.426 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:03:46.284 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:03:49.816 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:03:54.055 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:03:58.873 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:04:04.880 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:04:08.682 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:04:12.433 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:04:16.819 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:04:21.371 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:04:27.374 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:04:33.381 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:04:37.354 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:04:40.716 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:04:45.099 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:04:49.149 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:04:55.154 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:04:58.837 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:05:02.414 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:05:05.667 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:05:09.508 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:05:14.118 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:05:20.125 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:05:24.003 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:05:27.890 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:05:31.859 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:05:36.156 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:05:40.575 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:05:46.582 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:05:50.304 [service-a] [SpringApplicationShutdownHook] [] INFO  org.springframework.boot.tomcat.GracefulShutdown.shutDownGracefully - Commencing graceful shutdown. Waiting for active requests to complete
+2026-07-12 19:05:50.883 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:05:54.650 [service-a] [main] [] INFO  x.w.a.g.e.service.a.AExampleServiceABootstrap.logStarting - Starting AExampleServiceABootstrap using Java 25.0.2 with PID 13954 (/Users/mac/work/project/autumn-gateway/autumn-gateway-examples/autumn-gateway-examples-service-a/target/classes started by mac in /Users/mac/work/project/autumn-gateway)
+2026-07-12 19:05:54.653 [service-a] [main] [] INFO  x.w.a.g.e.service.a.AExampleServiceABootstrap.logStartupProfileInfo - No active profile set, falling back to 1 default profile: "default"
+2026-07-12 19:05:54.805 [service-a] [background-preinit] [] INFO  org.hibernate.validator.internal.util.Version.<clinit> - HV000001: Hibernate Validator 9.1.0.Final
+2026-07-12 19:05:55.244 [service-a] [main] [] INFO  o.springframework.cloud.context.scope.GenericScope.setSerializationId - BeanFactory id=d599cb69-c648-33e4-855c-c525396ee83e
+2026-07-12 19:05:55.459 [service-a] [main] [] INFO  org.springframework.boot.tomcat.TomcatWebServer.initialize - Tomcat initialized with port 8081 (http)
+2026-07-12 19:05:55.480 [service-a] [main] [] INFO  org.apache.coyote.http11.Http11NioProtocol.log - Initializing ProtocolHandler ["http-nio-8081"]
+2026-07-12 19:05:55.482 [service-a] [main] [] INFO  org.apache.catalina.core.StandardService.log - Starting service [Tomcat]
+2026-07-12 19:05:55.482 [service-a] [main] [] INFO  org.apache.catalina.core.StandardEngine.log - Starting Servlet engine: [Apache Tomcat/11.0.22]
+2026-07-12 19:05:55.533 [service-a] [main] [] INFO  o.s.b.w.c.servlet.WebApplicationContextInitializer.prepareWebApplicationContext - Root WebApplicationContext: initialization completed in 839 ms
+2026-07-12 19:05:57.112 [service-a] [main] [] INFO  org.springframework.cloud.commons.util.InetUtils.convertAddress - Cannot determine local hostname
+2026-07-12 19:05:58.126 [service-a] [main] [] INFO  org.springframework.cloud.commons.util.InetUtils.convertAddress - Cannot determine local hostname
+2026-07-12 19:05:58.200 [service-a] [main] [] WARN  o.s.c.l.c.LoadBalancerCacheAutoConfiguration$LoadBalancerCaffeineWarnLogger.afterPropertiesSet - Spring Cloud LoadBalancer is currently working with the default cache. While this cache implementation is useful for development and tests, it's recommended to use Caffeine cache in production.You can switch to using Caffeine cache, by adding it and org.springframework.cache.caffeine.CaffeineCacheManager to the classpath.
+2026-07-12 19:05:58.213 [service-a] [main] [] INFO  org.apache.coyote.http11.Http11NioProtocol.log - Starting ProtocolHandler ["http-nio-8081"]
+2026-07-12 19:05:58.233 [service-a] [main] [] INFO  org.springframework.boot.tomcat.TomcatWebServer.start - Tomcat started on port 8081 (http) with context path '/'
+2026-07-12 19:05:58.235 [service-a] [main] [] INFO  o.s.c.consul.serviceregistry.ConsulServiceRegistry.register - Registering service with consul: [NewService@7c2b6acb id = 'service-a-8081', name = 'service-a', tags = list[[empty]], address = '192.168.1.39', meta = map['secure' -> 'false'], port = 8081, enableTagOverride = [null], check = [NewService.Check@28367da7 args = [null], dockerContainerID = [null], shell = [null], interval = '10s', ttl = [null], http = 'http://192.168.1.39:8081/health', method = [null], header = map[[empty]], tcp = [null], timeout = '3s', deregisterCriticalServiceAfter = [null], tlsSkipVerify = [null], status = [null], grpc = [null], grpcUseTLS = [null]], checks = [null]]
+2026-07-12 19:06:01.399 [service-a] [main] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:06:01.960 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:06:02.408 [service-a] [main] [] INFO  org.springframework.cloud.commons.util.InetUtils.convertAddress - Cannot determine local hostname
+2026-07-12 19:06:02.414 [service-a] [main] [] INFO  x.w.a.g.e.service.a.AExampleServiceABootstrap.logStarted - Started AExampleServiceABootstrap in 8.309 seconds (process running for 9.063)
+2026-07-12 19:06:05.460 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:06:11.466 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:06:11.932 [service-a] [http-nio-8081-exec-1] [] INFO  o.a.c.core.ContainerBase.[Tomcat].[localhost].[/].log - Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-07-12 19:06:11.932 [service-a] [http-nio-8081-exec-1] [] INFO  org.springframework.web.servlet.DispatcherServlet.initServletBean - Initializing Servlet 'dispatcherServlet'
+2026-07-12 19:06:11.933 [service-a] [http-nio-8081-exec-1] [] INFO  org.springframework.web.servlet.DispatcherServlet.initServletBean - Completed initialization in 1 ms
+2026-07-12 19:06:14.342 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:06:18.319 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:06:22.535 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:06:26.821 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:06:30.721 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:06:36.730 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:06:41.267 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:06:45.012 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:06:48.494 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:06:53.389 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:06:56.888 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:07:02.895 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:07:06.666 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:07:10.616 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:07:15.240 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:07:19.641 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:07:25.646 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:07:31.653 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:07:36.151 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:07:40.436 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:07:43.238 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:07:47.872 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:07:53.880 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:07:57.255 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:08:01.334 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:08:04.958 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:08:09.269 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:08:12.972 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:08:18.976 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:08:23.647 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:08:28.532 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:08:32.767 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:08:35.821 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:08:38.896 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:08:44.900 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:08:49.396 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:08:54.114 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:08:58.433 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:09:02.947 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:09:08.955 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:09:14.962 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:09:19.278 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:09:23.128 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:09:27.467 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:09:33.474 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:09:39.477 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:09:43.528 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:09:47.309 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:09:52.167 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:09:58.175 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:10:04.178 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:10:08.497 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:10:11.794 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:10:16.401 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:10:20.892 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:10:26.901 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:10:30.575 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:10:34.712 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:10:39.134 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:10:43.358 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:10:49.363 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:10:55.369 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:10:58.662 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:11:03.544 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:11:07.199 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:11:11.399 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:11:17.406 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:11:20.787 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:11:24.395 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:11:28.492 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:11:33.132 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:11:36.849 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:11:42.856 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:11:45.336 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:11:49.739 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:11:53.449 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:11:57.833 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:12:01.522 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:12:07.531 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:12:11.713 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:12:13.757 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:12:18.154 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:12:18.698 [service-a] [http-nio-8081-exec-7] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:12:20.565 [service-a] [http-nio-8081-exec-8] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:12:21.098 [service-a] [http-nio-8081-exec-9] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:12:21.281 [service-a] [http-nio-8081-exec-10] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:12:21.480 [service-a] [http-nio-8081-exec-1] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:12:21.697 [service-a] [http-nio-8081-exec-2] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:12:21.930 [service-a] [http-nio-8081-exec-3] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:12:22.393 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:12:26.877 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:12:27.546 [service-a] [http-nio-8081-exec-4] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:12:27.946 [service-a] [http-nio-8081-exec-5] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:12:28.179 [service-a] [http-nio-8081-exec-6] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:12:28.462 [service-a] [http-nio-8081-exec-7] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:12:32.883 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:12:36.449 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:12:39.900 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:12:44.951 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:12:48.963 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:12:53.902 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:12:59.909 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:13:04.570 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:13:08.616 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:13:11.495 [service-a] [http-nio-8081-exec-9] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:13:13.646 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:13:16.161 [service-a] [http-nio-8081-exec-10] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:13:17.763 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:13:19.263 [service-a] [http-nio-8081-exec-1] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:13:19.647 [service-a] [http-nio-8081-exec-2] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:13:19.878 [service-a] [http-nio-8081-exec-3] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:13:21.412 [service-a] [http-nio-8081-exec-4] [] INFO  x.w.a.g.e.service.a.controller.BasicController.hello - ===hello===: hello
+2026-07-12 19:13:23.769 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:13:29.776 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:13:34.563 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:13:38.620 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:13:42.732 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:13:48.738 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:13:54.741 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:13:57.914 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:14:02.745 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:14:06.558 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:14:09.996 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:14:16.001 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:14:20.305 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:14:24.907 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:14:29.107 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:14:33.795 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:14:37.387 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
+2026-07-12 19:14:43.392 [service-a] [catalogWatchTaskScheduler-1] [] ERROR o.s.cloud.consul.ConsulAutoConfiguration.lambda$createConsulClientSettings$1 - 
