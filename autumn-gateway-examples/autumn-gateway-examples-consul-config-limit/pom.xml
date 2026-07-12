@@ -7,40 +7,54 @@
         <version>0.0.1-SNAPSHOT</version>
     </parent>
 
-    <artifactId>autumn-gateway-examples-service-a</artifactId>
+    <artifactId>autumn-gateway-examples-consul-config</artifactId>
     <packaging>jar</packaging>
 
-    <name>autumn-gateway-examples-service-a</name>
+    <name>autumn-gateway-examples-consul-config</name>
     <url>http://maven.apache.org</url>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <java.version>25</java.version>
-        <start-class>xyz.wewin.autumn.gateway.examples.service.DubboExampleServiceABootstrap</start-class>
+        <start-class>xyz.wewin.autumn.gateway.examples.consul.config.ConsulAutumnGatewayApplication</start-class>
     </properties>
     <dependencies>
+        <!-- Spring Cloud Gateway -->
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-webmvc</artifactId>
-            <exclusions>
-                <!-- 洁癖：排除 snakeyaml -->
-                <exclusion>
-                    <groupId>org.yaml</groupId>
-                    <artifactId>snakeyaml</artifactId>
-                </exclusion>
-            </exclusions>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-gateway-server-webflux</artifactId>
         </dependency>
         <!-- Consul 服务发现 -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-consul-discovery</artifactId>
         </dependency>
-
-        <!-- 如果微服务之间互相调用（RestClient / WebClient + lb://）才需要 -->
+        <!-- 新增：Consul Config starter（独立 jar，不重） -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-consul-config</artifactId>
+        </dependency>
+        <!-- 必须显式加 LoadBalancer：Consul 不自带，Ribbon 早已移除 -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-loadbalancer</artifactId>
         </dependency>
+        <dependency>
+            <groupId>joda-time</groupId>
+            <artifactId>joda-time</artifactId>
+            <version>2.12.7</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.yaml</groupId>
+                    <artifactId>snakeyaml</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
     </dependencies>
 
     <build>
