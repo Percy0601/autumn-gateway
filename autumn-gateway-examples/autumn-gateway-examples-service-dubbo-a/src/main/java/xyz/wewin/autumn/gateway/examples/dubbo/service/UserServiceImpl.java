@@ -8,7 +8,7 @@ import xyz.wewin.autumn.gateway.examples.dubbo.api.UserService;
 import java.util.ArrayList;
 import java.util.List;
 @DubboService(
-        protocol = "dubbo,rest",   // ← 双协议！[3](@ref)
+        protocol = "dubbo,tri",
         version = "1.0.0"
 )
 @Service

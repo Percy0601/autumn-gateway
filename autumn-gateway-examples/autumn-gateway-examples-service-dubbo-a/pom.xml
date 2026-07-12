@@ -13,8 +13,6 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <java.version>25</java.version>
         <dubbo.version>3.3.1</dubbo.version>
-        <jetty.version>12.0.6</jetty.version>
-        <resteasy.version>6.2.16.Final</resteasy.version>
         <start-class>xyz.wewin.autumn.gateway.examples.dubbo.DubboExampleServiceABootstrap</start-class>
     </properties>
 
@@ -30,77 +28,21 @@
             <version>${dubbo.version}</version>
         </dependency>
 
-        <!-- 双协议实现（starter 里都是 optional，必须显式引） -->
         <dependency>
             <groupId>org.apache.dubbo</groupId>
             <artifactId>dubbo-rpc-dubbo</artifactId>
             <version>${dubbo.version}</version>
         </dependency>
-<!--        <dependency>-->
-<!--            <groupId>org.apache.dubbo</groupId>-->
-<!--            <artifactId>dubbo-rpc-triple</artifactId>-->
-<!--            <version>${dubbo.version}</version>-->
-<!--        </dependency>-->
+        <dependency>
+            <groupId>org.apache.dubbo</groupId>
+            <artifactId>dubbo-rpc-triple</artifactId>
+            <version>${dubbo.version}</version>
+        </dependency>
         <dependency>
             <groupId>org.apache.dubbo</groupId>
             <artifactId>dubbo-remoting-netty4</artifactId>
             <version>${dubbo.version}</version>
         </dependency>
-
-        <!-- JAX-RS API（Jakarta EE 10 版本，Boot 3.5.16 自带，但显式引更安全） -->
-        <dependency>
-            <groupId>jakarta.ws.rs</groupId>
-            <artifactId>jakarta.ws.rs-api</artifactId>
-            <version>4.0.0</version>
-        </dependency>
-        <!-- Dubbo rest 协议（从 spi-extensions 引入） -->
-        <dependency>
-            <groupId>org.apache.dubbo.extensions</groupId>
-            <artifactId>dubbo-rpc-rest</artifactId>
-            <version>3.3.1</version>
-        </dependency>
-
-        <!-- RESTEasy 实现（dubbo-rpc-rest 依赖 JAX-RS 实现） -->
-        <dependency>
-            <groupId>org.jboss.resteasy</groupId>
-            <artifactId>resteasy-core</artifactId>
-            <version>${resteasy.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.jboss.resteasy</groupId>
-            <artifactId>resteasy-client</artifactId>
-            <version>${resteasy.version}</version>
-        </dependency>
-
-        <!-- HTTP Server 实现：使用 Netty（推荐，独立端口，不与 Spring Boot Tomcat 冲突） -->
-        <dependency>
-            <groupId>org.jboss.resteasy</groupId>
-            <artifactId>resteasy-netty4</artifactId>
-            <version>${resteasy.version}</version>
-        </dependency>
-        <!-- JSON 支持（RESTEasy 默认使用 Jackson，需要 jackson-jaxrs-json-provider） -->
-        <dependency>
-            <groupId>org.jboss.resteasy</groupId>
-            <artifactId>resteasy-jackson2-provider</artifactId>
-            <version>${resteasy.version}</version>
-        </dependency>
-        <!-- 通用日志（RESTEasy 依赖 commons-logging） -->
-        <dependency>
-            <groupId>commons-logging</groupId>
-            <artifactId>commons-logging</artifactId>
-        </dependency>
-
-        <!-- Jetty HTTP 服务器（对应 server=jetty） -->
-<!--        <dependency>-->
-<!--            <groupId>org.eclipse.jetty</groupId>-->
-<!--            <artifactId>jetty-server</artifactId>-->
-<!--            <version>${jetty.version}</version>-->
-<!--        </dependency>-->
-<!--        <dependency>-->
-<!--            <groupId>org.eclipse.jetty</groupId>-->
-<!--            <artifactId>jetty-servlet</artifactId>-->
-<!--            <version>${jetty.version}</version>-->
-<!--        </dependency>-->
 
         <!-- Consul 注册中心 -->
         <dependency>
