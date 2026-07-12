@@ -23,7 +23,7 @@
     </appender>
 
 
-    <root level="debug">
+    <root level="info">
         <appender-ref ref="FileAppender"/>
         <appender-ref ref="ConsoleAppender" />
     </root>
