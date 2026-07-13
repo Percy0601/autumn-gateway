@@ -19,6 +19,7 @@
         <module>autumn-gateway-examples-opentelemetry</module>
         <module>autumn-gateway-examples-service-a</module>
         <module>autumn-gateway-examples-service-b</module>
+        <module>autumn-gateway-examples-discovery</module>
     </modules>
     <distributionManagement>
         <site>

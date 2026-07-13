@@ -16,6 +16,7 @@
 
 	<modules>
 		<module>autumn-gateway-deploy</module>
+		<module>autumn-gateway-discovery</module>
 		<module>autumn-gateway-examples</module>
 	</modules>
 	<properties>
@@ -24,6 +25,9 @@
 		<java.version>25</java.version>
 		<spring-cloud.version>2025.1.2</spring-cloud.version>
 		<jjwt-api.version>0.13.0</jjwt-api.version>
+		<maven.compiler.source>21</maven.compiler.source>
+		<maven.compiler.target>21</maven.compiler.target>
+		<lombok.version>1.18.42</lombok.version>
         <spring-cloud-starter-gateway-server-webflux.version>5.0.2</spring-cloud-starter-gateway-server-webflux.version>
 	</properties>
 
