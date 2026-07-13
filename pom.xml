@@ -69,6 +69,7 @@
 			<dependency>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-starter-actuator</artifactId>
+                <version>4.1.0</version>
 				<!-- 砍掉 micrometer，省一大块 -->
 				<exclusions>
 					<exclusion>

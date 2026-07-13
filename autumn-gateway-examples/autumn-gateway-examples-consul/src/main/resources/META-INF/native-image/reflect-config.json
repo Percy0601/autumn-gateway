@@ -1,0 +1,57 @@
+[
+  {
+    "name": "org.springframework.cloud.bootstrap.RefreshBootstrapRegistryInitializer",
+    "allPublicConstructors": true,
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.springframework.cloud.bootstrap.BootstrapApplicationListener",
+    "allPublicConstructors": true,
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.springframework.cloud.bootstrap.TextEncryptorConfigBootstrapper",
+    "allPublicConstructors": true,
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.springframework.cloud.context.environment.EnvironmentManager",
+    "allPublicConstructors": true,
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.springframework.cloud.context.scope.GenericScope",
+    "allPublicConstructors": true,
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.springframework.cloud.autoconfigure.ConfigurationPropertiesRebinderAutoConfiguration",
+    "allPublicConstructors": true,
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.springframework.cloud.client.serviceregistry.ServiceRegistryAutoConfiguration",
+    "allPublicConstructors": true,
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.springframework.cloud.client.discovery.DiscoveryClient",
+    "allPublicConstructors": true,
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.springframework.cloud.consul.discovery.configclient.ConsulConfigServerBootstrapper",
+    "allPublicConstructors": true,
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.springframework.boot.autoconfigure.SharedMetadataReaderFactoryContextInitializer",
+    "allPublicConstructors": true,
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.springframework.context.ApplicationContextInitializer",
+    "allPublicConstructors": true,
+    "allPublicMethods": true
+  }
+]
