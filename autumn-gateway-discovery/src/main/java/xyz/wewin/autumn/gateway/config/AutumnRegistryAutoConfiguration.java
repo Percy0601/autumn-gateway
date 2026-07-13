@@ -6,6 +6,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.cloud.client.ConditionalOnDiscoveryEnabled;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Primary;
 import org.springframework.core.env.Environment;
 import xyz.wewin.autumn.gateway.registry.AutumnAutoServiceRegistration;
 import xyz.wewin.autumn.gateway.registry.AutumnRegistration;
@@ -27,6 +28,7 @@ public class AutumnRegistryAutoConfiguration {
         return new AutumnRegistryClient(server);
     }
 
+    @Primary
     @Bean
     public AutumnServiceRegistry autumnServiceRegistry(AutumnRegistryClient client) {
         return new AutumnServiceRegistry(client);
