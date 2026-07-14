@@ -16,7 +16,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <java.version>25</java.version>
-        <start-class>xyz.wewin.autumn.gateway.examples.discovery.DiscoveryApplication</start-class>
+        <start-class>xyz.wewin.autumn.gateway.examples.discovery.DiscoveryAutumnGatewayApplication</start-class>
     </properties>
     <dependencies>
         <!-- Spring Cloud Gateway -->
@@ -28,7 +28,12 @@
         <dependency>
             <groupId>xyz.wewin.autumn</groupId>
             <artifactId>autumn-gateway-discovery</artifactId>
-            <version>0.0.1-SNAPSHOT</version>
+        </dependency>
+
+        <dependency>
+            <groupId>joda-time</groupId>
+            <artifactId>joda-time</artifactId>
+            <version>2.12.7</version>
         </dependency>
     </dependencies>
 
