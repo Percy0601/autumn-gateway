@@ -18,8 +18,8 @@ import com.ecwid.consul.v1.health.model.Check;
 /**
  * 不生效，使用录制
  */
-//@Component
-//@ImportRuntimeHints(ConsulServiceInstanceHints.class)
+@Component
+@ImportRuntimeHints(ConsulServiceInstanceHints.class)
 public class ConsulServiceInstanceHints implements RuntimeHintsRegistrar {
     private static final Logger log = LoggerFactory.getLogger(ConsulServiceInstanceHints.class);
 
