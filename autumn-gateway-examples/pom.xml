@@ -20,6 +20,7 @@
         <module>autumn-gateway-examples-service-a</module>
         <module>autumn-gateway-examples-service-b</module>
         <module>autumn-gateway-examples-discovery</module>
+        <module>autumn-gateway-examples-security-oidc</module>
     </modules>
     <distributionManagement>
         <site>
