@@ -50,3 +50,14 @@ curl http://localhost:8080/orders/1 \
 -H "Authorization: Bearer eyJhbGciOiJSUzI1NiJ9..."
 
 ```
+
+
+### 微信
+
+```
+https://mp.weixin.qq.com/debug/cgi-bin/sandbox?t=sandbox/login
+```
+
+
+
+
