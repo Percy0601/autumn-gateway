@@ -50,7 +50,7 @@ public class SecurityConfig {
                         // OPTIONS 请求放行（解决跨域预检请求被拦截的问题）
                         .pathMatchers(HttpMethod.OPTIONS).permitAll()
                         // 登录接口放行
-//                        .pathMatchers("/auth/**").permitAll()
+                        .pathMatchers("/auth/**").permitAll()
                         // 其他所有请求都需要认证
                         .anyExchange().access(dynamicAuthManager)
                 )

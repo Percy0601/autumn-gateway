@@ -6,9 +6,14 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
+import org.springframework.security.oauth2.client.registration.ClientRegistration;
+import org.springframework.security.oauth2.client.registration.InMemoryReactiveClientRegistrationRepository;
+import org.springframework.security.oauth2.client.registration.ReactiveClientRegistrationRepository;
+import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.jwt.NimbusReactiveJwtDecoder;
 import org.springframework.security.oauth2.jwt.ReactiveJwtDecoder;
 import org.springframework.security.web.server.SecurityWebFilterChain;
+import org.springframework.security.web.server.authentication.RedirectServerAuthenticationSuccessHandler;
 import xyz.wewin.autumn.gateway.examples.oidc.util.KeyUtils;
 
 import java.security.PublicKey;
@@ -20,56 +25,92 @@ public class SecurityConfig {
 
     @Autowired
     DynamicReactiveAuthorizationManager dynamicAuthManager;
-    /**
-     * 配置安全过滤链
-     */
+
     @Bean
     public SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http) {
         http
-                // 1. 关闭 CSRF（JWT 是无状态的，不需要 CSRF 防护）
-                .csrf(ServerHttpSecurity.CsrfSpec::disable)
-
-                // 2. 开启并配置 JWT 资源服务器
-                .oauth2ResourceServer(oauth2 -> oauth2
-                        .jwt(jwt -> jwt
-                                .jwtDecoder(reactiveJwtDecoder())
-                        )
-                )
-
-                // 3. 配置请求授权规则
-//                .authorizeExchange(exchanges -> exchanges
-//                        // OPTIONS 请求放行（解决跨域预检请求被拦截的问题）
-//                        .pathMatchers(HttpMethod.OPTIONS).permitAll()
-//                        // 登录接口放行
-//                        .pathMatchers("/auth/**").permitAll()
-//                        // 其他所有请求都需要认证
-//                        .anyExchange().authenticated()
-//                )
-
-                .authorizeExchange(exchanges -> exchanges
-                        // OPTIONS 请求放行（解决跨域预检请求被拦截的问题）
-                        .pathMatchers(HttpMethod.OPTIONS).permitAll()
-                        // 登录接口放行
-//                        .pathMatchers("/auth/**").permitAll()
-                        // 其他所有请求都需要认证
-                        .anyExchange().access(dynamicAuthManager)
-                )
-
-
-        ;
+            .csrf(ServerHttpSecurity.CsrfSpec::disable)
+            // JWT Resource Server：验证下游服务传递的 JWT Token
+            .oauth2ResourceServer(oauth2 -> oauth2
+                    .jwt(jwt -> jwt
+                            .jwtDecoder(reactiveJwtDecoder())
+                    )
+            )
+            // 授权规则
+            .authorizeExchange(exchanges -> exchanges
+                    .pathMatchers(HttpMethod.OPTIONS).permitAll()
+                    .pathMatchers("/", "/login", "/login.html", "/css/**", "/js/**", "/images/**", "/favicon.ico").permitAll()
+                    .pathMatchers("/auth/login").permitAll()
+                    .pathMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
+                    .anyExchange().access(dynamicAuthManager)
+            )
+            // OAuth2 Login：通过 authenticationManager 统一管理所有 Provider
+            // Spring Security 7.0 移除了 tokenEndpoint() / userInfoEndpoint()，
+            // 因此使用 authenticationManager() 注入委托式认证管理器
+            .oauth2Login(oauth2 -> oauth2
+                    .loginPage("/login")
+                    .authenticationSuccessHandler(new RedirectServerAuthenticationSuccessHandler("/auth/oauth2-success"))
+                    .authenticationManager(wechatReactiveAuthenticationManager())
+            );
 
         return http.build();
     }
 
     /**
-     * 配置 JWT 解码器
-     * 这里使用 RSA 公钥验证签名（比对称加密更安全，生产环境推荐）
+     * 委托式 OAuth2 认证管理器
+     * - 微信 → 自定义 TokenClient + UserService
+     * - Google/GitHub 等标准 OIDC → Spring Security 内置流程
+     */
+    @Bean
+    public WeChatReactiveAuthenticationManager wechatReactiveAuthenticationManager() {
+        return new WeChatReactiveAuthenticationManager(
+                wechatAccessTokenResponseClient(),
+                wechatReactiveOAuth2UserService()
+        );
+    }
+
+    /**
+     * 微信 access_token 获取客户端
+     * 微信 token 接口不符合 OAuth2 标准（使用 GET + query 参数），需自定义实现
+     */
+    @Bean
+    public WeChatOAuth2AccessTokenResponseClient wechatAccessTokenResponseClient() {
+        return new WeChatOAuth2AccessTokenResponseClient();
+    }
+
+    /**
+     * 微信用户信息服务
+     * 微信 userinfo 接口不符合 OAuth2/OIDC 标准（使用 GET + query 参数传递 access_token 和 openid），
+     * 需自定义实现
+     */
+    @Bean
+    public WeChatReactiveOAuth2UserService wechatReactiveOAuth2UserService() {
+        return new WeChatReactiveOAuth2UserService();
+    }
+
+    /**
+     * JWT 解码器（用于 Resource Server 验证下游传递的 JWT）
      */
     @Bean
     public ReactiveJwtDecoder reactiveJwtDecoder() {
-        // 注意：这里应该是你的公钥字符串，或者从 classpath 读取 pem 文件
-        // 为了方便演示，我假设有一个 KeyUtils 类来加载公钥
         PublicKey publicKey = KeyUtils.loadPublicKey();
         return NimbusReactiveJwtDecoder.withPublicKey((RSAPublicKey) publicKey).build();
+    }
+
+    @Bean
+    public ReactiveClientRegistrationRepository clientRegistrationRepository() {
+        ClientRegistration wechat = ClientRegistration.withRegistrationId("wechat")
+                .clientId("wx你的真实appid")
+                .clientSecret("你的真实secret")
+                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                .redirectUri("{baseUrl}/login/oauth2/code/{registrationId}")
+                .scope("snsapi_login")
+                .authorizationUri("https://open.weixin.qq.com/connect/qrconnect")
+                .tokenUri("https://api.weixin.qq.com/sns/oauth2/access_token")
+                .userInfoUri("https://api.weixin.qq.com/sns/userinfo")
+                .userNameAttributeName("openid")
+                .clientName("WeChat")
+                .build();
+        return new InMemoryReactiveClientRegistrationRepository(wechat);
     }
 }
