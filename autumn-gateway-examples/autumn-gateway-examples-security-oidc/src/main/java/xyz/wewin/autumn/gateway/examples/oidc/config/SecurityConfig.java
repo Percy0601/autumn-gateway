@@ -13,6 +13,7 @@ import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.jwt.NimbusReactiveJwtDecoder;
 import org.springframework.security.oauth2.jwt.ReactiveJwtDecoder;
 import org.springframework.security.web.server.SecurityWebFilterChain;
+import org.springframework.security.web.server.authentication.RedirectServerAuthenticationFailureHandler;
 import org.springframework.security.web.server.authentication.RedirectServerAuthenticationSuccessHandler;
 import xyz.wewin.autumn.gateway.examples.oidc.util.KeyUtils;
 
@@ -47,11 +48,20 @@ public class SecurityConfig {
             // OAuth2 Login：通过 authenticationManager 统一管理所有 Provider
             // Spring Security 7.0 移除了 tokenEndpoint() / userInfoEndpoint()，
             // 因此使用 authenticationManager() 注入委托式认证管理器
-            .oauth2Login(oauth2 -> oauth2
-                    .loginPage("/login")
-                    .authenticationSuccessHandler(new RedirectServerAuthenticationSuccessHandler("/auth/oauth2-success"))
-                    .authenticationManager(wechatReactiveAuthenticationManager())
-            );
+//            .oauth2Login(oauth2 -> oauth2
+//                    .loginPage("/login")
+//                    .authenticationSuccessHandler(new RedirectServerAuthenticationSuccessHandler("/auth/oauth2-success"))
+//                    .authenticationManager(wechatReactiveAuthenticationManager())
+//            );
+
+          .oauth2Login(oauth2 -> oauth2
+                .loginPage("/login")
+                .authenticationSuccessHandler(new RedirectServerAuthenticationSuccessHandler("/auth/oauth2-success"))
+                .authenticationFailureHandler(new RedirectServerAuthenticationFailureHandler("/auth/oauth2-failure"))
+                .authenticationManager(wechatReactiveAuthenticationManager())
+                .authorizationRequestResolver(wechatAuthorizationRequestResolver())
+                .clientRegistrationRepository(clientRegistrationRepository())
+          );
 
         return http.build();
     }
@@ -100,17 +110,27 @@ public class SecurityConfig {
     @Bean
     public ReactiveClientRegistrationRepository clientRegistrationRepository() {
         ClientRegistration wechat = ClientRegistration.withRegistrationId("wechat")
-                .clientId("wx你的真实appid")
-                .clientSecret("你的真实secret")
+                .clientId("wxa1ec999eeb9c7770")
+                .clientSecret("a1f6011c022c3600aefeac80cecb2bcd")
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-                .redirectUri("{baseUrl}/login/oauth2/code/{registrationId}")
-                .scope("snsapi_login")
-                .authorizationUri("https://open.weixin.qq.com/connect/qrconnect")
+                .redirectUri("https://abc123.ngrok-free.app/login/oauth2/code/{registrationId}")
+                .scope("snsapi_userinfo")
+                // /connect/oauth2/authorize -> /connect/qrconnect
+                .authorizationUri("https://open.weixin.qq.com/connect/oauth2/authorize")
                 .tokenUri("https://api.weixin.qq.com/sns/oauth2/access_token")
                 .userInfoUri("https://api.weixin.qq.com/sns/userinfo")
                 .userNameAttributeName("openid")
                 .clientName("WeChat")
                 .build();
         return new InMemoryReactiveClientRegistrationRepository(wechat);
+    }
+
+    /**
+     * 微信授权请求解析器
+     * 微信使用 appid 而非 client_id，且不支持 PKCE，需自定义处理
+     */
+    @Bean
+    public WeChatServerOAuth2AuthorizationRequestResolver wechatAuthorizationRequestResolver() {
+        return new WeChatServerOAuth2AuthorizationRequestResolver(clientRegistrationRepository());
     }
 }
