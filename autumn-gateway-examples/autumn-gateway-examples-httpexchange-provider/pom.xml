@@ -7,15 +7,16 @@
         <version>0.0.1-SNAPSHOT</version>
     </parent>
 
-    <artifactId>autumn-gateway-examples-httpexchange-api</artifactId>
+    <artifactId>autumn-gateway-examples-httpexchange-provider</artifactId>
     <packaging>jar</packaging>
 
-    <name>autumn-gateway-examples-httpexchange-api</name>
+    <name>autumn-gateway-examples-httpexchange-provider</name>
     <url>http://maven.apache.org</url>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <java.version>25</java.version>
+        <start-class>xyz.wewin.autumn.gateway.examples.httpexchange.provider.ProviderExampleBootstrap</start-class>
     </properties>
     <dependencies>
         <dependency>
@@ -29,6 +30,17 @@
                 </exclusion>
             </exclusions>
         </dependency>
+        <!-- Consul 服务发现 -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-consul-discovery</artifactId>
+        </dependency>
+
+        <!-- 如果微服务之间互相调用（RestClient / WebClient + lb://）才需要 -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-loadbalancer</artifactId>
+        </dependency>
         <!-- Spring Cloud LoadBalancer（解析 lb://） -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
@@ -40,19 +52,31 @@
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-consul-discovery</artifactId>
         </dependency>
+        <dependency>
+            <groupId>xyz.wewin.autumn</groupId>
+            <artifactId>autumn-gateway-examples-httpexchange-api</artifactId>
+            <version>0.0.1-SNAPSHOT</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-webflux</artifactId>
+        </dependency>
     </dependencies>
 
     <build>
         <plugins>
-
             <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>${maven-compiler-plugin.version}</version>
+                <groupId>org.graalvm.buildtools</groupId>
+                <artifactId>native-maven-plugin</artifactId>
                 <configuration>
-                    <source>${maven.compiler.source}</source>
-                    <target>${maven.compiler.target}</target>
+                    <imageName>${project.artifactId}</imageName>
+                    <mainClass>${start-class}</mainClass>
                 </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
         </plugins>
     </build>
