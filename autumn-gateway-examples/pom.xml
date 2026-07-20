@@ -21,6 +21,7 @@
         <module>autumn-gateway-examples-service-b</module>
         <module>autumn-gateway-examples-discovery</module>
         <module>autumn-gateway-examples-security-oidc</module>
+        <module>autumn-gateway-examples-httpexchange-api</module>
     </modules>
     <distributionManagement>
         <site>
