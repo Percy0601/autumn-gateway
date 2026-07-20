@@ -27,3 +27,16 @@ find target -name "*.imports" -path "*spring*" | xargs grep -l "RefreshBootstrap
 ```
 - 有输出 → 还有某个依赖的 jar 内自带老 imports，定位它
 - 没输出 → AOT 层干净，问题在 native-image 运行期别的路径（agent / reflect-config）
+
+
+### 测试验证
+
+启动项目后，使用 curl 测试登录：
+```
+curl -X POST http://localhost:8080/api/auth/login \
+-H "Content-Type: application/json" \
+-d '{"identity_type":"password","identifier":"admin","credential":"ant.design"}'
+
+```
+
+成功返回 token。之后访问其他接口需在 Header 中添加 Authorization: Bearer <token>。
