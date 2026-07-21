@@ -11,6 +11,14 @@ export default [
     ],
   },
   {
+    name: '系统管理',
+    path: '/system',
+    routes: [
+      { name: '应用管理', path: '/system/app', component: './System/App' },
+      // ...其他页面
+    ],
+  },
+  {
     path: '/welcome',
     name: '欢迎',
     icon: 'smile',
