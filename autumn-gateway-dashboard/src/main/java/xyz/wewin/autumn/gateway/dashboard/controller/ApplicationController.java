@@ -94,7 +94,7 @@ public class ApplicationController {
     /**
      * 全量列表（供下拉选择使用）
      */
-    @GetMapping("/list-all")
+    @GetMapping("/list")
     public Result<List<Application>> listAll() {
         return Result.success(applicationService.listAll());
     }

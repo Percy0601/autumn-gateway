@@ -15,6 +15,7 @@ export default [
     path: '/system',
     routes: [
       { name: '应用管理', path: '/system/app', component: './System/App' },
+      { name: '角色管理', path: '/system/role', component: './System/Role' },
       // ...其他页面
     ],
   },

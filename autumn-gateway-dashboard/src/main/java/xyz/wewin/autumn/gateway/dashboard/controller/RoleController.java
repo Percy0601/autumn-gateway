@@ -10,7 +10,7 @@ import xyz.wewin.autumn.gateway.dashboard.service.RoleService;
 import java.util.List;
 
 @RestController
-@RequestMapping("/system/role")
+@RequestMapping("/api/system/role")
 public class RoleController {
 
     @Autowired
