@@ -2,6 +2,7 @@ package xyz.wewin.autumn.gateway.dashboard.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -9,6 +10,7 @@ import xyz.wewin.autumn.gateway.dashboard.entity.Resource;
 import xyz.wewin.autumn.gateway.dashboard.repo.ResourceRepository;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -19,7 +21,18 @@ public class ResourceService {
     private ResourceRepository resourceRepository;
 
     public Page<Resource> list(int page, int size, Long appId, String resType, String matchType, String name) {
-        return resourceRepository.findWithPage(appId, resType, matchType, name, PageRequest.of(page - 1, size));
+
+        List<Resource> content = resourceRepository.findWithPage(appId,
+                resType,
+                matchType,
+                name,
+                PageRequest.of(page - 1, size));
+
+        long total = resourceRepository.countWithFilter(appId,
+                resType,
+                matchType,
+                name);
+        return new PageImpl<>(content, PageRequest.of(page - 1, size), total);
     }
 
     public Optional<Resource> getById(Long id) {

@@ -2,6 +2,7 @@ package xyz.wewin.autumn.gateway.dashboard.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -28,7 +29,9 @@ public class ApplicationService {
      */
     public Page<Application> list(int page, int size) {
         Pageable pageable = PageRequest.of(page - 1, size);
-        return repository.findWithPage(pageable);
+        List<Application> content = repository.findWithPage(pageable);
+        long total = repository.countAll();
+        return new PageImpl<>(content, pageable, total);
     }
 
     /**

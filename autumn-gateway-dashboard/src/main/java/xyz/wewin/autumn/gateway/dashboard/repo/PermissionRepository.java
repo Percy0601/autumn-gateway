@@ -1,6 +1,5 @@
 package xyz.wewin.autumn.gateway.dashboard.repo;
 
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jdbc.repository.query.Query;
 import org.springframework.data.repository.CrudRepository;
@@ -22,7 +21,7 @@ public interface PermissionRepository extends CrudRepository<Permission, Long> {
           AND (:permType IS NULL OR p.perm_type = :permType)
         ORDER BY p.id DESC
         """)
-    Page<Permission> findWithPage(@Param("appId") Long appId,
+    List<Permission> findWithPage(@Param("appId") Long appId,
                                   @Param("code") String code,
                                   @Param("name") String name,
                                   @Param("permType") String permType,
@@ -31,4 +30,12 @@ public interface PermissionRepository extends CrudRepository<Permission, Long> {
     List<Permission> findByAppId(Long appId);
     Optional<Permission> findByAppIdAndCode(Long appId, String code);
     List<Permission> findByCategoryId(Long categoryId);
+    @Query("""
+        SELECT COUNT(1) FROM permission p
+        WHERE (:appId IS NULL OR p.app_id = :appId)
+          AND (:code IS NULL OR p.code LIKE '%' || :code || '%')
+          AND (:name IS NULL OR p.name LIKE '%' || :name || '%')
+          AND (:permType IS NULL OR p.perm_type = :permType)
+        """)
+    long countWithFilter(Long appId, String code, String name, String permType);
 }

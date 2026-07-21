@@ -1,6 +1,5 @@
 package xyz.wewin.autumn.gateway.dashboard.repo;
 
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jdbc.repository.query.Query;
 import org.springframework.data.repository.CrudRepository;
@@ -21,7 +20,7 @@ public interface ResourceRepository extends CrudRepository<Resource, Long> {
           AND (:name IS NULL OR r.name LIKE '%' || :name || '%')
         ORDER BY r.sort ASC, r.id DESC
         """)
-    Page<Resource> findWithPage(@Param("appId") Long appId,
+    List<Resource> findWithPage(@Param("appId") Long appId,
                                 @Param("resType") String resType,
                                 @Param("matchType") String matchType,
                                 @Param("name") String name,
@@ -30,4 +29,13 @@ public interface ResourceRepository extends CrudRepository<Resource, Long> {
     List<Resource> findByAppId(Long appId);
     List<Resource> findByParentId(Long parentId);
     List<Resource> findByResTypeAndAppId(String resType, Long appId);
+    @Query("""
+        SELECT COUNT(1) FROM resource r
+        WHERE (:appId IS NULL OR r.app_id = :appId)
+          AND (:resType IS NULL OR r.res_type = :resType)
+          AND (:matchType IS NULL OR r.match_type = :matchType)
+          AND (:name IS NULL OR r.name LIKE '%' || :name || '%')
+        ORDER BY r.sort ASC, r.id DESC
+        """)
+    long countWithFilter(Long appId, String resType, String matchType, String name);
 }

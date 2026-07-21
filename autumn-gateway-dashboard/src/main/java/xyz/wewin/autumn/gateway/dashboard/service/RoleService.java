@@ -2,6 +2,7 @@ package xyz.wewin.autumn.gateway.dashboard.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,7 +25,15 @@ public class RoleService {
     @Autowired
     private RolePermissionRepository rolePermissionRepository;
     public Page<Role> list(int page, int size, Long appId, String code, String name) {
-        return roleRepository.findWithPage(appId, code, name, PageRequest.of(page - 1, size));
+        List<Role> content = roleRepository.findWithPage(appId,
+                code,
+                name,
+                PageRequest.of(page - 1, size));
+
+        long total = roleRepository.countWithFilter(appId,
+                code,
+                name);
+        return new PageImpl<>(content, PageRequest.of(page - 1, size), total);
     }
 
     public Optional<Role> getById(Long id) {

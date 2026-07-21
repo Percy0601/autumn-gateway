@@ -2,14 +2,12 @@ package xyz.wewin.autumn.gateway.dashboard.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import xyz.wewin.autumn.gateway.dashboard.entity.User;
-import xyz.wewin.autumn.gateway.dashboard.entity.UserApp;
-import xyz.wewin.autumn.gateway.dashboard.entity.UserAuthAccount;
-import xyz.wewin.autumn.gateway.dashboard.entity.UserRole;
+import xyz.wewin.autumn.gateway.dashboard.entity.*;
 import xyz.wewin.autumn.gateway.dashboard.repo.UserAppRepository;
 import xyz.wewin.autumn.gateway.dashboard.repo.UserAuthAccountRepository;
 import xyz.wewin.autumn.gateway.dashboard.repo.UserRepository;
@@ -32,7 +30,9 @@ public class UserService {
     @Autowired
     private UserRoleRepository userRoleRepository;
     public Page<User> list(int page, int size, String username, String nickname, String phone) {
-        return userRepository.findWithPage(username, nickname, phone, PageRequest.of(page - 1, size));
+        List<User> content = userRepository.findWithPage(username, nickname, phone, PageRequest.of(page - 1, size));
+        long total = userRepository.countWithFilter(username, nickname, phone);
+        return new PageImpl<>(content, PageRequest.of(page - 1, size), total);
     }
 
     public Optional<User> getById(Long id) {

@@ -2,6 +2,7 @@ package xyz.wewin.autumn.gateway.dashboard.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -9,6 +10,7 @@ import xyz.wewin.autumn.gateway.dashboard.entity.Permission;
 import xyz.wewin.autumn.gateway.dashboard.repo.PermissionRepository;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -19,7 +21,14 @@ public class PermissionService {
     private PermissionRepository permissionRepository;
 
     public Page<Permission> list(int page, int size, Long appId, String code, String name, String permType) {
-        return permissionRepository.findWithPage(appId, code, name, permType, PageRequest.of(page - 1, size));
+
+        List<Permission> content = permissionRepository.findWithPage(appId,
+                code,
+                name,
+                permType,
+                PageRequest.of(page - 1, size));
+        long total = permissionRepository.countWithFilter(appId, code, name, permType);
+        return new PageImpl<>(content, PageRequest.of(page - 1, size), total);
     }
 
     public Optional<Permission> getById(Long id) {

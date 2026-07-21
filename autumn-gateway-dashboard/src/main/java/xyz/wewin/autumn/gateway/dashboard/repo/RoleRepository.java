@@ -21,7 +21,7 @@ public interface RoleRepository extends CrudRepository<Role, Long> {
           AND (:name IS NULL OR r.name LIKE '%' || :name || '%')
         ORDER BY r.id DESC
         """)
-    Page<Role> findWithPage(@Param("appId") Long appId,
+    List<Role> findWithPage(@Param("appId") Long appId,
                             @Param("code") String code,
                             @Param("name") String name,
                             Pageable pageable);
@@ -29,4 +29,12 @@ public interface RoleRepository extends CrudRepository<Role, Long> {
     List<Role> findByAppId(Long appId);
 
     Optional<Role> findByAppIdAndCode(Long appId, String code);
+    @Query("""
+        SELECT COUNT(1) FROM role r
+        WHERE (:appId IS NULL OR r.app_id = :appId)
+          AND (:code IS NULL OR r.code LIKE '%' || :code || '%')
+          AND (:name IS NULL OR r.name LIKE '%' || :name || '%')
+        ORDER BY r.id DESC
+        """)
+    long countWithFilter(Long appId, String code, String name);
 }
