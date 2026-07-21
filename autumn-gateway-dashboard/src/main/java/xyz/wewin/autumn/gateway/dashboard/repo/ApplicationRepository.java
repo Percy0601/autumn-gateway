@@ -12,10 +12,12 @@ import java.util.List;
 public interface ApplicationRepository extends CrudRepository<Application, Long> {
 
     @Query("""
-        SELECT * FROM application
+        SELECT app.* FROM application app
+        WHERE (:appId IS NULL OR app.appid = :appId)
+          AND (:name IS NULL OR app.name LIKE CONCAT('%', :name, '%'))
         ORDER BY id DESC
         """)
-    List<Application> findWithPage(Pageable pageable);
+    List<Application> findWithPage(String appId, String name, Pageable pageable);
 
     @Query("SELECT COUNT(1) FROM application")
     long countAll();
@@ -25,4 +27,11 @@ public interface ApplicationRepository extends CrudRepository<Application, Long>
         WHERE appid = :appid
         """)
     int countByAppid(String appid);
+    @Query("""
+        SELECT count(1) FROM application app
+        WHERE (:appId IS NULL OR app.appid = :appId)
+          AND (:name IS NULL OR app.name LIKE CONCAT('%', :name, '%'))
+        ORDER BY id DESC
+        """)
+    long countByFilter(String appId, String name);
 }

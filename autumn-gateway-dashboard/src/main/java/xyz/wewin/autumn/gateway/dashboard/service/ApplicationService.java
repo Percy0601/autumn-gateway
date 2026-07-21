@@ -27,10 +27,13 @@ public class ApplicationService {
      * @param size   pageSize
      * @return Page<Application>
      */
-    public Page<Application> list(int page, int size) {
+    public Page<Application> list(String appId,
+                                  String name,
+                                  int page,
+                                  int size) {
         Pageable pageable = PageRequest.of(page - 1, size);
-        List<Application> content = repository.findWithPage(pageable);
-        long total = repository.countAll();
+        List<Application> content = repository.findWithPage(appId, name, pageable);
+        long total = repository.countByFilter(appId, name);
         return new PageImpl<>(content, pageable, total);
     }
 
@@ -68,6 +71,18 @@ public class ApplicationService {
         if (req.getBasePath() != null) existing.setBasePath(req.getBasePath());
         if (req.getDescription() != null) existing.setDescription(req.getDescription());
         if (req.getStatus() != null) existing.setStatus(req.getStatus());
+        existing.setUpdatedAt(LocalDateTime.now());
+
+        return repository.save(existing);
+    }
+
+    /**
+     * 更新应用（全量更新，忽略 null 字段）
+     */
+    public Application updateStatus(Long id, Integer status) {
+        Application existing = repository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("应用不存在: " + id));
+        existing.setStatus(status);
         existing.setUpdatedAt(LocalDateTime.now());
 
         return repository.save(existing);

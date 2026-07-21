@@ -9,10 +9,10 @@ type Application = {
     id: number;
     appid: string;
     name: string;
-    base_path?: string;
+    basePath?: string;
     description?: string;
     status: number;
-    created_at: string;
+    createdAt: string;
 };
 
 export default () => {
@@ -24,8 +24,8 @@ export default () => {
         { title: 'ID', dataIndex: 'id', search: false, width: 60 },
         { title: '应用标识', dataIndex: 'appid', copyable: true, ellipsis: true },
         { title: '应用名称', dataIndex: 'name', ellipsis: true },
-        { title: 'API 前缀', dataIndex: 'base_path', hideInSearch: true },
-        { title: '描述', dataIndex: 'description', hideInSearch: true, ellipsis: true },
+        { title: 'API 前缀', dataIndex: 'basePath', hideInSearch: true, search: false},
+        { title: '描述', dataIndex: 'description', hideInSearch: true, search: false, ellipsis: true },
         {
             title: '状态',
             dataIndex: 'status',
@@ -34,7 +34,7 @@ export default () => {
                 0: { text: '禁用', status: 'Error' },
             },
         },
-        { title: '创建时间', dataIndex: 'created_at', valueType: 'dateTime', search: false },
+        { title: '创建时间', dataIndex: 'createdAt', valueType: 'dateTime', search: false },
         {
             title: '操作',
             valueType: 'option',
@@ -51,7 +51,7 @@ export default () => {
                     }}><a style={{ color: '#52c41a' }}>启用</a></Popconfirm>,
             ],
         },
-    ];
+    ] as ProColumns<Application>[] ;
 
     return (
         <>
@@ -123,7 +123,7 @@ export default () => {
                     placeholder="例如：订单系统"
                 />
                 <ProFormText
-                    name="base_path"
+                    name="basePath"
                     label="API 前缀"
                     placeholder="例如：/api/order"
                     rules={[{

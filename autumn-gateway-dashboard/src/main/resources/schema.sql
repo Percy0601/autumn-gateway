@@ -1,3 +1,6 @@
+CREATE DATABASE `autumn-security` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci */ /*!80016 DEFAULT ENCRYPTION='N' */;
+
+
 -- ============================================================
 -- 1. 应用（多应用隔离）
 -- ============================================================

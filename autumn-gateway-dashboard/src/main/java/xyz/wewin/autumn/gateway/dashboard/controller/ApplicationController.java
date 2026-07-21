@@ -19,13 +19,13 @@ public class ApplicationController {
      * 分页列表（ProTable 格式）
      * 请求参数：?current=1&pageSize=10&appid=&name=
      */
-    @GetMapping("/list")
+    @GetMapping
     public Result<List<Application>> list(
             @RequestParam(defaultValue = "1") int current,
             @RequestParam(defaultValue = "10") int pageSize,
             @RequestParam(required = false) String appid,
             @RequestParam(required = false) String name) {
-        Page<Application> page = applicationService.list(current, pageSize);
+        Page<Application> page = applicationService.list(appid, name, current, pageSize);
         return Result.success(page.getContent(), page.getTotalElements());
     }
 
@@ -59,6 +59,32 @@ public class ApplicationController {
     public Result<Application> update(@PathVariable Long id, @RequestBody Application app) {
         try {
             Application updated = applicationService.update(id, app);
+            return Result.success(updated);
+        } catch (IllegalArgumentException e) {
+            return Result.error(400, e.getMessage());
+        }
+    }
+
+    /**
+     * 更新应用
+     */
+    @PutMapping("/{id}/disable")
+    public Result<Application> disable(@PathVariable Long id) {
+        try {
+            Application updated = applicationService.updateStatus(id, 0);
+            return Result.success(updated);
+        } catch (IllegalArgumentException e) {
+            return Result.error(400, e.getMessage());
+        }
+    }
+
+    /**
+     * 更新应用
+     */
+    @PutMapping("/{id}/enable")
+    public Result<Application> enable(@PathVariable Long id) {
+        try {
+            Application updated = applicationService.updateStatus(id, 1);
             return Result.success(updated);
         } catch (IllegalArgumentException e) {
             return Result.error(400, e.getMessage());
