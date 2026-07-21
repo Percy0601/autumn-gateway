@@ -10,7 +10,7 @@ import xyz.wewin.autumn.gateway.dashboard.service.ApplicationService;
 import java.util.List;
 
 @RestController
-@RequestMapping("/system/app")
+@RequestMapping("/api/system/app")
 public class ApplicationController {
     @Autowired
     private ApplicationService applicationService;
@@ -19,7 +19,7 @@ public class ApplicationController {
      * 分页列表（ProTable 格式）
      * 请求参数：?current=1&pageSize=10&appid=&name=
      */
-    @GetMapping
+    @GetMapping("/list")
     public Result<List<Application>> list(
             @RequestParam(defaultValue = "1") int current,
             @RequestParam(defaultValue = "10") int pageSize,
@@ -68,7 +68,7 @@ public class ApplicationController {
     /**
      * 全量列表（供下拉选择使用）
      */
-    @GetMapping("/list")
+    @GetMapping("/list-all")
     public Result<List<Application>> listAll() {
         return Result.success(applicationService.listAll());
     }
