@@ -10,7 +10,7 @@ import xyz.wewin.autumn.gateway.dashboard.service.PermissionService;
 import java.util.List;
 
 @RestController
-@RequestMapping("/system/permission")
+@RequestMapping("/api/system/permission")
 public class PermissionController {
 
     @Autowired

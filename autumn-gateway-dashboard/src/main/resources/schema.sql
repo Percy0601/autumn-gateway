@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS application (
 -- ============================================================
 -- 2. 用户（全局共享）
 -- ============================================================
-CREATE TABLE IF NOT EXISTS "user" (
+CREATE TABLE IF NOT EXISTS `user` (
   id            BIGINT PRIMARY KEY AUTO_INCREMENT,
   username      VARCHAR(64) UNIQUE COMMENT '内部登录名，第三方登录用户可空',
   nickname      VARCHAR(64),
@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS user_app (
   created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (user_id, app_id),
   INDEX idx_app (app_id),
-  FOREIGN KEY (user_id) REFERENCES "user"(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES `user`(id) ON DELETE CASCADE,
   FOREIGN KEY (app_id) REFERENCES application(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户与应用关联';
 
@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS user_auth_account (
   UNIQUE KEY uk_type_identifier (identity_type, identifier),
   INDEX idx_user (user_id),
   INDEX idx_issuer (issuer),
-  FOREIGN KEY (user_id) REFERENCES "user"(id) ON DELETE CASCADE
+  FOREIGN KEY (user_id) REFERENCES `user`(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='认证账户：一个用户可挂多种登录方式';
 
 -- ============================================================
@@ -102,7 +102,7 @@ CREATE TABLE IF NOT EXISTS permission (
 -- ============================================================
 -- 7. 角色（RBAC 的 R）
 -- ============================================================
-CREATE TABLE IF NOT EXISTS "role" (
+CREATE TABLE IF NOT EXISTS `role` (
   id          BIGINT PRIMARY KEY AUTO_INCREMENT,
   app_id      BIGINT NOT NULL COMMENT '角色按应用隔离',
   code        VARCHAR(64) NOT NULL COMMENT '如 admin, auditor, finance_viewer',
@@ -123,8 +123,8 @@ CREATE TABLE IF NOT EXISTS role_relation (
   parent_role_id BIGINT NOT NULL COMMENT '父角色（权限更多）',
   child_role_id  BIGINT NOT NULL COMMENT '子角色（继承父角色权限）',
   PRIMARY KEY (parent_role_id, child_role_id),
-  FOREIGN KEY (parent_role_id) REFERENCES "role"(id) ON DELETE CASCADE,
-  FOREIGN KEY (child_role_id) REFERENCES "role"(id) ON DELETE CASCADE
+  FOREIGN KEY (parent_role_id) REFERENCES `role`(id) ON DELETE CASCADE,
+  FOREIGN KEY (child_role_id) REFERENCES `role`(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='角色继承关系（child 继承 parent 的所有权限）';
 
 -- ============================================================
@@ -137,8 +137,8 @@ CREATE TABLE IF NOT EXISTS role_constraint (
   target_role_id  BIGINT COMMENT 'mutex/prerequisite 时指向另一个角色',
   max_users       INT COMMENT 'cardinality: 该角色最多可授予多少用户',
   created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (role_id) REFERENCES "role"(id) ON DELETE CASCADE,
-  FOREIGN KEY (target_role_id) REFERENCES "role"(id) ON DELETE CASCADE
+  FOREIGN KEY (role_id) REFERENCES `role`(id) ON DELETE CASCADE,
+  FOREIGN KEY (target_role_id) REFERENCES `role`(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='RBAC2 约束（互斥/基数/先决条件）';
 
 -- ============================================================
@@ -154,8 +154,8 @@ CREATE TABLE IF NOT EXISTS user_role (
   PRIMARY KEY (user_id, role_id, app_id),
   INDEX idx_user_role_role (role_id),
   INDEX idx_user_role_app (app_id),
-  FOREIGN KEY (user_id) REFERENCES "user"(id) ON DELETE CASCADE,
-  FOREIGN KEY (role_id) REFERENCES "role"(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES `user`(id) ON DELETE CASCADE,
+  FOREIGN KEY (role_id) REFERENCES `role`(id) ON DELETE CASCADE,
   FOREIGN KEY (app_id) REFERENCES application(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户-角色-应用关联';
 
@@ -166,7 +166,7 @@ CREATE TABLE IF NOT EXISTS role_permission (
   role_id       BIGINT NOT NULL,
   permission_id BIGINT NOT NULL,
   PRIMARY KEY (role_id, permission_id),
-  FOREIGN KEY (role_id) REFERENCES "role"(id) ON DELETE CASCADE,
+  FOREIGN KEY (role_id) REFERENCES `role`(id) ON DELETE CASCADE,
   FOREIGN KEY (permission_id) REFERENCES permission(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='角色拥有哪些权限';
 

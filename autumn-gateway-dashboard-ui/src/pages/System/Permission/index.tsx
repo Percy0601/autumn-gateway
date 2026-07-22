@@ -7,12 +7,12 @@ import { request } from '@umijs/max';
 
 type Permission = {
     id: number;
-    app_id: number;
+    appId: number;
     code: string;
     name: string;
     description?: string;
     status: number;
-    created_at: string;
+    createdAt: string;
 };
 
 type Application = {
@@ -44,11 +44,11 @@ export default () => {
         { title: 'ID', dataIndex: 'id', search: false, width: 50 },
         {
             title: '所属应用',
-            dataIndex: 'app_id',
+            dataIndex: 'appId',
             valueType: 'select',
             fieldProps: { options: appOptions },
             render: (_, record) => {
-                const app = applications.find(a => a.id === record.app_id);
+                const app = applications.find(a => a.id === record.appId);
                 return app ? `${app.name} (${app.appid})` : '-';
             },
         },
@@ -63,7 +63,7 @@ export default () => {
                 0: { text: '禁用', status: 'Error' },
             },
         },
-        { title: '创建时间', dataIndex: 'created_at', valueType: 'dateTime', search: false },
+        { title: '创建时间', dataIndex: 'createdAt', valueType: 'dateTime', search: false },
         {
             title: '操作',
             valueType: 'option',
@@ -93,7 +93,7 @@ export default () => {
                         params: {
                             current: params.current,
                             pageSize: params.pageSize,
-                            app_id: params.app_id,
+                            appId: params.appId,
                             code: params.code,
                             name: params.name,
                         },
@@ -141,7 +141,7 @@ export default () => {
                 }}
             >
                 <ProFormSelect
-                    name="app_id"
+                    name="appId"
                     label="所属应用"
                     rules={[{ required: true, message: '请选择所属应用' }]}
                     fieldProps={{ options: appOptions }}
