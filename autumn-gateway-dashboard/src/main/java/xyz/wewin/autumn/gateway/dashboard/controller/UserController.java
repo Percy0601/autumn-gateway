@@ -4,17 +4,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.*;
 import xyz.wewin.autumn.gateway.dashboard.common.Result;
-import xyz.wewin.autumn.gateway.dashboard.entity.User;
-import xyz.wewin.autumn.gateway.dashboard.entity.UserApp;
-import xyz.wewin.autumn.gateway.dashboard.entity.UserAuthAccount;
-import xyz.wewin.autumn.gateway.dashboard.entity.UserRole;
+import xyz.wewin.autumn.gateway.dashboard.dto.UpdateAppsRequest;
+import xyz.wewin.autumn.gateway.dashboard.entity.*;
 import xyz.wewin.autumn.gateway.dashboard.service.UserService;
 
 import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/system/user")
+@RequestMapping("/api/system/user")
 public class UserController {
 
     @Autowired
@@ -73,12 +71,6 @@ public class UserController {
         return Result.success(userService.getUserApps(id));
     }
 
-    @PutMapping("/{id}/apps")
-    public Result<Void> saveUserApps(@PathVariable Long id, @RequestBody List<UserApp> apps) {
-        userService.saveUserApps(id, apps);
-        return Result.success(null);
-    }
-
     // ---- 认证账户 ----
     @GetMapping("/{id}/auth-accounts")
     public Result<List<UserAuthAccount>> getAuthAccounts(@PathVariable Long id) {
@@ -108,5 +100,23 @@ public class UserController {
         userService.setUserRoles(id, appId, createdBy, roleIds);
         return Result.success(null);
     }
+
+    @PutMapping("/{id}/apps")
+    public Result<Void> updateUserApps(@PathVariable Long id,
+                                       @RequestBody UpdateAppsRequest request) {
+        userService.updateUserApps(id, request.getAppIds());
+        return Result.success(null);
+    }
+//
+//    @PutMapping("/{id}/roles")
+//    public Result<Void> updateUserRoles(@PathVariable Long id, @RequestBody UpdateRoleRequest request) {
+//        userService.updateUserRoles(id, request.getRoleIds());
+//        return Result.success(null);
+//    }
+//
+//    @GetMapping("/list")
+//    public Result<List<Role>> listAll() {
+//        return Result.success(userService.listRolesByUserId());
+//    }
 }
 

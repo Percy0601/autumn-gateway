@@ -73,4 +73,9 @@ public class RoleController {
         roleService.setRolePermissions(id, permissionIds);
         return Result.success(null);
     }
+
+    @GetMapping("/list")
+    public Result<List<Role>> listAll() {
+        return Result.success(roleService.listAll());
+    }
 }

@@ -15,9 +15,9 @@ public interface UserRepository extends CrudRepository<User, Long> {
 
     @Query("""
         SELECT u.* FROM user u
-        WHERE (:username IS NULL OR u.username LIKE '%' || :username || '%')
-          AND (:nickname IS NULL OR u.nickname LIKE '%' || :nickname || '%')
-          AND (:phone IS NULL OR u.phone LIKE '%' || :phone || '%')
+        WHERE (:username IS NULL OR u.username LIKE CONCAT('%', :username, '%'))
+          AND (:nickname IS NULL OR u.nickname LIKE CONCAT('%', :nickname, '%'))
+          AND (:phone IS NULL OR u.phone LIKE CONCAT('%', :phone, '%'))
         ORDER BY u.id DESC
         """)
     List<User> findWithPage(@Param("username") String username,

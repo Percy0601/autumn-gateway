@@ -12,6 +12,11 @@ import java.util.List;
 // UserRoleRepository.java
 @Repository
 public interface UserRoleRepository extends CrudRepository<UserRole, Long> {
+
+    @Query("""
+        SELECT ur.* FROM user_role ur
+        WHERE (:userId IS NULL OR ur.user_id = :userId)
+        """)
     List<UserRole> findByUserId(Long userId);
     void deleteByUserId(Long userId);
     @Modifying

@@ -36,16 +36,15 @@ CREATE TABLE IF NOT EXISTS `user` (
 -- 3. 用户在哪些应用下有身份（Wolf 核心设计）
 -- ============================================================
 CREATE TABLE IF NOT EXISTS user_app (
-  user_id     BIGINT NOT NULL,
-  app_id      BIGINT NOT NULL,
-  is_admin    TINYINT DEFAULT 0 COMMENT '1=该应用管理员（可登 console 管此应用）',
-  created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (user_id, app_id),
-  INDEX idx_app (app_id),
-  FOREIGN KEY (user_id) REFERENCES `user`(id) ON DELETE CASCADE,
-  FOREIGN KEY (app_id) REFERENCES application(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户与应用关联';
-
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,           -- 新增自增主键
+    user_id BIGINT NOT NULL,
+    app_id BIGINT NOT NULL,
+    is_admin TINYINT DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_user_app (user_id, app_id),       -- 保留业务唯一约束
+    FOREIGN KEY (user_id) REFERENCES   `user`(id) ON DELETE CASCADE,
+    FOREIGN KEY (app_id) REFERENCES application(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户在哪些应用下有身份';
 -- ============================================================
 -- 4. 认证账户（统一存储多种认证方式）
 -- ============================================================

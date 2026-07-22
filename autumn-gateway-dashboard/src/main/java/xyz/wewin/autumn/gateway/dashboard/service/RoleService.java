@@ -12,6 +12,7 @@ import xyz.wewin.autumn.gateway.dashboard.repo.RolePermissionRepository;
 import xyz.wewin.autumn.gateway.dashboard.repo.RoleRepository;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -98,5 +99,11 @@ public class RoleService {
     public void setRolePermissions(Long roleId, List<Long> permissionIds) {
         rolePermissionRepository.deleteByRoleId(roleId);
         permissionIds.forEach(pid -> rolePermissionRepository.insert(roleId, pid));
+    }
+
+    public List<Role> listAll() {
+        List<Role> roles = new ArrayList<>();
+        roleRepository.findAll().forEach(roles::add);
+        return roles;
     }
 }

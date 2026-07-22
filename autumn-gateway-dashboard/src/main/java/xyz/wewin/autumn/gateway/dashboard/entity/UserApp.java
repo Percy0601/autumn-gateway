@@ -1,5 +1,6 @@
 package xyz.wewin.autumn.gateway.dashboard.entity;
 
+import org.springframework.data.annotation.Id;
 import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
 
@@ -7,6 +8,10 @@ import java.time.LocalDateTime;
 
 @Table("user_app")
 public class UserApp {
+
+    @Id
+    private Long id;
+
     // 复合主键：user_id + app_id
     @Column("user_id")
     private Long userId;
@@ -16,6 +21,14 @@ public class UserApp {
     private Boolean isAdmin;
     @Column("created_at")
     private LocalDateTime createdAt;
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
 
     public Long getUserId() {
         return userId;

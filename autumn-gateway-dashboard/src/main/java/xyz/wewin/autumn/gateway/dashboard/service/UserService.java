@@ -8,14 +8,13 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import xyz.wewin.autumn.gateway.dashboard.entity.*;
-import xyz.wewin.autumn.gateway.dashboard.repo.UserAppRepository;
-import xyz.wewin.autumn.gateway.dashboard.repo.UserAuthAccountRepository;
-import xyz.wewin.autumn.gateway.dashboard.repo.UserRepository;
-import xyz.wewin.autumn.gateway.dashboard.repo.UserRoleRepository;
+import xyz.wewin.autumn.gateway.dashboard.repo.*;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -29,6 +28,9 @@ public class UserService {
     private UserAuthAccountRepository authAccountRepository;
     @Autowired
     private UserRoleRepository userRoleRepository;
+    @Autowired
+    private RoleRepository roleRepository;
+
     public Page<User> list(int page, int size, String username, String nickname, String phone) {
         List<User> content = userRepository.findWithPage(username, nickname, phone, PageRequest.of(page - 1, size));
         long total = userRepository.countWithFilter(username, nickname, phone);
@@ -113,5 +115,60 @@ public class UserService {
     public void setUserRoles(Long userId, Long appId, Long createdBy, List<Long> roleIds) {
         userRoleRepository.deleteByUserId(userId);
         roleIds.forEach(roleId -> userRoleRepository.insert(userId, roleId, appId, createdBy));
+    }
+
+
+    /**
+     * 1. 更新用户关联的应用（先删后插）
+     */
+    public void updateUserApps(Long userId, List<Long> appIds) {
+        userAppRepository.deleteByUserId(userId);
+        if (appIds != null && !appIds.isEmpty()) {
+            List<UserApp> list = appIds.stream()
+                    .map(appId -> {
+                        UserApp ua = new UserApp();
+                        ua.setUserId(userId);
+                        ua.setAppId(appId);
+                        ua.setCreatedAt(LocalDateTime.now());
+                        return ua;
+                    })
+                    .collect(Collectors.toList());
+            userAppRepository.saveAll(list);
+        }
+    }
+
+    /**
+     * 2. 更新用户关联的角色（先删后插）
+     */
+    public void updateUserRoles(Long userId, List<Long> roleIds) {
+        userRoleRepository.deleteByUserId(userId);
+        if (roleIds != null && !roleIds.isEmpty()) {
+            List<UserRole> list = roleIds.stream()
+                    .map(roleId -> {
+                        UserRole ur = new UserRole();
+                        ur.setUserId(userId);
+                        ur.setRoleId(roleId);
+                        ur.setCreatedAt(LocalDateTime.now());
+                        return ur;
+                    })
+                    .collect(Collectors.toList());
+            userRoleRepository.saveAll(list);
+        }
+    }
+
+    /**
+     * 3. 查询该用户下所有角色（返回角色对象列表）
+     */
+    public List<Role> listRolesByUserId(Long userId) {
+        List<Long> roleIds = userRoleRepository.findByUserId(userId)
+                .stream()
+                .map(UserRole::getRoleId)
+                .collect(Collectors.toList());
+        if (roleIds.isEmpty())
+            return Collections.emptyList();
+        List<Role> roles = null;
+        roleRepository.findAllById(roleIds)
+                .forEach(roles::add);
+        return roles;
     }
 }
