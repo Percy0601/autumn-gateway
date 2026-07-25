@@ -4,7 +4,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.*;
 import xyz.wewin.autumn.gateway.dashboard.common.Result;
+import xyz.wewin.autumn.gateway.dashboard.entity.Permission;
 import xyz.wewin.autumn.gateway.dashboard.entity.Role;
+import xyz.wewin.autumn.gateway.dashboard.entity.User;
 import xyz.wewin.autumn.gateway.dashboard.service.RoleService;
 
 import java.util.List;
@@ -64,13 +66,25 @@ public class RoleController {
     }
 
     @GetMapping("/{id}/permissions")
-    public Result<List<Long>> getRolePermissions(@PathVariable Long id) {
+    public Result<List<Permission>> getRolePermissions(@PathVariable Long id) {
         return Result.success(roleService.getRolePermissionIds(id));
     }
 
     @PutMapping("/{id}/permissions")
     public Result<Void> setRolePermissions(@PathVariable Long id, @RequestBody List<Long> permissionIds) {
         roleService.setRolePermissions(id, permissionIds);
+        return Result.success(null);
+    }
+
+
+    @GetMapping("/{id}/users")
+    public Result<List<User>> getRoleUsers(@PathVariable Long id) {
+        return Result.success(roleService.getRoleUsers(id));
+    }
+
+    @PutMapping("/{id}/users")
+    public Result<Void> setRoleUsers(@PathVariable Long id, @RequestBody List<Long> userIds) {
+        roleService.setRoleUsers(id, userIds);
         return Result.success(null);
     }
 

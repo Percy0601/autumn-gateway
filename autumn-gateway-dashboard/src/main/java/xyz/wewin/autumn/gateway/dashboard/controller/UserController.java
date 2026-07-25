@@ -5,6 +5,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.*;
 import xyz.wewin.autumn.gateway.dashboard.common.Result;
 import xyz.wewin.autumn.gateway.dashboard.dto.UpdateAppsRequest;
+import xyz.wewin.autumn.gateway.dashboard.dto.UpdateRolesRequest;
+import xyz.wewin.autumn.gateway.dashboard.dto.UserRelationRole;
 import xyz.wewin.autumn.gateway.dashboard.entity.*;
 import xyz.wewin.autumn.gateway.dashboard.service.UserService;
 
@@ -92,12 +94,20 @@ public class UserController {
         return Result.success(userService.getUserRoles(id));
     }
 
+    @GetMapping("/{id}/find-relation-roles")
+    public Result<Page<UserRelationRole>> findRelationRoles(@PathVariable Long id,
+                                                            @RequestParam Long appId,
+                                                            @RequestParam(defaultValue = "1") int current,
+                                                            @RequestParam(defaultValue = "10") int pageSize) {
+        return Result.success(userService.findRelationRoles(appId, id, current, pageSize));
+    }
+
+
     @PutMapping("/{id}/roles")
     public Result<Void> setUserRoles(@PathVariable Long id,
-                                     @RequestParam Long appId,
                                      @RequestParam(defaultValue = "0") Long createdBy,
-                                     @RequestBody List<Long> roleIds) {
-        userService.setUserRoles(id, appId, createdBy, roleIds);
+                                     @RequestBody UpdateRolesRequest request) {
+        userService.setUserRoles(id, createdBy, request.getRoleIds());
         return Result.success(null);
     }
 

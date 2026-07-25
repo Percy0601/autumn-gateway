@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 import xyz.wewin.autumn.gateway.dashboard.entity.UserRole;
 
 import java.util.List;
+import java.util.Optional;
 
 // UserRoleRepository.java
 @Repository
@@ -18,8 +19,18 @@ public interface UserRoleRepository extends CrudRepository<UserRole, Long> {
         WHERE (:userId IS NULL OR ur.user_id = :userId)
         """)
     List<UserRole> findByUserId(Long userId);
+
     void deleteByUserId(Long userId);
+
     @Modifying
     @Query("INSERT INTO user_role(user_id, role_id, app_id, created_by, created_at) VALUES (:userId, :roleId, :appId, :createdBy, NOW())")
     void insert(@Param("userId") Long userId, @Param("roleId") Long roleId, @Param("appId") Long appId, @Param("createdBy") Long createdBy);
+
+    @Query("""
+        SELECT ur.* FROM user_role ur
+        WHERE (:roleId IS NULL OR ur.role_id = :roleId)
+        """)
+    Optional<UserRole> findByRoleId(Long roleId);
+
+    void deleteByRoleId(Long roleId);
 }

@@ -1,9 +1,9 @@
-import { DrawerForm, ProFormText, ProFormSwitch, ProFormTextArea, ProFormSelect, ProTable } from '@ant-design/pro-components';
+import { DrawerForm, ProFormText, ProFormDigit, ProFormSwitch, ProFormTextArea, ProTable } from '@ant-design/pro-components';
 import { Button, Popconfirm, message } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import type { ProColumns, ActionType } from '@ant-design/pro-components';
-import { useRef, useState, useEffect, useMemo } from 'react';
-import { request } from '@umijs/max';
+import { useRef, useState } from 'react';
+import { request, history } from '@umijs/max';
 
 type Role = {
     id: number;
@@ -13,50 +13,21 @@ type Role = {
     level: number;
     description?: string;
     status: number;
-    created_at: string;
-};
-
-type Application = {
-    id: number;
-    appid: string;
-    name: string;
+    createdAt: string;
+    updatedAt: string;
 };
 
 export default () => {
     const actionRef = useRef<ActionType>();
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [currentRow, setCurrentRow] = useState<Role | undefined>(undefined);
-    const [applications, setApplications] = useState<Application[]>([]);
 
-    // 加载应用列表
-    useEffect(() => {
-        request<{ data: Application[] }>('/api/system/app/list').then(res => {
-            setApplications(res.data || []);
-        });
-    }, []);
-
-    // 应用选项（供表格搜索和表单共用）
-    const appOptions = useMemo(() =>
-            applications.map(app => ({ label: `${app.name} (${app.appid})`, value: app.id })),
-        [applications]
-    );
-
-    const columns: ProColumns<Role>[] = useMemo(() => [
-        { title: 'ID', dataIndex: 'id', search: false, width: 60 },
-        {
-            title: '所属应用',
-            dataIndex: 'appId',
-            valueType: 'select',
-            fieldProps: { options: appOptions }, // 同步选项
-            render: (_, record) => {
-                const app = applications.find(a => a.id === record.appId);
-                return app ? `${app.name} (${app.appid})` : '-';
-            },
-        },
+    const columns: ProColumns<Role>[] = [
+        { title: 'ID', dataIndex: 'id', search: false, width: 70 },
         { title: '角色编码', dataIndex: 'code', copyable: true, ellipsis: true },
         { title: '角色名称', dataIndex: 'name', ellipsis: true },
-        { title: '层级', dataIndex: 'level', search: false, valueType: 'digit' },
-        { title: '描述', dataIndex: 'description', search: false, ellipsis: true },
+        { title: '所属应用ID', dataIndex: 'appId', search: false },
+        { title: '层级', dataIndex: 'level', search: false },
         {
             title: '状态',
             dataIndex: 'status',
@@ -65,24 +36,27 @@ export default () => {
                 0: { text: '禁用', status: 'Error' },
             },
         },
-        { title: '创建时间', dataIndex: 'created_at', valueType: 'dateTime', search: false },
+        { title: '创建时间', dataIndex: 'createdAt', valueType: 'dateTime', search: false },
         {
             title: '操作',
             valueType: 'option',
             render: (_, record) => [
+                <a key="detail" onClick={() => history.push(`/system/role/detail/${record.id}`)}>详情</a>,
                 <a key="edit" onClick={() => { setCurrentRow(record); setDrawerOpen(true); }}>编辑</a>,
                 record.status === 1
-                    ? <Popconfirm key="dis" title="确定禁用？" onConfirm={async () => {
+                    ? <Popconfirm key="disable" title="确定禁用该角色？" onConfirm={async () => {
                         await request(`/api/system/role/${record.id}/disable`, { method: 'PUT' });
-                        message.success('已禁用'); actionRef.current?.reload();
+                        message.success('已禁用');
+                        actionRef.current?.reload();
                     }}><a style={{ color: '#faad14' }}>禁用</a></Popconfirm>
-                    : <Popconfirm key="en" title="确定启用？" onConfirm={async () => {
+                    : <Popconfirm key="enable" title="确定启用该角色？" onConfirm={async () => {
                         await request(`/api/system/role/${record.id}/enable`, { method: 'PUT' });
-                        message.success('已启用'); actionRef.current?.reload();
+                        message.success('已启用');
+                        actionRef.current?.reload();
                     }}><a style={{ color: '#52c41a' }}>启用</a></Popconfirm>,
             ],
         },
-    ], [appOptions, applications]);
+    ];
 
     return (
         <>
@@ -95,7 +69,6 @@ export default () => {
                         params: {
                             current: params.current,
                             pageSize: params.pageSize,
-                            appId: params.appId,
                             code: params.code,
                             name: params.name,
                         },
@@ -120,7 +93,7 @@ export default () => {
 
             <DrawerForm<Role>
                 title={currentRow ? '编辑角色' : '新增角色'}
-                width={400}
+                width={450}
                 open={drawerOpen}
                 onOpenChange={setDrawerOpen}
                 initialValues={
@@ -142,21 +115,13 @@ export default () => {
                     return true;
                 }}
             >
-                {/* 所属应用下拉（使用 fieldProps.options 同步传递） */}
-                <ProFormSelect
-                    name="appId"
-                    label="所属应用"
-                    rules={[{ required: true, message: '请选择所属应用' }]}
-                    fieldProps={{ options: appOptions }}
-                    placeholder="请选择应用"
-                />
                 <ProFormText
                     name="code"
                     label="角色编码"
                     disabled={!!currentRow}
                     rules={[
                         { required: true, message: '请输入角色编码' },
-                        { pattern: /^[a-z][a-z0-9_]{2,31}$/, message: '以小写字母开头，只允许小写字母、数字、下划线，3-32位' },
+                        { pattern: /^[a-zA-Z][a-zA-Z0-9_]{2,31}$/, message: '以字母开头，只允许字母、数字、下划线，3-32位' },
                     ]}
                     placeholder="例如：admin"
                 />
@@ -166,11 +131,12 @@ export default () => {
                     rules={[{ required: true, message: '请输入角色名称' }]}
                     placeholder="例如：管理员"
                 />
-                <ProFormText
+                <ProFormDigit
                     name="level"
-                    label="层级"
-                    placeholder="数字越大权限越高"
-                    initialValue={0}
+                    label="角色层级"
+                    min={0}
+                    fieldProps={{ precision: 0 }}
+                    placeholder="数值越大权限越高"
                 />
                 <ProFormTextArea name="description" label="描述" />
                 <ProFormSwitch

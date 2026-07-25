@@ -16,6 +16,12 @@ export default [
     routes: [
       { name: '应用管理', path: '/system/app', component: './System/App' },
       { name: '角色管理', path: '/system/role', component: './System/Role' },
+      {
+        name: '角色详情',
+        path: '/system/role/detail/:id',
+        component: './System/Role/Detail',
+        hideInMenu: true,
+      },
       { name: '权限管理', path: '/system/permission', component: './System/Permission' },
       { name: '用户管理', path: '/system/user', component: './System/User' },
       {

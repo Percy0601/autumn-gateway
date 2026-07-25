@@ -6,13 +6,12 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import xyz.wewin.autumn.gateway.dashboard.entity.Role;
-import xyz.wewin.autumn.gateway.dashboard.entity.RolePermission;
-import xyz.wewin.autumn.gateway.dashboard.repo.RolePermissionRepository;
-import xyz.wewin.autumn.gateway.dashboard.repo.RoleRepository;
+import xyz.wewin.autumn.gateway.dashboard.entity.*;
+import xyz.wewin.autumn.gateway.dashboard.repo.*;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -25,6 +24,12 @@ public class RoleService {
     private RoleRepository roleRepository;
     @Autowired
     private RolePermissionRepository rolePermissionRepository;
+    @Autowired
+    private PermissionRepository permissionRepository;
+    @Autowired
+    private UserRoleRepository userRoleRepository;
+    @Autowired
+    private UserRepository userRepository;
     public Page<Role> list(int page, int size, Long appId, String code, String name) {
         List<Role> content = roleRepository.findWithPage(appId,
                 code,
@@ -86,11 +91,17 @@ public class RoleService {
     /**
      * 获取角色的权限ID列表
      */
-    public List<Long> getRolePermissionIds(Long roleId) {
-        return rolePermissionRepository.findByRoleId(roleId)
+    public List<Permission> getRolePermissionIds(Long roleId) {
+        List<Long> permissionIds = rolePermissionRepository.findByRoleId(roleId)
                 .stream()
                 .map(RolePermission::getPermissionId)
                 .collect(Collectors.toList());
+
+        List<Permission> permissions = new ArrayList<>();
+        permissionRepository.findAllById(permissionIds).forEach(it -> {
+            permissions.add(it);
+        });
+        return permissions;
     }
 
     /**
@@ -105,5 +116,29 @@ public class RoleService {
         List<Role> roles = new ArrayList<>();
         roleRepository.findAll().forEach(roles::add);
         return roles;
+    }
+
+    public List<User> getRoleUsers(Long id) {
+        List<Long> userIds = userRoleRepository.findByRoleId(id)
+                .stream()
+                .map(UserRole::getUserId)
+                .collect(Collectors.toList());
+        List<User> users = new ArrayList<>();
+        userRepository.findAllById(userIds).forEach(it -> {
+            users.add(it);
+        });
+        return users;
+    }
+
+    public void setRoleUsers(Long roleId, List<Long> userIds) {
+        userRoleRepository.deleteByRoleId(roleId);
+        Date now = new Date();
+        Long appId = roleRepository.findById(roleId)
+                .orElseThrow(() -> new IllegalArgumentException("角色不存在"))
+                .getAppId();
+        userIds.forEach(uid -> {
+            userRoleRepository.insert(uid, roleId, appId, now.getTime());
+        });
+
     }
 }

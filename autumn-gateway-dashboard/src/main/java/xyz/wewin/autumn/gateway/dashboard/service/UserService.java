@@ -7,12 +7,16 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.RequestParam;
+import xyz.wewin.autumn.gateway.dashboard.dto.UserRelationRole;
 import xyz.wewin.autumn.gateway.dashboard.entity.*;
+import xyz.wewin.autumn.gateway.dashboard.mapper.GeneralMapper;
 import xyz.wewin.autumn.gateway.dashboard.repo.*;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -30,6 +34,10 @@ public class UserService {
     private UserRoleRepository userRoleRepository;
     @Autowired
     private RoleRepository roleRepository;
+    @Autowired
+    private ApplicationRepository applicationRepository;
+    @Autowired
+    private GeneralMapper generalMapper;
 
     public Page<User> list(int page, int size, String username, String nickname, String phone) {
         List<User> content = userRepository.findWithPage(username, nickname, phone, PageRequest.of(page - 1, size));
@@ -112,9 +120,18 @@ public class UserService {
     /**
      * 设置用户的角色（全量覆盖，需要指定应用和授权人）
      */
-    public void setUserRoles(Long userId, Long appId, Long createdBy, List<Long> roleIds) {
+    public void setUserRoles(Long userId, Long createdBy, List<Long> roleIds) {
         userRoleRepository.deleteByUserId(userId);
-        roleIds.forEach(roleId -> userRoleRepository.insert(userId, roleId, appId, createdBy));
+        roleIds.forEach(roleId -> {
+            Role role = roleRepository.findById(roleId)
+                    .orElse(null);
+            if(Objects.isNull(role)) {
+                return;
+            }
+            Long appId = role.getAppId();
+
+            userRoleRepository.insert(userId, roleId, appId, createdBy);
+        });
     }
 
 
@@ -170,5 +187,25 @@ public class UserService {
         roleRepository.findAllById(roleIds)
                 .forEach(roles::add);
         return roles;
+    }
+
+    public Page<UserRelationRole> findRelationRoles(Long appId,
+                                                    Long userId,
+                                                    int current,
+                                                    int pageSize) {
+        long total = generalMapper.countRelationRoles(appId, userId, current, pageSize);
+        List<UserRelationRole> content = generalMapper.findRelationRoles(appId, userId, current, pageSize);
+        content.forEach(it -> {
+            if(null == it.getUserId()) {
+                it.setRelationStatus(0);
+            } else {
+                it.setRelationStatus(1);
+            }
+            Application application = applicationRepository.findById(it.getAppId()).orElse(null);
+            if (application != null) {
+                it.setAppName(application.getName());
+            }
+        });
+        return new PageImpl<>(content, PageRequest.of(current - 1, pageSize), total);
     }
 }

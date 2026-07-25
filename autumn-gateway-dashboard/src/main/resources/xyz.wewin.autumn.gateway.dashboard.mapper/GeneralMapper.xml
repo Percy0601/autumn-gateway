@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+
+       Copyright 2015-2022 the original author or authors.
+
+       Licensed under the Apache License, Version 2.0 (the "License");
+       you may not use this file except in compliance with the License.
+       You may obtain a copy of the License at
+
+          https://www.apache.org/licenses/LICENSE-2.0
+
+       Unless required by applicable law or agreed to in writing, software
+       distributed under the License is distributed on an "AS IS" BASIS,
+       WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+       See the License for the specific language governing permissions and
+       limitations under the License.
+
+-->
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="xyz.wewin.autumn.gateway.dashboard.mapper.GeneralMapper">
+    <resultMap id="BaseResultMap" type="xyz.wewin.autumn.gateway.dashboard.dto.UserRelationRole">
+        <result column="id" property="id"/>
+        <result column="appId" property="appId"/>
+        <result column="code" property="code"/>
+        <result column="name" property="name"/>
+        <result column="level" property="level"/>
+        <result column="description" property="description"/>
+        <result column="status" property="status"/>
+        <result column="createdAt" property="createdAt"/>
+        <result column="updatedAt" property="updatedAt"/>
+        <result column="userId" property="userId"/>
+        <result column="relationStatus" property="relationStatus"/>
+    </resultMap>
+
+    <select id="findRelationRoles" resultMap="BaseResultMap">
+        select r.id,
+        r.app_id appId,
+        r.code,
+        r.name,
+        r.level,
+        r.description,
+        r.status,
+        r.created_at createdAt,
+        r.updated_at updatedAt,
+        ur.user_id userId
+        from role r
+        left join user_role ur
+        where
+        r.id = ur.role_id
+        <if test="appId != null">
+            r.app_id = #{appId}
+        </if>
+        order by userId desc
+        limit #{current}, #{pageSize}
+    </select>
+
+    <select id="countRelationRoles" resultType="long">
+        select count(1)
+        from role r
+        left join user_role ur
+        where
+        r.id = ur.role_id
+        <if test="appId != null">
+            r.app_id = #{appId}
+        </if>
+    </select>
+</mapper>
