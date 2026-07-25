@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { PageContainer } from '@ant-design/pro-components';
-import { Tabs, Descriptions, Tag, Button, Space, Spin, Transfer, message, Empty } from 'antd';
+import { PageContainer, ProTable } from '@ant-design/pro-components';
+import { Tabs, Descriptions, Tag, Button, Space, Spin, message, Empty } from 'antd';
 import { history, useParams, request } from '@umijs/max';
 
 const UserDetail: React.FC = () => {
@@ -13,37 +13,37 @@ const UserDetail: React.FC = () => {
 
     // 应用相关
     const [allApps, setAllApps] = useState<any[]>([]);
-    const [selectedApps, setSelectedApps] = useState<number[]>([]);
+    const [selectedAppIds, setSelectedAppIds] = useState<number[]>([]);
 
     // 角色相关
     const [allRoles, setAllRoles] = useState<any[]>([]);
-    const [selectedRoles, setSelectedRoles] = useState<number[]>([]);
+    const [selectedRoleIds, setSelectedRoleIds] = useState<number[]>([]);
+    const [appMap, setAppMap] = useState<Record<number, string>>({});
 
     const fetchUserData = useCallback(async () => {
         if (!userId) return;
         setLoading(true);
         try {
-            // 并行请求四个接口
             const [userRes, appsRes, userAppsRes, rolesRes, userRolesRes] = await Promise.all([
-                request<{ data: any }>(`/api/system/user/${userId}`),        // 用户基本信息
-                request<{ data: any[] }>('/api/system/app/list'),           // 所有应用
-                request<{ data: any[] }>(`/api/system/user/${userId}/apps`), // 用户已关联的应用
-                request<{ data: any[] }>('/api/system/role/list'),          // 所有角色
-                request<{ data: any[] }>(`/api/system/user/${userId}/roles`), // 用户已关联的角色
+                request<{ data: any }>(`/api/system/user/${userId}`),
+                request<{ data: any[] }>('/api/system/app/list'),
+                request<{ data: any[] }>(`/api/system/user/${userId}/apps`),
+                request<{ data: any[] }>('/api/system/role/list'),
+                request<{ data: any[] }>(`/api/system/user/${userId}/roles`),
             ]);
 
             setUser(userRes.data);
             setAllApps(appsRes.data || []);
-
-            // 从用户已关联的应用列表中提取 appId 数组
-            const userAppIds = (userAppsRes.data || []).map((item: any) => item.appId);
-            setSelectedApps(userAppIds);
-
+            setSelectedAppIds((userAppsRes.data || []).map((item: any) => item.appId));
             setAllRoles(rolesRes.data || []);
+            setSelectedRoleIds((userRolesRes.data || []).map((item: any) => item.roleId));
 
-            // 从用户已关联的角色列表中提取 roleId 数组
-            const userRoleIds = (userRolesRes.data || []).map((item: any) => item.roleId);
-            setSelectedRoles(userRoleIds);
+            // 构建应用名称映射
+            const map: Record<number, string> = {};
+            (appsRes.data || []).forEach((app: any) => {
+                map[app.id] = app.name;
+            });
+            setAppMap(map);
         } catch (error) {
             message.error('加载用户数据失败');
         } finally {
@@ -57,23 +57,107 @@ const UserDetail: React.FC = () => {
         }
     }, [userId, fetchUserData]);
 
-    const saveApps = async () => {
-        await request(`/api/system/user/${userId}/apps`, {
-            method: 'PUT',
-            data: { appIds: selectedApps },
-        });
-        message.success('应用关联已更新');
+    // 切换应用关联状态
+    const toggleApp = async (appId: number, currentlyAssociated: boolean) => {
+        let newIds: number[];
+        if (currentlyAssociated) {
+            newIds = selectedAppIds.filter(id => id !== appId);
+        } else {
+            newIds = [...selectedAppIds, appId];
+        }
+        try {
+            await request(`/api/system/user/${userId}/apps`, {
+                method: 'PUT',
+                data: { appIds: newIds },
+            });
+            setSelectedAppIds(newIds);
+            message.success(currentlyAssociated ? '已解绑应用' : '已关联应用');
+        } catch {
+            message.error('操作失败');
+        }
     };
 
-    const saveRoles = async () => {
-        await request(`/api/system/user/${userId}/roles`, {
-            method: 'PUT',
-            data: { roleIds: selectedRoles },
-        });
-        message.success('角色关联已更新');
+    // 切换角色关联状态
+    const toggleRole = async (roleId: number, currentlyAssociated: boolean) => {
+        let newIds: number[];
+        if (currentlyAssociated) {
+            newIds = selectedRoleIds.filter(id => id !== roleId);
+        } else {
+            newIds = [...selectedRoleIds, roleId];
+        }
+        try {
+            await request(`/api/system/user/${userId}/roles`, {
+                method: 'PUT',
+                data: { roleIds: newIds },
+            });
+            setSelectedRoleIds(newIds);
+            message.success(currentlyAssociated ? '已解绑角色' : '已关联角色');
+        } catch {
+            message.error('操作失败');
+        }
     };
 
     if (!userId) return <Empty description="用户ID不能为空" />;
+
+    // 应用表格列
+    const appColumns = [
+        { title: '应用ID', dataIndex: 'id', width: 80 },
+        { title: '应用名称', dataIndex: 'name', ellipsis: true },
+        { title: '应用标识', dataIndex: 'appid', ellipsis: true },
+        {
+            title: '关联状态',
+            dataIndex: 'id',
+            render: (id: number) => {
+                const isAssociated = selectedAppIds.includes(id);
+                return <Tag color={isAssociated ? 'green' : 'default'}>{isAssociated ? '已关联' : '未关联'}</Tag>;
+            },
+        },
+        {
+            title: '操作',
+            dataIndex: 'id',
+            render: (id: number) => {
+                const isAssociated = selectedAppIds.includes(id);
+                return (
+                    <a onClick={() => toggleApp(id, isAssociated)} style={{ color: isAssociated ? '#ff4d4f' : '#1890ff' }}>
+                        {isAssociated ? '解绑' : '关联'}
+                    </a>
+                );
+            },
+        },
+    ];
+
+    // 角色表格列
+    const roleColumns = [
+        { title: '角色ID', dataIndex: 'id', width: 80 },
+        { title: '角色编码', dataIndex: 'code', ellipsis: true },
+        { title: '角色名称', dataIndex: 'name', ellipsis: true },
+        {
+            title: '所属应用',
+            dataIndex: 'appId',
+            render: (appId: number) => appMap[appId] || `应用#${appId}`,
+        },
+        { title: '层级', dataIndex: 'level', width: 60 },
+        {
+            title: '关联状态',
+            dataIndex: 'id',
+            render: (id: number) => {
+                const isAssociated = selectedRoleIds.includes(id);
+                return <Tag color={isAssociated ? 'green' : 'default'}>{isAssociated ? '已关联' : '未关联'}</Tag>;
+            },
+        },
+        {
+            title: '操作',
+            dataIndex: 'id',
+            render: (id: number) => {
+                const isAssociated = selectedRoleIds.includes(id);
+                return (
+                    <a onClick={() => toggleRole(id, isAssociated)} style={{ color: isAssociated ? '#ff4d4f' : '#1890ff' }}>
+                        {isAssociated ? '解绑' : '关联'}
+                    </a>
+                );
+            },
+        },
+    ];
 
     return (
         <PageContainer
@@ -104,52 +188,50 @@ const UserDetail: React.FC = () => {
                                     <Descriptions.Item label="创建时间">{user.createdAt}</Descriptions.Item>
                                     <Descriptions.Item label="更新时间">{user.updatedAt}</Descriptions.Item>
                                 </Descriptions>
-                            ) : (
-                                '暂无数据'
-                            )}
+                            ) : '暂无数据'}
                         </div>
                     </Tabs.TabPane>
 
-                    {/* 所属应用 Tab */}
-                    <Tabs.TabPane tab="所属应用" key="apps">
-                        <Transfer
-                            dataSource={allApps.map(app => ({
-                                key: app.id,
-                                title: `${app.name} (${app.appid})`,
-                            }))}
-                            targetKeys={selectedApps}
-                            onChange={setSelectedApps}
-                            render={item => item.title}
-                            titles={['可选应用', '已选应用']}
-                            showSearch
-                            filterOption={(inputValue, item) =>
-                                item.title.toLowerCase().includes(inputValue.toLowerCase())
-                            }
+                    {/* 关联应用 Tab */}
+                    <Tabs.TabPane tab="关联应用" key="apps">
+                        <ProTable
+                            headerTitle="应用列表"
+                            rowKey="id"
+                            search={false}
+                            pagination={{ pageSize: 10 }}
+                            request={async () => {
+                                const data = allApps.map(app => ({
+                                    ...app,
+                                    associated: selectedAppIds.includes(app.id),
+                                }));
+                                return { data, success: true, total: data.length };
+                            }}
+                            columns={appColumns}
                         />
-                        <Button type="primary" onClick={saveApps} style={{ marginTop: 16 }}>
-                            保存应用关联
-                        </Button>
                     </Tabs.TabPane>
 
-                    {/* 角色分配 Tab */}
-                    <Tabs.TabPane tab="角色分配" key="roles">
-                        <Transfer
-                            dataSource={allRoles.map(role => ({
-                                key: role.id,
-                                title: `${role.name} (${role.code})`,
-                            }))}
-                            targetKeys={selectedRoles}
-                            onChange={setSelectedRoles}
-                            render={item => item.title}
-                            titles={['可选角色', '已选角色']}
-                            showSearch
-                            filterOption={(inputValue, item) =>
-                                item.title.toLowerCase().includes(inputValue.toLowerCase())
-                            }
+                    {/* 关联角色 Tab - 只显示用户已关联应用下的角色 */}
+                    <Tabs.TabPane tab="关联角色" key="roles">
+                        <ProTable
+                            headerTitle="角色列表（仅显示已关联应用下的角色）"
+                            rowKey="id"
+                            search={false}
+                            pagination={{ pageSize: 10 }}
+                            request={async () => {
+                                // 关键过滤：只保留 appId 在 selectedAppIds 中的角色
+                                const filteredRoles = allRoles.filter(role => selectedAppIds.includes(role.appId));
+                                console.log('当前已关联应用ID:', selectedAppIds);
+                                console.log('所有角色:', allRoles);
+                                console.log('过滤后角色:', filteredRoles);
+                                const data = filteredRoles.map(role => ({
+                                    ...role,
+                                    associated: selectedRoleIds.includes(role.id),
+                                }));
+                                return { data, success: true, total: data.length };
+                            }}
+                            columns={roleColumns}
+                            locale={{ emptyText: '请先关联应用后再分配角色' }}
                         />
-                        <Button type="primary" onClick={saveRoles} style={{ marginTop: 16 }}>
-                            保存角色关联
-                        </Button>
                     </Tabs.TabPane>
                 </Tabs>
             </Spin>

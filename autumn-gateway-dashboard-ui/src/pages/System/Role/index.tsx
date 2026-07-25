@@ -1,8 +1,8 @@
-import { DrawerForm, ProFormText, ProFormDigit, ProFormSwitch, ProFormTextArea, ProTable } from '@ant-design/pro-components';
+import { DrawerForm, ProFormText, ProFormDigit, ProFormSwitch, ProFormTextArea, ProFormSelect, ProTable } from '@ant-design/pro-components';
 import { Button, Popconfirm, message } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import type { ProColumns, ActionType } from '@ant-design/pro-components';
-import { useRef, useState } from 'react';
+import { useRef, useState, useMemo, useEffect } from 'react';
 import { request, history } from '@umijs/max';
 
 type Role = {
@@ -21,12 +21,32 @@ export default () => {
     const actionRef = useRef<ActionType>();
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [currentRow, setCurrentRow] = useState<Role | undefined>(undefined);
+    const [applications, setApplications] = useState<any[]>([]);
+
+    // 加载应用列表
+    useEffect(() => {
+        request<{ data: any[] }>('/api/system/app/list').then(res => {
+            setApplications(res.data || []);
+        });
+    }, []);
+
+    const appOptions = useMemo(() =>
+            applications.map(app => ({ label: `${app.name} (${app.appid})`, value: app.id })),
+        [applications]
+    );
 
     const columns: ProColumns<Role>[] = [
         { title: 'ID', dataIndex: 'id', search: false, width: 70 },
         { title: '角色编码', dataIndex: 'code', copyable: true, ellipsis: true },
         { title: '角色名称', dataIndex: 'name', ellipsis: true },
-        { title: '所属应用ID', dataIndex: 'appId', search: false },
+        {
+            title: '所属应用',
+            dataIndex: 'appId',
+            render: (_, record) => {
+                const app = applications.find(a => a.id === record.appId);
+                return app ? `${app.name} (${app.appid})` : '-';
+            },
+        },
         { title: '层级', dataIndex: 'level', search: false },
         {
             title: '状态',
@@ -93,7 +113,7 @@ export default () => {
 
             <DrawerForm<Role>
                 title={currentRow ? '编辑角色' : '新增角色'}
-                width={450}
+                width={500}
                 open={drawerOpen}
                 onOpenChange={setDrawerOpen}
                 initialValues={
@@ -115,6 +135,14 @@ export default () => {
                     return true;
                 }}
             >
+                {/* 新增：所属应用选择 */}
+                <ProFormSelect
+                    name="appId"
+                    label="所属应用"
+                    rules={[{ required: true, message: '请选择所属应用' }]}
+                    fieldProps={{ options: appOptions }}
+                    placeholder="请选择应用"
+                />
                 <ProFormText
                     name="code"
                     label="角色编码"
