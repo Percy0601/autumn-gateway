@@ -1,7 +1,7 @@
-import { DrawerForm, ProFormText, ProFormDigit, ProFormSelect, ProFormSwitch, ProTable } from '@ant-design/pro-components';
-import { Button, Popconfirm, message, Tag } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
-import type { ProColumns, ActionType } from '@ant-design/pro-components';
+import { DrawerForm, ProFormText, ProFormDigit, ProFormSelect, ProFormSwitch, ProFormTreeSelect, ProTable } from '@ant-design/pro-components';
+import { Button, Popconfirm, message, Tag, Input, Select, Space } from 'antd';
+import { PlusOutlined, SearchOutlined, ReloadOutlined } from '@ant-design/icons';
+import type { ProColumns } from '@ant-design/pro-components';
 import { useRef, useState, useEffect, useMemo } from 'react';
 import { request, history } from '@umijs/max';
 
@@ -22,22 +22,93 @@ type Permission = {
     description?: string;
     status: number;
     createdAt: string;
+    children?: Permission[];
 };
 
 const PERM_TYPES = ['MENU', 'API', 'BUTTON', 'DATA'];
 const MATCH_TYPES = ['exact', 'prefix', 'suffix'];
 const HTTP_METHODS = ['ALL', 'GET', 'POST', 'PUT', 'DELETE', 'PATCH'];
 
+// 从扁平列表构建树
+const buildTree = (list: Permission[]): Permission[] => {
+    const map = new Map<number, Permission>();
+    const roots: Permission[] = [];
+
+    // 先全部浅拷贝
+    list.forEach(item => {
+        map.set(item.id, { ...item, children: [] });
+    });
+
+    // 建立父子关系
+    map.forEach(item => {
+        if (item.parentId && map.has(item.parentId)) {
+            map.get(item.parentId)!.children!.push(item);
+        } else {
+            roots.push(item);
+        }
+    });
+
+    // 递归清理空的 children 数组 + 按 sort 排序
+    const clean = (nodes: Permission[]): Permission[] => {
+        return nodes
+            .sort((a, b) => (a.sort || 0) - (b.sort || 0))
+            .map(node => ({
+                ...node,
+                children: node.children && node.children.length > 0 ? clean(node.children) : undefined,
+            }));
+    };
+
+    return clean(roots);
+};
+
+// 递归过滤树
+const filterTree = (nodes: Permission[], keyword: string, appId?: number, permType?: string): Permission[] => {
+    return nodes.reduce<Permission[]>((acc, node) => {
+        const matchApp = !appId || node.appId === appId;
+        const matchType = !permType || node.permType === permType;
+        const matchKeyword = !keyword ||
+            node.name?.toLowerCase().includes(keyword.toLowerCase()) ||
+            node.code?.toLowerCase().includes(keyword.toLowerCase()) ||
+            node.resourcePath?.toLowerCase().includes(keyword.toLowerCase());
+
+        const filteredChildren = node.children ? filterTree(node.children, keyword, appId, permType) : [];
+
+        if ((matchApp && matchType && matchKeyword) || filteredChildren.length > 0) {
+            acc.push({ ...node, children: filteredChildren.length > 0 ? filteredChildren : node.children });
+        }
+        return acc;
+    }, []);
+};
+
 export default () => {
-    const actionRef = useRef<ActionType>();
+    const actionRef = useRef<any>();
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [currentRow, setCurrentRow] = useState<Permission | undefined>(undefined);
     const [applications, setApplications] = useState<any[]>([]);
+    const [flatPermissions, setFlatPermissions] = useState<Permission[]>([]);
+    const [loading, setLoading] = useState(false);
+
+    // 筛选状态
+    const [keyword, setKeyword] = useState('');
+    const [filterAppId, setFilterAppId] = useState<number | undefined>();
+    const [filterPermType, setFilterPermType] = useState<string | undefined>();
+
+    const loadData = async () => {
+        setLoading(true);
+        try {
+            const [appsRes, permsRes] = await Promise.all([
+                request<{ data: any[] }>('/api/system/app/list'),
+                request<{ data: Permission[] }>('/api/system/permission/list'),
+            ]);
+            setApplications(appsRes.data || []);
+            setFlatPermissions(permsRes.data || []);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
-        request<{ data: any[] }>('/api/system/app/list').then(res => {
-            setApplications(res.data || []);
-        });
+        loadData();
     }, []);
 
     const appOptions = useMemo(() =>
@@ -45,66 +116,103 @@ export default () => {
         [applications]
     );
 
+    // 构建权限树（用于表单中的父级选择）
+    const buildPermTree = (excludeId?: number): any[] => {
+        const buildNodes = (parentId: number): any[] => {
+            return flatPermissions
+                .filter(p => p.parentId === parentId && p.id !== excludeId)
+                .map(p => ({
+                    title: `${p.name} (${p.code})`,
+                    value: p.id,
+                    children: buildNodes(p.id),
+                }));
+        };
+        return [{ title: '顶级（无父级）', value: 0, children: buildNodes(0) }];
+    };
+
+    // 构建用于展示的树 + 过滤
+    const displayTree = useMemo(() => {
+        const tree = buildTree(flatPermissions);
+        return filterTree(tree, keyword, filterAppId, filterPermType);
+    }, [flatPermissions, keyword, filterAppId, filterPermType]);
+
     const columns: ProColumns<Permission>[] = [
-        { title: 'ID', dataIndex: 'id', search: false, width: 60 },
+        {
+            title: '权限名称',
+            dataIndex: 'name',
+            width: 200,
+            ellipsis: true,
+            render: (_, record) => (
+                <Space>
+                    <Tag color={record.permType === 'MENU' ? 'purple' : record.permType === 'API' ? 'blue' : record.permType === 'BUTTON' ? 'orange' : 'default'}>
+                        {record.permType}
+                    </Tag>
+                    <span>{record.name}</span>
+                </Space>
+            ),
+        },
+        {
+            title: '权限编码',
+            dataIndex: 'code',
+            width: 180,
+            ellipsis: true,
+            copyable: true,
+        },
         {
             title: '所属应用',
             dataIndex: 'appId',
-            valueType: 'select',
-            fieldProps: { options: appOptions, allowClear: true, placeholder: '全部' },
+            width: 140,
             render: (_, record) => {
                 const app = applications.find(a => a.id === record.appId);
                 return app ? `${app.name} (${app.appid})` : '-';
             },
         },
         {
-            title: '类型',
-            dataIndex: 'permType',
-            width: 70,
-            valueType: 'select',
-            fieldProps: { options: PERM_TYPES.map(t => ({ label: t, value: t })), allowClear: true },
-        },
-        { title: '权限编码', dataIndex: 'code', copyable: true, ellipsis: true },
-        { title: '权限名称', dataIndex: 'name', ellipsis: true },
-        {
             title: '资源路径',
             dataIndex: 'resourcePath',
+            width: 220,
             ellipsis: true,
             copyable: true,
-            search: false,
-            render: (_, record) => record.resourcePath || '-',
+            render: (_, record) => record.resourcePath ? <code>{record.resourcePath}</code> : '-',
         },
         {
-            title: 'HTTP方法',
+            title: 'HTTP',
             dataIndex: 'httpMethod',
-            width: 80,
-            search: false,
-            render: (_, record) => (
-                <Tag color="blue">{record.httpMethod || 'ALL'}</Tag>
-            ),
+            width: 70,
+            render: (_, record) => record.httpMethod && record.httpMethod !== 'ALL'
+                ? <Tag color="green">{record.httpMethod}</Tag>
+                : null,
         },
         {
             title: '状态',
             dataIndex: 'status',
-            width: 70,
-            valueEnum: { 1: { text: '正常', status: 'Success' }, 0: { text: '禁用', status: 'Error' } },
+            width: 60,
+            render: (_, record) => (
+                <Tag color={record.status === 1 ? 'green' : 'red'}>
+                    {record.status === 1 ? '正常' : '禁用'}
+                </Tag>
+            ),
         },
-        { title: '创建时间', dataIndex: 'createdAt', valueType: 'dateTime', search: false, width: 160 },
+        {
+            title: '排序',
+            dataIndex: 'sort',
+            width: 50,
+        },
         {
             title: '操作',
             valueType: 'option',
-            width: 160,
+            width: 180,
             render: (_, record) => [
                 <a key="detail" onClick={() => history.push(`/system/permission/detail/${record.id}`)}>详情</a>,
                 <a key="edit" onClick={() => { setCurrentRow(record); setDrawerOpen(true); }}>编辑</a>,
                 record.status === 1
                     ? <Popconfirm key="dis" title="确定禁用？" onConfirm={async () => {
                         await request(`/api/system/permission/${record.id}/disable`, { method: 'PUT' });
-                        message.success('已禁用'); actionRef.current?.reload();
+                        message.success('已禁用'); loadData();
                     }}><a style={{ color: '#faad14' }}>禁用</a></Popconfirm>
                     : <Popconfirm key="en" title="确定启用？" onConfirm={async () => {
                         await request(`/api/system/permission/${record.id}/enable`, { method: 'PUT' });
-                        message.success('已启用'); actionRef.current?.reload();
+                        message.success('已启用'); loadData();
                     }}><a style={{ color: '#52c41a' }}>启用</a></Popconfirm>,
             ],
         },
@@ -113,25 +221,51 @@ export default () => {
     return (
         <>
             <ProTable<Permission>
-                headerTitle="权限列表（含资源 URL 定义）"
+                headerTitle={
+                    <Space>
+                        <span>权限树</span>
+                        <Tag>{flatPermissions.length} 项</Tag>
+                    </Space>
+                }
                 actionRef={actionRef}
                 rowKey="id"
-                request={async (params) => {
-                    const res = await request<{ data: Permission[]; total: number }>('/api/system/permission', {
-                        params: {
-                            current: params.current,
-                            pageSize: params.pageSize,
-                            appId: params.appId,
-                            permType: params.permType,
-                            code: params.code,
-                            name: params.name,
-                        },
-                    });
-                    return { data: res.data, success: true, total: res.total };
-                }}
+                loading={loading}
+                dataSource={displayTree}
                 columns={columns}
+                pagination={false}
+                search={false}
+                options={{ reload: loadData, density: true }}
                 toolbar={{
+                    title: (
+                        <Space wrap>
+                            <Input
+                                placeholder="搜索名称/编码/路径"
+                                prefix={<SearchOutlined />}
+                                allowClear
+                                style={{ width: 220 }}
+                                value={keyword}
+                                onChange={e => setKeyword(e.target.value)}
+                            />
+                            <Select
+                                placeholder="所属应用"
+                                allowClear
+                                style={{ width: 160 }}
+                                value={filterAppId}
+                                onChange={setFilterAppId}
+                                options={appOptions}
+                            />
+                            <Select
+                                placeholder="权限类型"
+                                allowClear
+                                style={{ width: 110 }}
+                                value={filterPermType}
+                                onChange={setFilterPermType}
+                                options={PERM_TYPES.map(t => ({ label: t, value: t }))}
+                            />
+                        </Space>
+                    ),
                     actions: [
+                        <Button key="reload" icon={<ReloadOutlined />} onClick={loadData}>刷新</Button>,
                         <Button
                             key="add"
                             type="primary"
@@ -142,11 +276,15 @@ export default () => {
                         </Button>,
                     ],
                 }}
-                search={{ labelWidth: 'auto' }}
+                expandable={{
+                    defaultExpandAllRows: true,
+                    indentSize: 24,
+                }}
+                scroll={{ x: 1200 }}
             />
 
             <DrawerForm<Permission>
-                title={currentRow ? '编辑权限' : '新增权限（同时定义资源 URL）'}
+                title={currentRow ? '编辑权限' : '新增权限'}
                 width={520}
                 open={drawerOpen}
                 onOpenChange={setDrawerOpen}
@@ -165,7 +303,7 @@ export default () => {
                         message.success('创建成功');
                     }
                     setDrawerOpen(false);
-                    actionRef.current?.reload();
+                    loadData();
                     return true;
                 }}
             >
@@ -199,7 +337,6 @@ export default () => {
                     placeholder="例如：创建订单"
                 />
                 <ProFormText name="category" label="分类标签" placeholder="例如：订单管理" />
-                {/* --- 资源 URL 定义 --- */}
                 <ProFormText
                     name="resourcePath"
                     label="资源路径 (URL)"
@@ -216,15 +353,21 @@ export default () => {
                     fieldProps={{ options: MATCH_TYPES.map(m => ({ label: m, value: m })) }}
                 />
                 <ProFormDigit name="sort" label="排序" min={0} fieldProps={{ precision: 0 }} />
-                <ProFormDigit name="parentId" label="父级ID (菜单树)" min={0} fieldProps={{ precision: 0 }} placeholder="0=顶级" />
-                <ProFormSwitch name="hidden" label="菜单隐藏" checkedChildren="是" unCheckedChildren="否" />
-                {/* --- 通用 --- */}
-                <ProFormSwitch
-                    name="status"
-                    label="状态"
-                    checkedChildren="启用"
-                    unCheckedChildren="禁用"
+                <ProFormTreeSelect
+                    name="parentId"
+                    label="父级权限"
+                    placeholder="选择父级（空=顶级）"
+                    fieldProps={{
+                        treeData: buildPermTree(currentRow?.id),
+                        treeDefaultExpandAll: false,
+                        showSearch: true,
+                        treeNodeFilterProp: 'title',
+                        allowClear: true,
+                        dropdownStyle: { maxHeight: 400, overflow: 'auto' },
+                    }}
                 />
+                <ProFormSwitch name="hidden" label="菜单隐藏" checkedChildren="是" unCheckedChildren="否" />
+                <ProFormSwitch name="status" label="状态" checkedChildren="启用" unCheckedChildren="禁用" />
             </DrawerForm>
         </>
     );

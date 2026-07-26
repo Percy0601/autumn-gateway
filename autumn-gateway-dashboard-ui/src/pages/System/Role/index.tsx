@@ -1,4 +1,4 @@
-import { DrawerForm, ProFormText, ProFormDigit, ProFormSwitch, ProFormTextArea, ProFormSelect, ProTable } from '@ant-design/pro-components';
+import { DrawerForm, ProFormText, ProFormSwitch, ProFormTextArea, ProFormSelect, ProTable } from '@ant-design/pro-components';
 import { Button, Popconfirm, message } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import type { ProColumns, ActionType } from '@ant-design/pro-components';
@@ -10,7 +10,6 @@ type Role = {
     appId: number;
     code: string;
     name: string;
-    level: number;
     description?: string;
     status: number;
     createdAt: string;
@@ -23,7 +22,6 @@ export default () => {
     const [currentRow, setCurrentRow] = useState<Role | undefined>(undefined);
     const [applications, setApplications] = useState<any[]>([]);
 
-    // 加载应用列表
     useEffect(() => {
         request<{ data: any[] }>('/api/system/app/list').then(res => {
             setApplications(res.data || []);
@@ -31,7 +29,7 @@ export default () => {
     }, []);
 
     const appOptions = useMemo(() =>
-            applications.map(app => ({ label: `${app.name} (${app.appid})`, value: app.id })),
+        applications.map(app => ({ label: `${app.name} (${app.appid})`, value: app.id })),
         [applications]
     );
 
@@ -49,7 +47,6 @@ export default () => {
                 return app ? `${app.name} (${app.appid})` : '-';
             },
         },
-        { title: '层级', dataIndex: 'level', search: false },
         {
             title: '状态',
             dataIndex: 'status',
@@ -64,6 +61,8 @@ export default () => {
             valueType: 'option',
             render: (_, record) => [
                 <a key="detail" onClick={() => history.push(`/system/role/detail/${record.id}`)}>详情</a>,
+                <a key="perm" onClick={() => history.push(`/system/role/detail/${record.id}?tab=permissions`)}>分配权限</a>,
+                <a key="user" onClick={() => history.push(`/system/role/detail/${record.id}?tab=users`)}>分配用户</a>,
                 <a key="edit" onClick={() => { setCurrentRow(record); setDrawerOpen(true); }}>编辑</a>,
                 record.status === 1
                     ? <Popconfirm key="disable" title="确定禁用该角色？" onConfirm={async () => {
@@ -122,7 +121,7 @@ export default () => {
                 initialValues={
                     currentRow
                         ? { ...currentRow, status: currentRow.status === 1 }
-                        : { status: true, level: 0 }
+                        : { status: true }
                 }
                 onFinish={async (values) => {
                     const payload = { ...values, status: values.status ? 1 : 0 };
@@ -138,7 +137,6 @@ export default () => {
                     return true;
                 }}
             >
-                {/* 新增：所属应用选择 */}
                 <ProFormSelect
                     name="appId"
                     label="所属应用"
@@ -161,13 +159,6 @@ export default () => {
                     label="角色名称"
                     rules={[{ required: true, message: '请输入角色名称' }]}
                     placeholder="例如：管理员"
-                />
-                <ProFormDigit
-                    name="level"
-                    label="角色层级"
-                    min={0}
-                    fieldProps={{ precision: 0 }}
-                    placeholder="数值越大权限越高"
                 />
                 <ProFormTextArea name="description" label="描述" />
                 <ProFormSwitch

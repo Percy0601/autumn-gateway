@@ -14,7 +14,6 @@ public class Role {
     private Long appId;
     private String code;
     private String name;
-    private Integer level;
     private String description;
     private Integer status;
     @Column("created_at")
@@ -52,14 +51,6 @@ public class Role {
 
     public void setName(String name) {
         this.name = name;
-    }
-
-    public Integer getLevel() {
-        return level;
-    }
-
-    public void setLevel(Integer level) {
-        this.level = level;
     }
 
     public String getDescription() {

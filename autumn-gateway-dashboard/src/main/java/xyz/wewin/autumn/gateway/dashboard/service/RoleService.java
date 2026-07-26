@@ -67,7 +67,8 @@ public class RoleService {
         if (req.getAppId() != null) existing.setAppId(req.getAppId());
         if (req.getCode() != null) existing.setCode(req.getCode());
         if (req.getName() != null) existing.setName(req.getName());
-        if (req.getLevel() != null) existing.setLevel(req.getLevel());
+
+
         if (req.getDescription() != null) existing.setDescription(req.getDescription());
         if (req.getStatus() != null) existing.setStatus(req.getStatus());
         existing.setUpdatedAt(LocalDateTime.now());

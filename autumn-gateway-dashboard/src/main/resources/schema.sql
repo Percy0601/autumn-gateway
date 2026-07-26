@@ -116,7 +116,6 @@ CREATE TABLE IF NOT EXISTS `role` (
   app_id      BIGINT NOT NULL COMMENT '角色按应用隔离',
   code        VARCHAR(64) NOT NULL COMMENT '如 admin, auditor, finance_viewer',
   name        VARCHAR(64) NOT NULL,
-  `level`     INT DEFAULT 0 COMMENT '数值越大权限越高，替代 role_relation 角色继承',
   description VARCHAR(255),
   status      TINYINT DEFAULT 1 COMMENT '1=正常 0=禁用',
   created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
