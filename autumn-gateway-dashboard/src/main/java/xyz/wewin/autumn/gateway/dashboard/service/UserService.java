@@ -14,6 +14,7 @@ import xyz.wewin.autumn.gateway.dashboard.mapper.GeneralMapper;
 import xyz.wewin.autumn.gateway.dashboard.repo.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -207,5 +208,11 @@ public class UserService {
             }
         });
         return new PageImpl<>(content, PageRequest.of(current - 1, pageSize), total);
+    }
+
+    public List<User> listAll() {
+        List<User> users = new ArrayList<>();
+        userRepository.findAll().forEach(users::add);
+        return users;
     }
 }

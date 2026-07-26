@@ -162,9 +162,11 @@ CREATE TABLE IF NOT EXISTS user_role (
 -- 11. 角色赋权
 -- ============================================================
 CREATE TABLE IF NOT EXISTS role_permission (
+  id            BIGINT PRIMARY KEY AUTO_INCREMENT,
   role_id       BIGINT NOT NULL,
   permission_id BIGINT NOT NULL,
-  PRIMARY KEY (role_id, permission_id),
+  created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_role_permission (role_id, permission_id),
   FOREIGN KEY (role_id) REFERENCES `role`(id) ON DELETE CASCADE,
   FOREIGN KEY (permission_id) REFERENCES permission(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='角色拥有哪些权限';

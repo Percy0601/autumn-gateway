@@ -117,16 +117,10 @@ public class UserController {
         userService.updateUserApps(id, request.getAppIds());
         return Result.success(null);
     }
-//
-//    @PutMapping("/{id}/roles")
-//    public Result<Void> updateUserRoles(@PathVariable Long id, @RequestBody UpdateRoleRequest request) {
-//        userService.updateUserRoles(id, request.getRoleIds());
-//        return Result.success(null);
-//    }
-//
-//    @GetMapping("/list")
-//    public Result<List<Role>> listAll() {
-//        return Result.success(userService.listRolesByUserId());
-//    }
+
+    @GetMapping("/list")
+    public Result<List<User>> listAll() {
+        return Result.success(userService.listAll());
+    }
 }
 

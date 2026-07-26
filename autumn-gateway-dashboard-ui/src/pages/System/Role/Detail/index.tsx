@@ -1,7 +1,9 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { PageContainer, ProTable } from '@ant-design/pro-components';
-import { Tabs, Descriptions, Tag, Button, Space, Spin, Transfer, message, Empty, Modal } from 'antd';
+import { Tabs, Descriptions, Tag, Button, Spin, message, Empty } from 'antd';
 import { history, useParams, request } from '@umijs/max';
+
+const PAGE_SIZE_LARGE = 9999;
 
 const RoleDetail: React.FC = () => {
     const params = useParams<{ id: string }>();
@@ -10,167 +12,203 @@ const RoleDetail: React.FC = () => {
     const [tab, setTab] = useState<string>('basic');
     const [loading, setLoading] = useState<boolean>(true);
     const [role, setRole] = useState<any>(null);
-    const [error, setError] = useState<string | null>(null);
+
+    // 应用名称映射
+    const [appMap, setAppMap] = useState<Record<number, string>>({});
 
     // 权限相关
     const [allPermissions, setAllPermissions] = useState<any[]>([]);
-    const [selectedPermissions, setSelectedPermissions] = useState<number[]>([]);
-    const [permModalVisible, setPermModalVisible] = useState(false);
-    const [tempSelectedPermissions, setTempSelectedPermissions] = useState<number[]>([]);
+    const [selectedPermissionIds, setSelectedPermissionIds] = useState<number[]>([]);
 
     // 用户相关
     const [allUsers, setAllUsers] = useState<any[]>([]);
-    const [selectedUsers, setSelectedUsers] = useState<number[]>([]);
-    const [userModalVisible, setUserModalVisible] = useState(false);
-    const [tempSelectedUsers, setTempSelectedUsers] = useState<number[]>([]);
-
-    // 角色关系相关
-    const [allRoles, setAllRoles] = useState<any[]>([]);
-    const [selectedRelatedRoles, setSelectedRelatedRoles] = useState<number[]>([]);
+    const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
 
     const fetchRoleData = useCallback(async () => {
-        if (!roleId) {
-            setError('缺少角色ID');
-            setLoading(false);
-            return;
-        }
+        if (!roleId) return;
         setLoading(true);
-        setError(null);
-
         try {
-            // 1. 获取角色基本信息
-            let roleData = null;
-            try {
-                const roleRes = await request<{ data: any }>(`/api/system/role/${roleId}`);
-                roleData = roleRes.data;
-                setRole(roleData);
-            } catch (e) {
-                setError('获取角色基本信息失败');
-                setLoading(false);
-                return;
-            }
+            // 第一步：获取角色基本信息和应用列表（必须成功）
+            const [roleRes, appsRes] = await Promise.all([
+                request<{ data: any }>(`/api/system/role/${roleId}`),
+                request<{ data: any[] }>('/api/system/app/list'),
+            ]);
 
-            // 2. 并行获取其他数据
+            setRole(roleRes.data);
+
+            // 构建应用名称映射
+            const map: Record<number, string> = {};
+            (appsRes.data || []).forEach((app: any) => {
+                map[app.id] = app.name;
+            });
+            setAppMap(map);
+
+            // 第二步：获取关联数据（允许部分失败）
             try {
-                const [permsRes, rolePermsRes, usersRes, roleUsersRes, rolesRes, roleRelationsRes] = await Promise.all([
-                    request<{ data: any[] }>('/api/system/permission/list'),
+                const [permsRes, rolePermsRes, usersRes, roleUsersRes] = await Promise.all([
+                    request<{ data: any[] }>(`/api/system/permission?pageSize=${PAGE_SIZE_LARGE}`),
                     request<{ data: any[] }>(`/api/system/role/${roleId}/permissions`),
-                    request<{ data: any[] }>('/api/system/user/list'),
+                    request<{ data: any[] }>(`/api/system/user?pageSize=${PAGE_SIZE_LARGE}`),
                     request<{ data: any[] }>(`/api/system/role/${roleId}/users`),
-                    request<{ data: any[] }>('/api/system/role/list'),
-                    request<{ data: any[] }>(`/api/system/role/${roleId}/relations`),
                 ]);
 
                 setAllPermissions(permsRes.data || []);
-                setSelectedPermissions((rolePermsRes.data || []).map((item: any) => item.permissionId));
+                // 后端返回完整的 Permission 对象列表
+                setSelectedPermissionIds((rolePermsRes.data || []).map((item: any) => item.id));
                 setAllUsers(usersRes.data || []);
-                setSelectedUsers((roleUsersRes.data || []).map((item: any) => item.userId));
-                setAllRoles(rolesRes.data || []);
-                setSelectedRelatedRoles((roleRelationsRes.data || []).map((item: any) => item.relatedRoleId));
+                // 后端返回完整的 User 对象列表
+                setSelectedUserIds((roleUsersRes.data || []).map((item: any) => item.id));
             } catch (e) {
-                message.warning('部分关联数据加载失败');
+                message.warning('部分关联数据加载失败，可切换页签重试');
             }
+        } catch (error) {
+            message.error('加载角色数据失败');
         } finally {
             setLoading(false);
         }
     }, [roleId]);
 
     useEffect(() => {
-        fetchRoleData();
-    }, [fetchRoleData]);
+        if (roleId) {
+            fetchRoleData();
+        }
+    }, [roleId, fetchRoleData]);
 
-    // 权限编辑：打开 Modal 时暂存当前已选
-    const openPermModal = () => {
-        setTempSelectedPermissions([...selectedPermissions]);
-        setPermModalVisible(true);
+    // 切换权限关联状态
+    const togglePermission = async (permId: number, currentlyAssociated: boolean) => {
+        let newIds: number[];
+        if (currentlyAssociated) {
+            newIds = selectedPermissionIds.filter(id => id !== permId);
+        } else {
+            newIds = [...selectedPermissionIds, permId];
+        }
+        try {
+            // 后端接收 List<Long>，直接发数组
+            await request(`/api/system/role/${roleId}/permissions`, {
+                method: 'PUT',
+                data: newIds,
+            });
+            setSelectedPermissionIds(newIds);
+            message.success(currentlyAssociated ? '已解绑权限' : '已关联权限');
+        } catch {
+            message.error('操作失败');
+        }
     };
 
-    const confirmPermSave = async () => {
-        await request(`/api/system/role/${roleId}/permissions`, {
-            method: 'PUT',
-            data: { permissionIds: tempSelectedPermissions },
-        });
-        setSelectedPermissions(tempSelectedPermissions);
-        setPermModalVisible(false);
-        message.success('权限分配已更新');
-    };
-
-    // 用户编辑：打开 Modal 时暂存当前已选
-    const openUserModal = () => {
-        setTempSelectedUsers([...selectedUsers]);
-        setUserModalVisible(true);
-    };
-
-    const confirmUserSave = async () => {
-        await request(`/api/system/role/${roleId}/users`, {
-            method: 'PUT',
-            data: { userIds: tempSelectedUsers },
-        });
-        setSelectedUsers(tempSelectedUsers);
-        setUserModalVisible(false);
-        message.success('用户分配已更新');
-    };
-
-    // 角色关系保存
-    const saveRelations = async () => {
-        await request(`/api/system/role/${roleId}/relations`, {
-            method: 'PUT',
-            data: { relatedRoleIds: selectedRelatedRoles },
-        });
-        message.success('角色关系已更新');
+    // 切换用户关联状态
+    const toggleUser = async (userId: number, currentlyAssociated: boolean) => {
+        let newIds: number[];
+        if (currentlyAssociated) {
+            newIds = selectedUserIds.filter(id => id !== userId);
+        } else {
+            newIds = [...selectedUserIds, userId];
+        }
+        try {
+            // 后端接收 List<Long>，直接发数组
+            await request(`/api/system/role/${roleId}/users`, {
+                method: 'PUT',
+                data: newIds,
+            });
+            setSelectedUserIds(newIds);
+            message.success(currentlyAssociated ? '已解绑用户' : '已关联用户');
+        } catch {
+            message.error('操作失败');
+        }
     };
 
     if (!roleId) return <Empty description="角色ID不能为空" />;
 
-    if (loading) {
-        return (
-            <PageContainer header={{ title: '加载中...' }}>
-                <div style={{ textAlign: 'center', padding: 100 }}><Spin size="large" /></div>
-            </PageContainer>
-        );
-    }
-
-    if (error) {
-        return (
-            <PageContainer header={{ title: '错误' }}>
-                <div style={{ textAlign: 'center', padding: 50 }}>
-                    <p style={{ color: 'red', fontSize: 18 }}>{error}</p>
-                    <Button type="primary" onClick={() => history.push('/system/role')}>返回角色列表</Button>
-                </div>
-            </PageContainer>
-        );
-    }
-
-    if (!role) {
-        return (
-            <PageContainer header={{ title: '角色不存在' }}>
-                <div style={{ textAlign: 'center', padding: 50 }}>
-                    <p>未找到该角色</p>
-                    <Button type="primary" onClick={() => history.push('/system/role')}>返回角色列表</Button>
-                </div>
-            </PageContainer>
-        );
-    }
-
+    // 权限表格列
     const permColumns = [
-        { title: 'ID', dataIndex: 'id', width: 60 },
+        { title: '权限ID', dataIndex: 'id', width: 80 },
         { title: '权限编码', dataIndex: 'code', ellipsis: true },
-        { title: '权限名称', dataIndex: 'name' },
-        { title: '状态', dataIndex: 'status', render: (s: number) => <Tag color={s===1?'green':'red'}>{s===1?'正常':'禁用'}</Tag> },
+        { title: '权限名称', dataIndex: 'name', ellipsis: true },
+        {
+            title: '所属应用',
+            dataIndex: 'appId',
+            render: (appId: number) => appMap[appId] || `应用#${appId}`,
+        },
+        {
+            title: '权限类型',
+            dataIndex: 'permType',
+            width: 80,
+            valueEnum: {
+                MENU: { text: '菜单' },
+                API: { text: 'API' },
+                BUTTON: { text: '按钮' },
+                DATA: { text: '数据' },
+            },
+        },
+        {
+            title: '状态',
+            dataIndex: 'status',
+            width: 70,
+            render: (s: number) => <Tag color={s === 1 ? 'green' : 'red'}>{s === 1 ? '正常' : '禁用'}</Tag>,
+        },
+        {
+            title: '关联状态',
+            dataIndex: 'id',
+            width: 80,
+            render: (id: number) => {
+                const isAssociated = selectedPermissionIds.includes(id);
+                return <Tag color={isAssociated ? 'green' : 'default'}>{isAssociated ? '已关联' : '未关联'}</Tag>;
+            },
+        },
+        {
+            title: '操作',
+            dataIndex: 'id',
+            width: 80,
+            render: (id: number) => {
+                const isAssociated = selectedPermissionIds.includes(id);
+                return (
+                    <a onClick={() => togglePermission(id, isAssociated)} style={{ color: isAssociated ? '#ff4d4f' : '#1890ff' }}>
+                        {isAssociated ? '解绑' : '关联'}
+                    </a>
+                );
+            },
+        },
     ];
 
+    // 用户表格列
     const userColumns = [
-        { title: 'ID', dataIndex: 'id', width: 60 },
-        { title: '用户名', dataIndex: 'username' },
-        { title: '昵称', dataIndex: 'nickname' },
-        { title: '邮箱', dataIndex: 'email' },
-        { title: '状态', dataIndex: 'status', render: (s: number) => <Tag color={s===1?'green':'red'}>{s===1?'正常':'禁用'}</Tag> },
+        { title: '用户ID', dataIndex: 'id', width: 80 },
+        { title: '用户名', dataIndex: 'username', ellipsis: true },
+        { title: '昵称', dataIndex: 'nickname', ellipsis: true },
+        { title: '邮箱', dataIndex: 'email', ellipsis: true },
+        {
+            title: '状态',
+            dataIndex: 'status',
+            width: 70,
+            render: (s: number) => <Tag color={s === 1 ? 'green' : 'red'}>{s === 1 ? '正常' : '禁用'}</Tag>,
+        },
+        {
+            title: '关联状态',
+            dataIndex: 'id',
+            width: 80,
+            render: (id: number) => {
+                const isAssociated = selectedUserIds.includes(id);
+                return <Tag color={isAssociated ? 'green' : 'default'}>{isAssociated ? '已关联' : '未关联'}</Tag>;
+            },
+        },
+        {
+            title: '操作',
+            dataIndex: 'id',
+            width: 80,
+            render: (id: number) => {
+                const isAssociated = selectedUserIds.includes(id);
+                return (
+                    <a onClick={() => toggleUser(id, isAssociated)} style={{ color: isAssociated ? '#ff4d4f' : '#1890ff' }}>
+                        {isAssociated ? '解绑' : '关联'}
+                    </a>
+                );
+            },
+        },
     ];
 
     return (
         <PageContainer
             header={{
-                title: `角色详情 - ${role.name || '未知'}`,
+                title: `角色详情 - ${role?.name || '加载中...'}`,
                 extra: <Button onClick={() => history.push('/system/role')}>返回列表</Button>,
             }}
         >
@@ -179,128 +217,65 @@ const RoleDetail: React.FC = () => {
                     {/* 基本信息 Tab */}
                     <Tabs.TabPane tab="基本信息" key="basic">
                         <div style={{ padding: 24, background: '#fff', borderRadius: 8 }}>
-                            <Descriptions column={2} bordered>
-                                <Descriptions.Item label="ID">{role.id}</Descriptions.Item>
-                                <Descriptions.Item label="角色编码">{role.code}</Descriptions.Item>
-                                <Descriptions.Item label="角色名称">{role.name}</Descriptions.Item>
-                                <Descriptions.Item label="所属应用">{role.appId}</Descriptions.Item>
-                                <Descriptions.Item label="层级">{role.level}</Descriptions.Item>
-                                <Descriptions.Item label="描述">{role.description || '-'}</Descriptions.Item>
-                                <Descriptions.Item label="状态">
-                                    <Tag color={role.status === 1 ? 'green' : 'red'}>{role.status === 1 ? '正常' : '禁用'}</Tag>
-                                </Descriptions.Item>
-                                <Descriptions.Item label="创建时间">{role.createdAt}</Descriptions.Item>
-                                <Descriptions.Item label="更新时间">{role.updatedAt}</Descriptions.Item>
-                            </Descriptions>
+                            {role ? (
+                                <Descriptions column={2} bordered>
+                                    <Descriptions.Item label="ID">{role.id}</Descriptions.Item>
+                                    <Descriptions.Item label="角色编码">{role.code}</Descriptions.Item>
+                                    <Descriptions.Item label="角色名称">{role.name}</Descriptions.Item>
+                                    <Descriptions.Item label="所属应用">
+                                        {appMap[role.appId] || `应用#${role.appId}`}
+                                    </Descriptions.Item>
+                                    <Descriptions.Item label="层级">{role.level}</Descriptions.Item>
+                                    <Descriptions.Item label="描述">{role.description || '-'}</Descriptions.Item>
+                                    <Descriptions.Item label="状态">
+                                        <Tag color={role.status === 1 ? 'green' : 'red'}>
+                                            {role.status === 1 ? '正常' : '禁用'}
+                                        </Tag>
+                                    </Descriptions.Item>
+                                    <Descriptions.Item label="创建时间">{role.createdAt}</Descriptions.Item>
+                                    <Descriptions.Item label="更新时间">{role.updatedAt}</Descriptions.Item>
+                                </Descriptions>
+                            ) : '暂无数据'}
                         </div>
                     </Tabs.TabPane>
 
-                    {/* 权限列表 Tab */}
-                    <Tabs.TabPane tab="权限列表" key="permissions">
+                    {/* 关联权限 Tab */}
+                    <Tabs.TabPane tab="关联权限" key="permissions">
                         <ProTable
-                            headerTitle="已分配的权限"
+                            headerTitle="权限列表"
                             rowKey="id"
                             search={false}
-                            toolBarRender={() => [
-                                <Button key="edit" type="primary" onClick={openPermModal}>编辑权限</Button>,
-                            ]}
+                            pagination={{ pageSize: 10 }}
                             request={async () => {
-                                const permDetails = allPermissions.filter(p => selectedPermissions.includes(p.id));
-                                return { data: permDetails, success: true, total: permDetails.length };
+                                const data = allPermissions.map(perm => ({
+                                    ...perm,
+                                    associated: selectedPermissionIds.includes(perm.id),
+                                }));
+                                return { data, success: true, total: data.length };
                             }}
                             columns={permColumns}
-                            pagination={{ pageSize: 10 }}
                         />
                     </Tabs.TabPane>
 
-                    {/* 用户列表 Tab */}
-                    <Tabs.TabPane tab="用户列表" key="users">
+                    {/* 关联用户 Tab */}
+                    <Tabs.TabPane tab="关联用户" key="users">
                         <ProTable
-                            headerTitle="拥有该角色的用户"
+                            headerTitle="用户列表"
                             rowKey="id"
                             search={false}
-                            toolBarRender={() => [
-                                <Button key="edit" type="primary" onClick={openUserModal}>编辑用户</Button>,
-                            ]}
+                            pagination={{ pageSize: 10 }}
                             request={async () => {
-                                const userDetails = allUsers.filter(u => selectedUsers.includes(u.id));
-                                return { data: userDetails, success: true, total: userDetails.length };
+                                const data = allUsers.map(user => ({
+                                    ...user,
+                                    associated: selectedUserIds.includes(user.id),
+                                }));
+                                return { data, success: true, total: data.length };
                             }}
                             columns={userColumns}
-                            pagination={{ pageSize: 10 }}
                         />
-                    </Tabs.TabPane>
-
-                    {/* 角色关系 Tab */}
-                    <Tabs.TabPane tab="角色关系" key="relations">
-                        <Transfer
-                            dataSource={allRoles.filter(r => r.id !== Number(roleId)).map(r => ({
-                                key: r.id,
-                                title: `${r.name} (${r.code})`,
-                            }))}
-                            targetKeys={selectedRelatedRoles}
-                            onChange={setSelectedRelatedRoles}
-                            render={item => item.title}
-                            titles={['可选角色', '已选角色']}
-                            showSearch
-                            filterOption={(inputValue, item) =>
-                                item.title.toLowerCase().includes(inputValue.toLowerCase())
-                            }
-                        />
-                        <Button type="primary" onClick={saveRelations} style={{ marginTop: 16 }}>
-                            保存角色关系
-                        </Button>
                     </Tabs.TabPane>
                 </Tabs>
             </Spin>
-
-            {/* 编辑权限 Modal */}
-            <Modal
-                title="编辑权限"
-                open={permModalVisible}
-                onCancel={() => setPermModalVisible(false)}
-                onOk={confirmPermSave}
-                width={600}
-            >
-                <Transfer
-                    dataSource={allPermissions.map(p => ({
-                        key: p.id,
-                        title: `${p.name} (${p.code})`,
-                    }))}
-                    targetKeys={tempSelectedPermissions}
-                    onChange={setTempSelectedPermissions}
-                    render={item => item.title}
-                    titles={['可选权限', '已选权限']}
-                    showSearch
-                    filterOption={(inputValue, item) =>
-                        item.title.toLowerCase().includes(inputValue.toLowerCase())
-                    }
-                />
-            </Modal>
-
-            {/* 编辑用户 Modal */}
-            <Modal
-                title="编辑用户"
-                open={userModalVisible}
-                onCancel={() => setUserModalVisible(false)}
-                onOk={confirmUserSave}
-                width={600}
-            >
-                <Transfer
-                    dataSource={allUsers.map(u => ({
-                        key: u.id,
-                        title: `${u.username} (${u.nickname || '-'})`,
-                    }))}
-                    targetKeys={tempSelectedUsers}
-                    onChange={setTempSelectedUsers}
-                    render={item => item.title}
-                    titles={['可选用户', '已选用户']}
-                    showSearch
-                    filterOption={(inputValue, item) =>
-                        item.title.toLowerCase().includes(inputValue.toLowerCase())
-                    }
-                />
-            </Modal>
         </PageContainer>
     );
 };

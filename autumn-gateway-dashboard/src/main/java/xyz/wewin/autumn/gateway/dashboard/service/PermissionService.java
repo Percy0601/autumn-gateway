@@ -10,6 +10,7 @@ import xyz.wewin.autumn.gateway.dashboard.entity.Permission;
 import xyz.wewin.autumn.gateway.dashboard.repo.PermissionRepository;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -75,5 +76,11 @@ public class PermissionService {
         p.setStatus(1);
         p.setUpdatedAt(LocalDateTime.now());
         permissionRepository.save(p);
+    }
+
+    public List<Permission> listAll() {
+        List<Permission> permissions = new ArrayList<>();
+        permissionRepository.findAll().forEach(permissions::add);
+        return permissions;
     }
 }

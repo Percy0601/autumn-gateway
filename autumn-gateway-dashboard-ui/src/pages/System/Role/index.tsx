@@ -42,6 +42,8 @@ export default () => {
         {
             title: '所属应用',
             dataIndex: 'appId',
+            valueType: 'select',
+            fieldProps: { options: appOptions, allowClear: true, placeholder: '全部' },
             render: (_, record) => {
                 const app = applications.find(a => a.id === record.appId);
                 return app ? `${app.name} (${app.appid})` : '-';
@@ -89,6 +91,7 @@ export default () => {
                         params: {
                             current: params.current,
                             pageSize: params.pageSize,
+                            appId: params.appId,
                             code: params.code,
                             name: params.name,
                         },

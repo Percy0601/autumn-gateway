@@ -63,4 +63,9 @@ public class PermissionController {
         permissionService.enable(id);
         return Result.success(null);
     }
+
+    @GetMapping("/list")
+    public Result<List<Permission>> listAll() {
+        return Result.success(permissionService.listAll());
+    }
 }
