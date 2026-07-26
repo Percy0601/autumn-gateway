@@ -1,5 +1,5 @@
-import { DrawerForm, ProFormText, ProFormSwitch, ProFormTextArea, ProFormSelect, ProTable } from '@ant-design/pro-components';
-import { Button, Popconfirm, message } from 'antd';
+import { DrawerForm, ProFormText, ProFormDigit, ProFormSelect, ProFormSwitch, ProTable } from '@ant-design/pro-components';
+import { Button, Popconfirm, message, Tag } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import type { ProColumns, ActionType } from '@ant-design/pro-components';
 import { useRef, useState, useEffect, useMemo } from 'react';
@@ -8,65 +8,92 @@ import { request, history } from '@umijs/max';
 type Permission = {
     id: number;
     appId: number;
+    category?: string;
     code: string;
     name: string;
+    permType: string;
+    resourcePath?: string;
+    httpMethod: string;
+    matchType: string;
+    parentId: number;
+    icon?: string;
+    sort: number;
+    hidden: number;
     description?: string;
     status: number;
     createdAt: string;
 };
 
-type Application = {
-    id: number;
-    appid: string;
-    name: string;
-};
+const PERM_TYPES = ['MENU', 'API', 'BUTTON', 'DATA'];
+const MATCH_TYPES = ['exact', 'prefix', 'suffix'];
+const HTTP_METHODS = ['ALL', 'GET', 'POST', 'PUT', 'DELETE', 'PATCH'];
 
 export default () => {
     const actionRef = useRef<ActionType>();
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [currentRow, setCurrentRow] = useState<Permission | undefined>(undefined);
-    const [applications, setApplications] = useState<Application[]>([]);
+    const [applications, setApplications] = useState<any[]>([]);
 
-    // 加载应用列表
     useEffect(() => {
-        request<{ data: Application[] }>('/api/system/app/list').then(res => {
+        request<{ data: any[] }>('/api/system/app/list').then(res => {
             setApplications(res.data || []);
         });
     }, []);
 
-    // 应用选项
     const appOptions = useMemo(() =>
-            applications.map(app => ({ label: `${app.name} (${app.appid})`, value: app.id })),
+        applications.map(app => ({ label: `${app.name} (${app.appid})`, value: app.id })),
         [applications]
     );
 
-    const columns: ProColumns<Permission>[] = useMemo(() => [
-        { title: 'ID', dataIndex: 'id', search: false, width: 50 },
+    const columns: ProColumns<Permission>[] = [
+        { title: 'ID', dataIndex: 'id', search: false, width: 60 },
         {
             title: '所属应用',
             dataIndex: 'appId',
             valueType: 'select',
-            fieldProps: { options: appOptions },
+            fieldProps: { options: appOptions, allowClear: true, placeholder: '全部' },
             render: (_, record) => {
                 const app = applications.find(a => a.id === record.appId);
                 return app ? `${app.name} (${app.appid})` : '-';
             },
         },
+        {
+            title: '类型',
+            dataIndex: 'permType',
+            width: 70,
+            valueType: 'select',
+            fieldProps: { options: PERM_TYPES.map(t => ({ label: t, value: t })), allowClear: true },
+        },
         { title: '权限编码', dataIndex: 'code', copyable: true, ellipsis: true },
         { title: '权限名称', dataIndex: 'name', ellipsis: true },
-        { title: '描述', dataIndex: 'description', search: false, ellipsis: true },
+        {
+            title: '资源路径',
+            dataIndex: 'resourcePath',
+            ellipsis: true,
+            copyable: true,
+            search: false,
+            render: (_, record) => record.resourcePath || '-',
+        },
+        {
+            title: 'HTTP方法',
+            dataIndex: 'httpMethod',
+            width: 80,
+            search: false,
+            render: (_, record) => (
+                <Tag color="blue">{record.httpMethod || 'ALL'}</Tag>
+            ),
+        },
         {
             title: '状态',
             dataIndex: 'status',
-            valueEnum: {
-                1: { text: '正常', status: 'Success' },
-                0: { text: '禁用', status: 'Error' },
-            },
+            width: 70,
+            valueEnum: { 1: { text: '正常', status: 'Success' }, 0: { text: '禁用', status: 'Error' } },
         },
-        { title: '创建时间', dataIndex: 'createdAt', valueType: 'dateTime', search: false },
+        { title: '创建时间', dataIndex: 'createdAt', valueType: 'dateTime', search: false, width: 160 },
         {
             title: '操作',
             valueType: 'option',
+            width: 160,
             render: (_, record) => [
                 <a key="detail" onClick={() => history.push(`/system/permission/detail/${record.id}`)}>详情</a>,
                 <a key="edit" onClick={() => { setCurrentRow(record); setDrawerOpen(true); }}>编辑</a>,
@@ -81,12 +108,12 @@ export default () => {
                     }}><a style={{ color: '#52c41a' }}>启用</a></Popconfirm>,
             ],
         },
-    ], [appOptions, applications]);
+    ];
 
     return (
         <>
             <ProTable<Permission>
-                headerTitle="权限列表"
+                headerTitle="权限列表（含资源 URL 定义）"
                 actionRef={actionRef}
                 rowKey="id"
                 request={async (params) => {
@@ -95,6 +122,7 @@ export default () => {
                             current: params.current,
                             pageSize: params.pageSize,
                             appId: params.appId,
+                            permType: params.permType,
                             code: params.code,
                             name: params.name,
                         },
@@ -118,17 +146,17 @@ export default () => {
             />
 
             <DrawerForm<Permission>
-                title={currentRow ? '编辑权限' : '新增权限'}
-                width={420}
+                title={currentRow ? '编辑权限' : '新增权限（同时定义资源 URL）'}
+                width={520}
                 open={drawerOpen}
                 onOpenChange={setDrawerOpen}
                 initialValues={
                     currentRow
-                        ? { ...currentRow, status: currentRow.status === 1 }
-                        : { status: true }
+                        ? { ...currentRow, status: currentRow.status === 1, hidden: currentRow.hidden === 1 }
+                        : { status: true, permType: 'API', httpMethod: 'ALL', matchType: 'exact', sort: 0, hidden: false, parentId: 0 }
                 }
                 onFinish={async (values) => {
-                    const payload = { ...values, status: values.status ? 1 : 0 };
+                    const payload = { ...values, status: values.status ? 1 : 0, hidden: values.hidden ? 1 : 0 };
                     if (currentRow) {
                         await request(`/api/system/permission/${currentRow.id}`, { method: 'PUT', data: payload });
                         message.success('更新成功');
@@ -148,40 +176,49 @@ export default () => {
                     fieldProps={{ options: appOptions }}
                     placeholder="请选择应用"
                 />
+                <ProFormSelect
+                    name="permType"
+                    label="权限类型"
+                    rules={[{ required: true, message: '请选择类型' }]}
+                    fieldProps={{ options: PERM_TYPES.map(t => ({ label: t, value: t })) }}
+                />
                 <ProFormText
                     name="code"
                     label="权限编码"
                     disabled={!!currentRow}
                     rules={[
                         { required: true, message: '请输入权限编码' },
-                        { pattern: /^[a-z][a-z0-9_:]{2,63}$/, message: '以小写字母开头，允许小写字母、数字、冒号、下划线，3-64位' },
+                        { pattern: /^[a-z][a-z0-9_:]{2,63}$/, message: '以小写字母开头，3-64位' },
                     ]}
-                    placeholder="例如：app:create"
+                    placeholder="例如：order:create"
                 />
                 <ProFormText
                     name="name"
                     label="权限名称"
                     rules={[{ required: true, message: '请输入权限名称' }]}
-                    placeholder="例如：创建应用"
+                    placeholder="例如：创建订单"
                 />
+                <ProFormText name="category" label="分类标签" placeholder="例如：订单管理" />
+                {/* --- 资源 URL 定义 --- */}
                 <ProFormText
-                    name="category"
-                    label="分类标签"
-                    placeholder="例如：订单管理、用户管理"
+                    name="resourcePath"
+                    label="资源路径 (URL)"
+                    placeholder="API: /api/order/:id ｜ MENU: /order/list"
                 />
                 <ProFormSelect
-                    name="permType"
-                    label="权限类型"
-                    rules={[{ required: true, message: '请选择权限类型' }]}
-                    fieldProps={{ options: [
-                        { label: '菜单 MENU', value: 'MENU' },
-                        { label: '接口 API', value: 'API' },
-                        { label: '按钮 BUTTON', value: 'BUTTON' },
-                        { label: '数据 DATA', value: 'DATA' },
-                    ]}}
-                    placeholder="请选择权限类型"
+                    name="httpMethod"
+                    label="HTTP方法"
+                    fieldProps={{ options: HTTP_METHODS.map(m => ({ label: m, value: m })) }}
                 />
-                <ProFormTextArea name="description" label="描述" />
+                <ProFormSelect
+                    name="matchType"
+                    label="匹配方式"
+                    fieldProps={{ options: MATCH_TYPES.map(m => ({ label: m, value: m })) }}
+                />
+                <ProFormDigit name="sort" label="排序" min={0} fieldProps={{ precision: 0 }} />
+                <ProFormDigit name="parentId" label="父级ID (菜单树)" min={0} fieldProps={{ precision: 0 }} placeholder="0=顶级" />
+                <ProFormSwitch name="hidden" label="菜单隐藏" checkedChildren="是" unCheckedChildren="否" />
+                {/* --- 通用 --- */}
                 <ProFormSwitch
                     name="status"
                     label="状态"

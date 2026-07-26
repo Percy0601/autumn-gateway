@@ -58,6 +58,13 @@ public class PermissionService {
         if (req.getCode() != null) existing.setCode(req.getCode());
         if (req.getName() != null) existing.setName(req.getName());
         if (req.getPermType() != null) existing.setPermType(req.getPermType());
+        if (req.getResourcePath() != null) existing.setResourcePath(req.getResourcePath());
+        if (req.getHttpMethod() != null) existing.setHttpMethod(req.getHttpMethod());
+        if (req.getMatchType() != null) existing.setMatchType(req.getMatchType());
+        if (req.getParentId() != null) existing.setParentId(req.getParentId());
+        if (req.getIcon() != null) existing.setIcon(req.getIcon());
+        if (req.getSort() != null) existing.setSort(req.getSort());
+        if (req.getHidden() != null) existing.setHidden(req.getHidden());
         if (req.getDescription() != null) existing.setDescription(req.getDescription());
         if (req.getStatus() != null) existing.setStatus(req.getStatus());
         existing.setUpdatedAt(LocalDateTime.now());

@@ -36,7 +36,6 @@ export default [
         component: './System/User/Detail',
         hideInMenu: true,
       },
-      { name: '资源管理', path: '/system/resource', component: './System/Resource' },
       { name: '审计日志', path: '/system/audit-log', component: './System/AuditLog' },
       // ...其他页面
     ],
