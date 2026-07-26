@@ -10,6 +10,7 @@ import xyz.wewin.autumn.gateway.dashboard.entity.Resource;
 import xyz.wewin.autumn.gateway.dashboard.repo.ResourceRepository;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -68,5 +69,11 @@ public class ResourceService {
             throw new IllegalArgumentException("该资源下存在子资源，请先删除子资源");
         }
         resourceRepository.deleteById(id);
+    }
+
+    public List<Resource> listAll() {
+        List<Resource> resources = new ArrayList<>();
+        resourceRepository.findAll().forEach(resources::add);
+        return resources;
     }
 }

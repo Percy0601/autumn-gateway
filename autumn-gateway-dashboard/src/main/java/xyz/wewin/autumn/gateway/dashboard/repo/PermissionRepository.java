@@ -29,7 +29,6 @@ public interface PermissionRepository extends CrudRepository<Permission, Long> {
 
     List<Permission> findByAppId(Long appId);
     Optional<Permission> findByAppIdAndCode(Long appId, String code);
-    List<Permission> findByCategoryId(Long categoryId);
     @Query("""
         SELECT COUNT(1) FROM permission p
         WHERE (:appId IS NULL OR p.app_id = :appId)

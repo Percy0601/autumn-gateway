@@ -3,7 +3,7 @@ import { Button, Popconfirm, message } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import type { ProColumns, ActionType } from '@ant-design/pro-components';
 import { useRef, useState, useEffect, useMemo } from 'react';
-import { request } from '@umijs/max';
+import { request, history } from '@umijs/max';
 
 type Permission = {
     id: number;
@@ -68,6 +68,7 @@ export default () => {
             title: '操作',
             valueType: 'option',
             render: (_, record) => [
+                <a key="detail" onClick={() => history.push(`/system/permission/detail/${record.id}`)}>详情</a>,
                 <a key="edit" onClick={() => { setCurrentRow(record); setDrawerOpen(true); }}>编辑</a>,
                 record.status === 1
                     ? <Popconfirm key="dis" title="确定禁用？" onConfirm={async () => {
@@ -162,6 +163,23 @@ export default () => {
                     label="权限名称"
                     rules={[{ required: true, message: '请输入权限名称' }]}
                     placeholder="例如：创建应用"
+                />
+                <ProFormText
+                    name="category"
+                    label="分类标签"
+                    placeholder="例如：订单管理、用户管理"
+                />
+                <ProFormSelect
+                    name="permType"
+                    label="权限类型"
+                    rules={[{ required: true, message: '请选择权限类型' }]}
+                    fieldProps={{ options: [
+                        { label: '菜单 MENU', value: 'MENU' },
+                        { label: '接口 API', value: 'API' },
+                        { label: '按钮 BUTTON', value: 'BUTTON' },
+                        { label: '数据 DATA', value: 'DATA' },
+                    ]}}
+                    placeholder="请选择权限类型"
                 />
                 <ProFormTextArea name="description" label="描述" />
                 <ProFormSwitch

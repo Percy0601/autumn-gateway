@@ -10,7 +10,7 @@ import xyz.wewin.autumn.gateway.dashboard.service.ResourceService;
 import java.util.List;
 
 @RestController
-@RequestMapping("/system/resource")
+@RequestMapping("/api/system/resource")
 public class ResourceController {
 
     @Autowired
@@ -46,6 +46,21 @@ public class ResourceController {
         } catch (IllegalArgumentException e) {
             return Result.error(400, e.getMessage());
         }
+    }
+
+    @DeleteMapping("/{id}")
+    public Result<Void> delete(@PathVariable Long id) {
+        try {
+            resourceService.delete(id);
+            return Result.success(null);
+        } catch (IllegalArgumentException e) {
+            return Result.error(400, e.getMessage());
+        }
+    }
+
+    @GetMapping("/list")
+    public Result<List<Resource>> listAll() {
+        return Result.success(resourceService.listAll());
     }
 
 }

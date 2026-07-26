@@ -12,8 +12,7 @@ public class Permission {
     private Long id;
     @Column("app_id")
     private Long appId;
-    @Column("category_id")
-    private Long categoryId; // 可以为 null
+    private String category; // 权限分类标签，如"订单管理"，替代原 category 表
     private String code;
     private String name;
     @Column("perm_type")
@@ -41,12 +40,12 @@ public class Permission {
         this.appId = appId;
     }
 
-    public Long getCategoryId() {
-        return categoryId;
+    public String getCategory() {
+        return category;
     }
 
-    public void setCategoryId(Long categoryId) {
-        this.categoryId = categoryId;
+    public void setCategory(String category) {
+        this.category = category;
     }
 
     public String getCode() {

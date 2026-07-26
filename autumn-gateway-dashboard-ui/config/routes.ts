@@ -23,13 +23,21 @@ export default [
         hideInMenu: true,
       },
       { name: '权限管理', path: '/system/permission', component: './System/Permission' },
+      {
+        name: '权限详情',
+        path: '/system/permission/detail/:id',
+        component: './System/Permission/Detail',
+        hideInMenu: true,
+      },
       { name: '用户管理', path: '/system/user', component: './System/User' },
       {
         name: '用户详情',
         path: '/system/user/detail/:id',
         component: './System/User/Detail',
-        hideInMenu: true, // 不在菜单中显示
+        hideInMenu: true,
       },
+      { name: '资源管理', path: '/system/resource', component: './System/Resource' },
+      { name: '审计日志', path: '/system/audit-log', component: './System/AuditLog' },
       // ...其他页面
     ],
   },

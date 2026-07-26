@@ -54,7 +54,7 @@ public class PermissionService {
             throw new IllegalArgumentException("该应用下权限编码已存在");
         }
         if (req.getAppId() != null) existing.setAppId(req.getAppId());
-        if (req.getCategoryId() != null) existing.setCategoryId(req.getCategoryId());
+        if (req.getCategory() != null) existing.setCategory(req.getCategory());
         if (req.getCode() != null) existing.setCode(req.getCode());
         if (req.getName() != null) existing.setName(req.getName());
         if (req.getPermType() != null) existing.setPermType(req.getPermType());
