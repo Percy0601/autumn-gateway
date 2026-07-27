@@ -58,6 +58,12 @@ public class SecurityConfig {
 
         ;
 
+        // 其他所有请求都需要认证:  .anyExchange().access(dynamicAuthManager)
+        /**
+         * 使用DynamicAuthManager 实现动态授权, 后续配置从Consul中获取
+         */
+
+
         return http.build();
     }
 

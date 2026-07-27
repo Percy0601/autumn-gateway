@@ -9,6 +9,7 @@ import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.core.env.Environment;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.security.authorization.AuthorizationDecision;
@@ -24,11 +25,16 @@ import org.springframework.util.AntPathMatcher;
 import reactor.core.publisher.Mono;
 
 /**
+ * 动态配置权限管理器<br/>
+ * <pre>
+ *     1、动态配置那部分资源，哪些角色可以访问
  *
+ *
+ * </pre>
  * @author: baoxin.zhao
  * @date: 7/4/26
  */
-
+@RefreshScope
 @Component
 public class DynamicReactiveAuthorizationManager
         implements ReactiveAuthorizationManager<AuthorizationContext> {
