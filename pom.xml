@@ -19,6 +19,7 @@
 		<module>autumn-gateway-discovery</module>
 		<module>autumn-gateway-examples</module>
 		<module>autumn-gateway-dashboard</module>
+		<module>autumn-gateway-starters</module>
 	</modules>
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
