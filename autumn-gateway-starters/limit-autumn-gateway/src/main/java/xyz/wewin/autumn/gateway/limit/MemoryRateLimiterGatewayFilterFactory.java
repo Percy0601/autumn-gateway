@@ -4,6 +4,8 @@ import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
 import io.github.bucket4j.Bucket4j;
 import io.github.bucket4j.Refill;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.cloud.gateway.filter.GatewayFilter;
 import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFactory;
 import org.springframework.http.HttpStatus;
@@ -32,7 +34,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class MemoryRateLimiterGatewayFilterFactory
         extends AbstractGatewayFilterFactory<MemoryRateLimiterGatewayFilterFactory.Config> {
-
+    private Logger log = LoggerFactory.getLogger(getClass());
     /** 参考 CommonFilter：真实客户端 IP 会被写入该 header，默认按它限流 */
     public static final String REAL_IP_HEADER = "X-Real-IP";
 
@@ -66,6 +68,7 @@ public class MemoryRateLimiterGatewayFilterFactory
             exchange.getResponse().getHeaders()
                     .add(RATE_LIMIT_REMAINING_HEADER, String.valueOf(probe.getRemainingTokens()));
             if (!probe.isConsumed()) {
+                log.warn("rate limit exceeded, key: {}", key);
                 exchange.getResponse().setStatusCode(HttpStatus.TOO_MANY_REQUESTS);
                 return exchange.getResponse().setComplete();
             }
