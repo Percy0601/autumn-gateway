@@ -23,6 +23,7 @@
         <module>autumn-gateway-examples-security-oidc</module>
         <module>autumn-gateway-examples-httpexchange-api</module>
         <module>autumn-gateway-examples-httpexchange-provider</module>
+        <module>autumn-gateway-examples-httpexchange-provider2</module>
         <module>autumn-gateway-examples-httpexchange-consumer</module>
     </modules>
     <distributionManagement>

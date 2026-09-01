@@ -24,6 +24,12 @@
             <artifactId>spring-cloud-starter-gateway-server-webflux</artifactId>
         </dependency>
 
+        <!-- Spring Cloud LoadBalancer：lb:// 路由 + 负载均衡，自动通过 DiscoveryClient 取实例 -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-loadbalancer</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>xyz.wewin.autumn</groupId>
             <artifactId>autumn-gateway-discovery</artifactId>
