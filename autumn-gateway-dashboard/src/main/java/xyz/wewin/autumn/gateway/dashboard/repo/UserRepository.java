@@ -19,11 +19,13 @@ public interface UserRepository extends CrudRepository<User, Long> {
           AND (:nickname IS NULL OR u.nickname LIKE CONCAT('%', :nickname, '%'))
           AND (:phone IS NULL OR u.phone LIKE CONCAT('%', :phone, '%'))
         ORDER BY u.id DESC
+        LIMIT :limit, :offset
         """)
     List<User> findWithPage(@Param("username") String username,
                             @Param("nickname") String nickname,
                             @Param("phone") String phone,
-                            Pageable pageable);
+                            @Param("limit")long limit,
+                            @Param("offset")long offset);
 
     Optional<User> findByUsername(String username);
 

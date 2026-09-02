@@ -1,10 +1,13 @@
 package xyz.wewin.autumn.gateway.dashboard.repo;
 
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jdbc.repository.query.Modifying;
 import org.springframework.data.jdbc.repository.query.Query;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import xyz.wewin.autumn.gateway.dashboard.dto.UserRelationRole;
 import xyz.wewin.autumn.gateway.dashboard.entity.UserRole;
 
 import java.util.List;
@@ -33,4 +36,23 @@ public interface UserRoleRepository extends CrudRepository<UserRole, Long> {
     Optional<UserRole> findByRoleId(Long roleId);
 
     void deleteByRoleId(Long roleId);
+
+    @Query("""
+        SELECT count(1) FROM user_role ur
+        WHERE (:appId IS NULL OR ur.app_id = :appId)
+          AND (:userId IS NULL OR ur.user_id= :userId)
+        """)
+    long countByAppIdAndUserId(Long appId, Long userId);
+
+    @Query("""
+        SELECT ur.* FROM user_role ur
+        WHERE (:appId IS NULL OR ur.app_id = :appId)
+          AND (:userId IS NULL OR ur.user_id= :userId)
+        ORDER BY id DESC
+        LIMIT :limit, :offset
+        """)
+    List<UserRole> findByAppIdAndUserId(@Param("appId") Long appId,
+                                                @Param("userId") Long userId,
+                                                @Param("limit")  long limit,
+                                                @Param("offset") long offset);
 }

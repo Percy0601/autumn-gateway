@@ -1,6 +1,5 @@
 package xyz.wewin.autumn.gateway.dashboard.repo;
 
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.jdbc.repository.query.Query;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.query.Param;
@@ -22,6 +21,7 @@ public interface AuditLogRepository extends CrudRepository<AuditLog, Long> {
           AND (:startTime IS NULL OR a.created_at >= :startTime)
           AND (:endTime IS NULL OR a.created_at <= :endTime)
         ORDER BY a.created_at DESC
+        LIMIT :limit, :offset
         """)
     List<AuditLog> findWithPage(@Param("appId") Long appId,
                                 @Param("userId") Long userId,
@@ -29,7 +29,8 @@ public interface AuditLogRepository extends CrudRepository<AuditLog, Long> {
                                 @Param("status") Integer status,
                                 @Param("startTime") LocalDateTime startTime,
                                 @Param("endTime") LocalDateTime endTime,
-                                Pageable pageable);
+                                @Param("limit")long limit,
+                                @Param("offset")long offset);
     @Query("""
         SELECT COUNT(1) FROM audit_log a
         WHERE (:appId IS NULL OR a.app_id = :appId)

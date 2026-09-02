@@ -32,7 +32,9 @@ public class ApplicationService {
                                   int page,
                                   int size) {
         Pageable pageable = PageRequest.of(page - 1, size);
-        List<Application> content = repository.findWithPage(appId, name, pageable);
+        long offset = (page - 1) * size;
+        long limit = size;
+        List<Application> content = repository.findWithPage(appId, name, offset, limit);
         long total = repository.countByFilter(appId, name);
         return new PageImpl<>(content, pageable, total);
     }

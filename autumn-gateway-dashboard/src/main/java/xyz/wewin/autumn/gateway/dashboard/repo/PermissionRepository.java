@@ -20,12 +20,14 @@ public interface PermissionRepository extends CrudRepository<Permission, Long> {
           AND (:name IS NULL OR p.name LIKE '%' || :name || '%')
           AND (:permType IS NULL OR p.perm_type = :permType)
         ORDER BY p.id DESC
+        LIMIT :limit, :offset
         """)
     List<Permission> findWithPage(@Param("appId") Long appId,
                                   @Param("code") String code,
                                   @Param("name") String name,
                                   @Param("permType") String permType,
-                                  Pageable pageable);
+                                  @Param("limit")long limit,
+                                  @Param("offset")long offset);
 
     List<Permission> findByAppId(Long appId);
     Optional<Permission> findByAppIdAndCode(Long appId, String code);

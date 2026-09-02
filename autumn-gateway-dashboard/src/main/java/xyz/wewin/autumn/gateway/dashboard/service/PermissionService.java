@@ -23,11 +23,14 @@ public class PermissionService {
 
     public Page<Permission> list(int page, int size, Long appId, String code, String name, String permType) {
 
+        long offset = (page - 1) * size;
+        long limit = size;
         List<Permission> content = permissionRepository.findWithPage(appId,
                 code,
                 name,
                 permType,
-                PageRequest.of(page - 1, size));
+                offset,
+                limit);
         long total = permissionRepository.countWithFilter(appId, code, name, permType);
         return new PageImpl<>(content, PageRequest.of(page - 1, size), total);
     }

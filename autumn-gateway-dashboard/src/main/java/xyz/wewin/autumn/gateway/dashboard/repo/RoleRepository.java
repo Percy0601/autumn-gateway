@@ -20,11 +20,13 @@ public interface RoleRepository extends CrudRepository<Role, Long> {
           AND (:code IS NULL OR r.code LIKE '%' || :code || '%')
           AND (:name IS NULL OR r.name LIKE '%' || :name || '%')
         ORDER BY r.id DESC
+        LIMIT :limit, :offset
         """)
     List<Role> findWithPage(@Param("appId") Long appId,
                             @Param("code") String code,
                             @Param("name") String name,
-                            Pageable pageable);
+                            @Param("limit")long limit,
+                            @Param("offset")long offset);
 
     List<Role> findByAppId(Long appId);
 

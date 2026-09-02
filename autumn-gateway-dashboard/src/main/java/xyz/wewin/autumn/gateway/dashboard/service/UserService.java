@@ -7,19 +7,15 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.bind.annotation.RequestParam;
 import xyz.wewin.autumn.gateway.dashboard.dto.UserRelationRole;
 import xyz.wewin.autumn.gateway.dashboard.entity.*;
-import xyz.wewin.autumn.gateway.dashboard.mapper.GeneralMapper;
 import xyz.wewin.autumn.gateway.dashboard.repo.*;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
+
+//import xyz.wewin.autumn.gateway.dashboard.mapper.GeneralMapper;
 
 @Service
 @Transactional
@@ -37,11 +33,13 @@ public class UserService {
     private RoleRepository roleRepository;
     @Autowired
     private ApplicationRepository applicationRepository;
-    @Autowired
-    private GeneralMapper generalMapper;
+//    @Autowired
+//    private GeneralMapper generalMapper;
 
     public Page<User> list(int page, int size, String username, String nickname, String phone) {
-        List<User> content = userRepository.findWithPage(username, nickname, phone, PageRequest.of(page - 1, size));
+        long offset = (page - 1) * size;
+        long limit = size;
+        List<User> content = userRepository.findWithPage(username, nickname, phone, offset, limit);
         long total = userRepository.countWithFilter(username, nickname, phone);
         return new PageImpl<>(content, PageRequest.of(page - 1, size), total);
     }
@@ -194,20 +192,37 @@ public class UserService {
                                                     Long userId,
                                                     int current,
                                                     int pageSize) {
-        long total = generalMapper.countRelationRoles(appId, userId, current, pageSize);
-        List<UserRelationRole> content = generalMapper.findRelationRoles(appId, userId, current, pageSize);
+        long total = userRoleRepository.countByAppIdAndUserId(appId, userId);
+        long limit = (current - 1) * pageSize;
+        long offset = pageSize;
+        List<UserRole> content = userRoleRepository.findByAppIdAndUserId(appId,
+                userId,
+                limit,
+                offset);
+        List<UserRelationRole> result = new ArrayList<>();
         content.forEach(it -> {
+            UserRelationRole userRelationRole = new UserRelationRole();
+            userRelationRole.setAppId(it.getAppId());
+            userRelationRole.setUserId(it.getUserId());
+            Role role = roleRepository.findById(it.getRoleId()).orElse(null);
+            if (role != null) {
+                userRelationRole.setName(role.getName());
+                userRelationRole.setCode(role.getCode());
+                userRelationRole.setStatus(role.getStatus());
+            }
+            result.add(userRelationRole);
+
             if(null == it.getUserId()) {
-                it.setRelationStatus(0);
+                userRelationRole.setRelationStatus(0);
             } else {
-                it.setRelationStatus(1);
+                userRelationRole.setRelationStatus(1);
             }
             Application application = applicationRepository.findById(it.getAppId()).orElse(null);
             if (application != null) {
-                it.setAppName(application.getName());
+                userRelationRole.setAppName(application.getName());
             }
         });
-        return new PageImpl<>(content, PageRequest.of(current - 1, pageSize), total);
+        return new PageImpl<>(result, PageRequest.of(current - 1, pageSize), total);
     }
 
     public List<User> listAll() {

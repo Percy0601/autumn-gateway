@@ -20,7 +20,9 @@ public class AuditLogService {
     public Page<AuditLog> list(int page, int size, Long appId, Long userId, String action,
                                Integer status, LocalDateTime startTime, LocalDateTime endTime) {
         var pageable = PageRequest.of(page - 1, size, Sort.by(Sort.Direction.DESC, "created_at"));
-        var content = auditLogRepository.findWithPage(appId, userId, action, status, startTime, endTime, pageable);
+        long limit = pageable.getPageSize();
+        long offset = (pageable.getPageNumber() - 1) * limit;
+        var content = auditLogRepository.findWithPage(appId, userId, action, status, startTime, endTime, offset, limit);
         long total = auditLogRepository.countWithFilter(appId, userId, action, status, startTime, endTime);
         return new PageImpl<>(content, pageable, total);
     }

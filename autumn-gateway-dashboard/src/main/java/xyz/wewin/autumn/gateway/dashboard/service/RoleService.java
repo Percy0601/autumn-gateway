@@ -31,10 +31,13 @@ public class RoleService {
     @Autowired
     private UserRepository userRepository;
     public Page<Role> list(int page, int size, Long appId, String code, String name) {
+        long offset = (page - 1) * size;
+        long limit = size;
         List<Role> content = roleRepository.findWithPage(appId,
                 code,
                 name,
-                PageRequest.of(page - 1, size));
+                offset,
+                limit);
 
         long total = roleRepository.countWithFilter(appId,
                 code,

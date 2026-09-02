@@ -1,8 +1,8 @@
 package xyz.wewin.autumn.gateway.dashboard.repo;
 
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.jdbc.repository.query.Query;
 import org.springframework.data.repository.CrudRepository;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import xyz.wewin.autumn.gateway.dashboard.entity.Application;
 
@@ -16,8 +16,12 @@ public interface ApplicationRepository extends CrudRepository<Application, Long>
         WHERE (:appId IS NULL OR app.appid = :appId)
           AND (:name IS NULL OR app.name LIKE CONCAT('%', :name, '%'))
         ORDER BY id DESC
+        LIMIT :limit, :offset
         """)
-    List<Application> findWithPage(String appId, String name, Pageable pageable);
+    List<Application> findWithPage(@Param("appId")String appId,
+                                   @Param("name")String name,
+                                   @Param("limit")long limit,
+                                   @Param("offset")long offset);
 
     @Query("SELECT COUNT(1) FROM application")
     long countAll();
