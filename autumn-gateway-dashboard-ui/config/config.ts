@@ -226,6 +226,8 @@ export default defineConfig({
     requestRecord: {},
     exportStatic: {},
     define: {
+        // 注入自定义环境变量：src/app.tsx 生产环境 API 地址可通过 API_URL=xxx npm run build 覆盖
+        'process.env.API_URL': process.env.API_URL || '',
         'process.env.CI': process.env.CI,
         'process.env.COMMIT_HASH': commitHash,
         __APP_VERSION__: require('./../package.json').version,

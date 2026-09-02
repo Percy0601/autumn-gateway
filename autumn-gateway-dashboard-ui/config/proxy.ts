@@ -34,10 +34,11 @@ export default {
    * @doc https://github.com/chimurai/http-proxy-middleware
    */
   test: {
-    // localhost:8000/api/** -> https://pro-api.ant-design-demo.workers.dev/api/**
+    // localhost:8000/api/** -> http://localhost:8080/api/**
     '/api/': {
-      target: 'https://pro-api.ant-design-demo.workers.dev',
+      target: 'http://192.168.1.39:8080',
       changeOrigin: true,
+      pathRewrite: { '^/api': '/api' },
     },
   },
   pre: {

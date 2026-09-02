@@ -27,6 +27,17 @@ const isDev = process.env.NODE_ENV === 'development';
 const loginPath = '/user/login';
 
 /**
+ * API 请求地址：
+ * - 开发环境走相对路径，由 config/proxy.ts 代理到本地后端（http://localhost:8080）
+ * - 生产环境默认直连本地 dashboard 服务（autumn-gateway-dashboard，端口 8080），
+ *   使用其 LoginController 提供的 /api/login/account 进行登录。
+ *   如需部署到其他环境，可用构建参数覆盖：API_URL=https://api.example.com npm run build
+ */
+const API_BASE_URL: string = isDev
+  ? ''
+  : (process.env.API_URL as string | undefined) || 'http://192.168.1.39:8080';
+
+/**
  * @see https://umijs.org/docs/api/runtime-config#getinitialstate
  * */
 export async function getInitialState(): Promise<{
@@ -190,7 +201,7 @@ export const layout: RunTimeLayoutConfig = ({
  * @doc https://umijs.org/docs/max/request#配置
  */
 export const request: RequestConfig = {
-  baseURL: isDev ? '' : 'https://pro-api.ant-design-demo.workers.dev',
+  baseURL: API_BASE_URL,
   ...errorConfig,
 };
 

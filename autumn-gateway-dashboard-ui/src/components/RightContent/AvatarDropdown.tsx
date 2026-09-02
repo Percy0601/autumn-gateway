@@ -36,6 +36,8 @@ const menuItems: MenuProps['items'] = [
 ];
 
 const loginOut = async () => {
+  // 后端为无状态 JWT 认证，退出登录时清除本地 token
+  localStorage.removeItem('token');
   try {
     await outLogin();
   } catch {

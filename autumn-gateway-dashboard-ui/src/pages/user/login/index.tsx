@@ -15,6 +15,7 @@ import {
 import {
   FormattedMessage,
   Helmet,
+  history,
   SelectLang,
   useIntl,
   useModel,
@@ -152,6 +153,10 @@ const Login: React.FC = () => {
       // 登录
       const msg = await login({ ...values, type });
       if (msg.status === 'ok') {
+        // 保存后端签发的 JWT，后续请求由 request 拦截器自动附加 Authorization 头
+        if (msg.token) {
+          localStorage.setItem('token', msg.token);
+        }
         const defaultLoginSuccessMessage = intl.formatMessage({
           id: 'pages.login.success',
           defaultMessage: '登录成功！',
@@ -160,7 +165,10 @@ const Login: React.FC = () => {
         await fetchUserInfo();
         const urlParams = new URL(window.location.href).searchParams;
         const redirectUrl = getSafeRedirectUrl(urlParams.get('redirect'));
-        window.location.href = redirectUrl;
+        // 用 umi history 跳转：应用 base 为 /admin/，整页 location 跳转会
+        // 丢失 base 前缀导致无法进入首页；history.replace 会自动拼接 base。
+        // 此时 currentUser 已写入全局 state，SPA 内跳转即可直接展示首页。
+        history.replace(redirectUrl);
         return;
       }
       // 如果失败去设置用户错误信息
