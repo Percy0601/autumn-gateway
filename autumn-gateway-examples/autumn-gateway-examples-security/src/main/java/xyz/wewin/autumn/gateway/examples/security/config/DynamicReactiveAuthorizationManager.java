@@ -38,7 +38,7 @@ import reactor.core.publisher.Mono;
 @Component
 public class DynamicReactiveAuthorizationManager
         implements ReactiveAuthorizationManager<AuthorizationContext> {
-    private Logger log = LoggerFactory.getLogger(this.getClass());
+    private final Logger log = LoggerFactory.getLogger(this.getClass());
     private final Environment environment;
     private final AntPathMatcher pathMatcher = new AntPathMatcher();
 

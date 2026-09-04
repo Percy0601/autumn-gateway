@@ -16,7 +16,7 @@ import java.time.Duration;
 @RestController
 @RequestMapping("/consumer")
 public class BasicController {
-    private Logger log = LoggerFactory.getLogger(this.getClass());
+    private final Logger log = LoggerFactory.getLogger(this.getClass());
 
     @Autowired
     UserClient userClient;

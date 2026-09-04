@@ -9,7 +9,7 @@ import xyz.wewin.autumn.gateway.dashboard.common.Result;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
-    private Logger log = LoggerFactory.getLogger(this.getClass());
+    private final Logger log = LoggerFactory.getLogger(this.getClass());
     @ExceptionHandler(IllegalArgumentException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public Result<Void> handleBadRequest(IllegalArgumentException e) {

@@ -37,7 +37,7 @@ public class UserService {
 //    private GeneralMapper generalMapper;
 
     public Page<User> list(int page, int size, String username, String nickname, String phone) {
-        long offset = (page - 1) * size;
+        long offset = (long) (page - 1) * size;
         long limit = size;
         List<User> content = userRepository.findWithPage(username, nickname, phone, offset, limit);
         long total = userRepository.countWithFilter(username, nickname, phone);
@@ -193,7 +193,7 @@ public class UserService {
                                                     int current,
                                                     int pageSize) {
         long total = userRoleRepository.countByAppIdAndUserId(appId, userId);
-        long limit = (current - 1) * pageSize;
+        long limit = (long) (current - 1) * pageSize;
         long offset = pageSize;
         List<UserRole> content = userRoleRepository.findByAppIdAndUserId(appId,
                 userId,

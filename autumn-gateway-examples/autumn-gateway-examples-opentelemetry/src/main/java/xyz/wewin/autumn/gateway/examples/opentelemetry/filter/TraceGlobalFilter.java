@@ -22,7 +22,7 @@ import reactor.core.publisher.Mono;
 
 @Component
 public class TraceGlobalFilter implements GlobalFilter, Ordered {
-    private Logger log = LoggerFactory.getLogger(this.getClass());
+    private final Logger log = LoggerFactory.getLogger(this.getClass());
     private final Tracer tracer;
 
     // 注入我们手动创建的 OpenTelemetry Bean

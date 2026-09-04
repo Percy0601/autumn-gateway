@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class ConsulRouteRefreshListener {
-    private Logger log = LoggerFactory.getLogger(this.getClass());
+    private final Logger log = LoggerFactory.getLogger(this.getClass());
     private final ApplicationEventPublisher publisher;
 
     public ConsulRouteRefreshListener(ApplicationEventPublisher publisher) {

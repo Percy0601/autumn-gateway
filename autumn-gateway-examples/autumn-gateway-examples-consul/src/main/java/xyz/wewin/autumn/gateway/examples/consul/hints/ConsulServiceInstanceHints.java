@@ -17,7 +17,7 @@ import org.springframework.stereotype.Component;
 @Component
 @ImportRuntimeHints(ConsulServiceInstanceHints.class)
 public class ConsulServiceInstanceHints implements RuntimeHintsRegistrar {
-    private Logger log = LoggerFactory.getLogger(this.getClass());
+    private final Logger log = LoggerFactory.getLogger(this.getClass());
     @Override
     public void registerHints(RuntimeHints hints, ClassLoader cl) {
         // ===== 1. ServiceInstance 接口 —— 本次 MissingReflectionRegistrationError 根因 =====
