@@ -1,9 +1,10 @@
 package xyz.wewin.autumn.gateway.limit;
 
-import io.github.bucket4j.Bandwidth;
-import io.github.bucket4j.Bucket;
-import io.github.bucket4j.Bucket4j;
-import io.github.bucket4j.Refill;
+import java.time.Duration;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cloud.gateway.filter.GatewayFilter;
@@ -12,10 +13,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.web.server.ServerWebExchange;
 
-import java.time.Duration;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import io.github.bucket4j.Bandwidth;
+import io.github.bucket4j.Bucket;
+import io.github.bucket4j.Bucket4j;
+import io.github.bucket4j.Refill;
 
 /**
  * 基于内存（Bucket4j）的限流过滤器工厂。
@@ -63,7 +64,6 @@ public class MemoryRateLimiterGatewayFilterFactory
         Config cfg = config == null ? defaultConfig : config;
         return (exchange, chain) -> {
             String key = resolveKey(exchange, cfg);
-            exchange.getApplicationContext();
             Bucket bucket = buckets.computeIfAbsent(key, k -> newBucket(cfg));
             var probe = bucket.tryConsumeAndReturnRemaining(1);
             exchange.getResponse().getHeaders()
