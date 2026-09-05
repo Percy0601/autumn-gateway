@@ -37,9 +37,15 @@
 			</dependency>
             <dependency>
                 <groupId>xyz.wewin.autumn</groupId>
+                <artifactId>config-discovery-autumn-gateway-starter</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>xyz.wewin.autumn</groupId>
                 <artifactId>autumn-gateway-common</artifactId>
                 <version>${project.version}</version>
             </dependency>
+
 		</dependencies>
 	</dependencyManagement>
 
