@@ -11,7 +11,9 @@
 	<packaging>pom</packaging>
 
 	<modules>
-
+        <module>config-discovery-autumn-gateway</module>
+        <module>config-discovery-autumn-gateway-starter</module>
+        <module>config-discovery-autumn-gateway-starter-using</module>
 		<module>limit-autumn-gateway</module>
 		<module>limit-autumn-gateway-starter</module>
 		<module>limit-autumn-gateway-starter-using</module>
@@ -33,6 +35,11 @@
 				<artifactId>limit-autumn-gateway-starter</artifactId>
 				<version>${project.version}</version>
 			</dependency>
+            <dependency>
+                <groupId>xyz.wewin.autumn</groupId>
+                <artifactId>autumn-gateway-common</artifactId>
+                <version>${project.version}</version>
+            </dependency>
 		</dependencies>
 	</dependencyManagement>
 
