@@ -20,6 +20,7 @@
 		<module>autumn-gateway-examples</module>
 		<module>autumn-gateway-dashboard</module>
 		<module>autumn-gateway-starters</module>
+        <module>autumn-gateway-common</module>
 	</modules>
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -30,6 +31,8 @@
 		<maven.compiler.source>21</maven.compiler.source>
 		<maven.compiler.target>21</maven.compiler.target>
 		<lombok.version>1.18.48</lombok.version>
+        <bucket4j-core.version>8.0.1</bucket4j-core.version>
+        <caffeine.version>3.2.4</caffeine.version>
 		<mybatis-spring-boot-starter.version>4.1.0</mybatis-spring-boot-starter.version>
         <spring-cloud-starter-gateway-server-webflux.version>5.0.3</spring-cloud-starter-gateway-server-webflux.version>
 	</properties>
@@ -51,6 +54,16 @@
 				<type>pom</type>
 				<scope>import</scope>
 			</dependency>
+            <dependency>
+                <groupId>com.github.vladimir-bukhtoyarov</groupId>
+                <artifactId>bucket4j-core</artifactId>
+                <version>${bucket4j-core.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.github.ben-manes.caffeine</groupId>
+                <artifactId>caffeine</artifactId>
+                <version>${caffeine.version}</version>
+            </dependency>
 			<dependency>
 				<groupId>io.jsonwebtoken</groupId>
 				<artifactId>jjwt-api</artifactId>
@@ -73,6 +86,11 @@
                 <artifactId>spring-cloud-starter-gateway-server-webflux</artifactId>
                 <version>${spring-cloud-starter-gateway-server-webflux.version}</version>
 			</dependency>
+            <dependency>
+                <groupId>xyz.wewin.autumn</groupId>
+                <artifactId>autumn-gateway-common</artifactId>
+                <version>${project.version}</version>
+            </dependency>
 			<dependency>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-starter-actuator</artifactId>

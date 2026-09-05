@@ -11,6 +11,7 @@
 	<packaging>pom</packaging>
 
 	<modules>
+
 		<module>limit-autumn-gateway</module>
 		<module>limit-autumn-gateway-starter</module>
 		<module>limit-autumn-gateway-starter-using</module>

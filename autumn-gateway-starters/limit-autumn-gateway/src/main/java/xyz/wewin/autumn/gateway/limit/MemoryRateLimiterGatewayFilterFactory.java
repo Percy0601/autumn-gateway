@@ -1,22 +1,27 @@
 package xyz.wewin.autumn.gateway.limit;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.cache.Cache;
 import org.springframework.cloud.gateway.filter.GatewayFilter;
 import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.util.CollectionUtils;
 import org.springframework.web.server.ServerWebExchange;
 
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
 import io.github.bucket4j.Bucket4j;
 import io.github.bucket4j.Refill;
+import xyz.wewin.autumn.gateway.common.AntPathUtil;
+import xyz.wewin.autumn.gateway.common.CaffeineCacheUtil;
 
 /**
  * 基于内存（Bucket4j）的限流过滤器工厂。
@@ -42,7 +47,7 @@ public class MemoryRateLimiterGatewayFilterFactory
     private static final String RATE_LIMIT_REMAINING_HEADER = "X-RateLimit-Remaining";
     private static final String UNKNOWN_KEY = "unknown";
 
-    private final Map<String, Bucket> buckets = new ConcurrentHashMap<>();
+//    private final Map<String, Bucket> buckets = new ConcurrentHashMap<>();
     private final Config defaultConfig;
 
     public MemoryRateLimiterGatewayFilterFactory() {
@@ -59,12 +64,69 @@ public class MemoryRateLimiterGatewayFilterFactory
         return List.of("replenishRate", "burstCapacity", "timeWindowSeconds");
     }
 
+
+    private Bucket resolveKBucket(String key, ServerWebExchange exchange, Config cfg) {
+        Bucket bucket = null;
+        if(cfg.getKeyType().equals(KeyType.PATH)) {
+            List<AntPathConfig> antPathConfigs = cfg.getAntPathConfigs();
+            if(CollectionUtils.isEmpty(antPathConfigs)) {
+                if(CaffeineCacheUtil.get(key) != null) {
+                    bucket = CaffeineCacheUtil.get(key, Bucket.class);
+                    return bucket;
+                }
+                bucket = newBucket(cfg);
+                CaffeineCacheUtil.put(key, bucket);
+                return bucket;
+            } else {
+                for(AntPathConfig antPathConfig: antPathConfigs) {
+                    String antPath = antPathConfig.getAntPath();
+                    String path = exchange.getRequest().getURI().getPath();
+                    if(antPathConfig.getKeyType().equals(KeyType.PATH) &&
+                            AntPathUtil.match(antPath, path)) {
+                        bucket = CaffeineCacheUtil.get(antPath, Bucket.class);
+                        if (bucket != null) {
+                            return bucket;
+                        }
+                        bucket = newBucket(cfg);
+                        CaffeineCacheUtil.put(antPath, bucket);
+                        return bucket;
+                    }
+                }
+                if(CaffeineCacheUtil.get(key) != null) {
+                    bucket = CaffeineCacheUtil.get(key, Bucket.class);
+                    return bucket;
+                }
+                bucket = newBucket(cfg);
+                CaffeineCacheUtil.put(key, bucket);
+                return bucket;
+            }
+        } else if (cfg.getKeyType().equals(KeyType.HEADER)) {
+            if(CaffeineCacheUtil.get(key) != null) {
+                bucket = CaffeineCacheUtil.get(key, Bucket.class);
+                return bucket;
+            }
+            bucket = newBucket(cfg);
+            CaffeineCacheUtil.put(key, bucket);
+            return bucket;
+        } else if (cfg.getKeyType().equals(KeyType.IP)){
+            if(CaffeineCacheUtil.get(key) != null) {
+                bucket = CaffeineCacheUtil.get(key, Bucket.class);
+                return bucket;
+            }
+            bucket = newBucket(cfg);
+            CaffeineCacheUtil.put(key, bucket);
+            return bucket;
+        } else {
+            return bucket;
+        }
+    }
+
     @Override
     public GatewayFilter apply(Config config) {
         Config cfg = config == null ? defaultConfig : config;
         return (exchange, chain) -> {
             String key = resolveKey(exchange, cfg);
-            Bucket bucket = buckets.computeIfAbsent(key, k -> newBucket(cfg));
+            Bucket bucket = resolveKBucket(key, exchange, cfg);
             var probe = bucket.tryConsumeAndReturnRemaining(1);
             exchange.getResponse().getHeaders()
                     .add(RATE_LIMIT_REMAINING_HEADER, String.valueOf(probe.getRemainingTokens()));
@@ -78,10 +140,10 @@ public class MemoryRateLimiterGatewayFilterFactory
     }
 
     private Bucket newBucket(Config cfg) {
-        return Bucket4j.builder()
+        return Bucket.builder()
                 .addLimit(Bandwidth.classic(
                         cfg.getBurstCapacity(),
-                        Refill.of(cfg.getReplenishRate(), Duration.ofSeconds(cfg.getTimeWindowSeconds()))
+                        Refill.greedy(cfg.getReplenishRate(), Duration.ofSeconds(cfg.getTimeWindowSeconds()))
                 ))
                 .build();
     }
@@ -116,6 +178,55 @@ public class MemoryRateLimiterGatewayFilterFactory
     }
 
     /** 限流参数，字段名与路由 args 的 kebab-case 自动绑定 */
+    public static class AntPathConfig {
+        private String antPath;
+        private KeyType keyType = KeyType.IP;
+        private int replenishRate = 1;
+        private int burstCapacity = 2;
+        private long timeWindowSeconds = 10;
+
+        public String getAntPath() {
+            return antPath;
+        }
+
+        public void setAntPath(String antPath) {
+            this.antPath = antPath;
+        }
+
+        public int getReplenishRate() {
+            return replenishRate;
+        }
+
+        public void setReplenishRate(int replenishRate) {
+            this.replenishRate = replenishRate;
+        }
+
+        public int getBurstCapacity() {
+            return burstCapacity;
+        }
+
+        public void setBurstCapacity(int burstCapacity) {
+            this.burstCapacity = burstCapacity;
+        }
+
+        public long getTimeWindowSeconds() {
+            return timeWindowSeconds;
+        }
+
+        public void setTimeWindowSeconds(long timeWindowSeconds) {
+            this.timeWindowSeconds = timeWindowSeconds;
+        }
+
+        public KeyType getKeyType() {
+            return keyType;
+        }
+
+        public void setKeyType(KeyType keyType) {
+            this.keyType = keyType;
+        }
+    }
+
+
     public static class Config {
 
         private KeyType keyType = KeyType.IP;
@@ -123,6 +234,7 @@ public class MemoryRateLimiterGatewayFilterFactory
         private int replenishRate = 1;
         private int burstCapacity = 2;
         private long timeWindowSeconds = 10;
+        private List<AntPathConfig> antPathConfigs = new ArrayList<>();
 
         public Config() {
         }
@@ -165,6 +277,14 @@ public class MemoryRateLimiterGatewayFilterFactory
 
         public void setTimeWindowSeconds(long timeWindowSeconds) {
             this.timeWindowSeconds = timeWindowSeconds;
+        }
+
+        public List<AntPathConfig> getAntPathConfigs() {
+            return antPathConfigs;
+        }
+
+        public void setAntPathConfigs(List<AntPathConfig> antPathConfigs) {
+            this.antPathConfigs = antPathConfigs;
         }
     }
 }
