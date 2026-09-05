@@ -29,7 +29,7 @@
 		<jjwt-api.version>0.13.0</jjwt-api.version>
 		<maven.compiler.source>21</maven.compiler.source>
 		<maven.compiler.target>21</maven.compiler.target>
-		<lombok.version>1.18.42</lombok.version>
+		<lombok.version>1.18.48</lombok.version>
 		<mybatis-spring-boot-starter.version>4.1.0</mybatis-spring-boot-starter.version>
         <spring-cloud-starter-gateway-server-webflux.version>5.0.3</spring-cloud-starter-gateway-server-webflux.version>
 	</properties>
