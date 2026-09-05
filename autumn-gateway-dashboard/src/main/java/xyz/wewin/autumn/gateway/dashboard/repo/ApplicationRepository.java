@@ -13,8 +13,8 @@ public interface ApplicationRepository extends CrudRepository<Application, Long>
 
     @Query("""
         SELECT app.* FROM application app
-        WHERE (:appId IS NULL OR app.appid = :appId)
-          AND (:name IS NULL OR app.name LIKE CONCAT('%', :name, '%'))
+        WHERE (:appId IS NULL OR :appId = '' OR app.appid = :appId)
+          AND (:name IS NULL OR :name = '' OR app.name LIKE CONCAT('%', :name, '%'))
         ORDER BY id DESC
         LIMIT :limit, :offset
         """)
@@ -33,8 +33,8 @@ public interface ApplicationRepository extends CrudRepository<Application, Long>
     int countByAppid(String appid);
     @Query("""
         SELECT count(1) FROM application app
-        WHERE (:appId IS NULL OR app.appid = :appId)
-          AND (:name IS NULL OR app.name LIKE CONCAT('%', :name, '%'))
+        WHERE (:appId IS NULL OR :appId = '' OR app.appid = :appId)
+          AND (:name IS NULL OR :name = '' OR app.name LIKE CONCAT('%', :name, '%'))
         ORDER BY id DESC
         """)
     long countByFilter(String appId, String name);

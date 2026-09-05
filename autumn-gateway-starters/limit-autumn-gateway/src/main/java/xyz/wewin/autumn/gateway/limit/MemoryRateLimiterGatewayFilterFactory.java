@@ -63,6 +63,7 @@ public class MemoryRateLimiterGatewayFilterFactory
         Config cfg = config == null ? defaultConfig : config;
         return (exchange, chain) -> {
             String key = resolveKey(exchange, cfg);
+            exchange.getApplicationContext();
             Bucket bucket = buckets.computeIfAbsent(key, k -> newBucket(cfg));
             var probe = bucket.tryConsumeAndReturnRemaining(1);
             exchange.getResponse().getHeaders()
