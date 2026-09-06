@@ -10,25 +10,34 @@
 
     <artifactId>config-discovery-autumn-gateway</artifactId>
     <name>config-discovery-autumn-gateway</name>
-    <description>配置中心和服务发现网关</description>
+    <description>Consul Minimal Config + Discovery + Registry</description>
 
     <dependencies>
-        <!-- Boot 内核：ConfigData SPI / Environment / Binder（版本由 spring-boot-starter-parent 管理） -->
+        <!-- Boot 内核：ConfigData SPI / Environment / Binder -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot</artifactId>
         </dependency>
+
+        <!-- Spring Cloud Commons：DiscoveryClient / ServiceRegistry / Registration / ServiceInstance -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-commons</artifactId>
+        </dependency>
+
         <!-- 动态刷新：EnvironmentChangeEvent / @RefreshScope -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-context</artifactId>
         </dependency>
-        <!-- Consul KV JSON 解析：仅 JsonNode 遍历，无反射，兼容 GraalVM Native Image -->
+
+        <!-- Consul JSON 解析：仅 JsonNode 遍历，无反射，兼容 GraalVM Native Image -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
         </dependency>
-        <!-- 日志门面（版本由 spring-boot-starter-parent 管理） -->
+
+        <!-- 日志门面 -->
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
