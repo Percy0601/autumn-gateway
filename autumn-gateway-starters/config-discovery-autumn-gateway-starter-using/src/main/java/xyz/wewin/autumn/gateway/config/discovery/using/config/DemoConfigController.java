@@ -2,6 +2,7 @@ package xyz.wewin.autumn.gateway.config.discovery.using.config;
 
 import java.util.Map;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,7 +25,7 @@ public class DemoConfigController {
     }
 
     @GetMapping("/message")
-    public Map<String, Object> message(@org.springframework.beans.factory.annotation.Value("${demo.message:default-message}") String valueMessage) {
+    public Map<String, Object> message(@Value("${demo.message:default-message}") String valueMessage) {
         return Map.of(
                 "value-annotation", valueMessage,
                 "configuration-properties", demoProperties.getMessage(),

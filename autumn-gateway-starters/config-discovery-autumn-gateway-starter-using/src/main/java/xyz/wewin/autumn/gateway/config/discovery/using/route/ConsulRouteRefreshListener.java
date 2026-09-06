@@ -12,13 +12,13 @@ import org.springframework.stereotype.Component;
  * Consul 配置变更（含路由键）→ 触发网关路由刷新。
  */
 @Component
-public class RouteRefreshListener {
+public class ConsulRouteRefreshListener {
 
-    private static final Logger log = LoggerFactory.getLogger(RouteRefreshListener.class);
+    private static final Logger log = LoggerFactory.getLogger(ConsulRouteRefreshListener.class);
 
     private final ApplicationEventPublisher publisher;
 
-    public RouteRefreshListener(ApplicationEventPublisher publisher) {
+    public ConsulRouteRefreshListener(ApplicationEventPublisher publisher) {
         this.publisher = publisher;
     }
 
