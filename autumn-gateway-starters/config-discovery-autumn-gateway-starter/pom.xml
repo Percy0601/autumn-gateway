@@ -13,15 +13,19 @@
     <description>配置中心和服务发现网关</description>
 
     <dependencies>
-        <!-- 网关 API：仅编译期需要，运行时由最终应用提供 -->
-        <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-gateway-server-webflux</artifactId>
-            <scope>provided</scope>
-        </dependency>
         <dependency>
             <groupId>xyz.wewin.autumn</groupId>
-            <artifactId>autumn-gateway-common</artifactId>
+            <artifactId>config-discovery-autumn-gateway</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-autoconfigure</artifactId>
+        </dependency>
+        <!-- 生成 spring-configuration-metadata.json -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-configuration-processor</artifactId>
+            <optional>true</optional>
         </dependency>
     </dependencies>
 </project>

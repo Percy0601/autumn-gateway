@@ -13,15 +13,25 @@
     <description>配置中心和服务发现网关</description>
 
     <dependencies>
-        <!-- 网关 API：仅编译期需要，运行时由最终应用提供 -->
+        <!-- Boot 内核：ConfigData SPI / Environment / Binder（版本由 spring-boot-starter-parent 管理） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot</artifactId>
+        </dependency>
+        <!-- 动态刷新：EnvironmentChangeEvent / @RefreshScope -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-gateway-server-webflux</artifactId>
-            <scope>provided</scope>
+            <artifactId>spring-cloud-context</artifactId>
         </dependency>
+        <!-- Consul KV JSON 解析：仅 JsonNode 遍历，无反射，兼容 GraalVM Native Image -->
         <dependency>
-            <groupId>xyz.wewin.autumn</groupId>
-            <artifactId>autumn-gateway-common</artifactId>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+        <!-- 日志门面（版本由 spring-boot-starter-parent 管理） -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
         </dependency>
     </dependencies>
 </project>
