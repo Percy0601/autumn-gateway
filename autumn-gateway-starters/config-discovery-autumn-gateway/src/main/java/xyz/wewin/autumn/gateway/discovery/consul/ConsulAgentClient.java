@@ -78,7 +78,7 @@ public class ConsulAgentClient {
     }
 
     public void deregister(String instanceId) throws IOException {
-        HttpResponse<String> response = delete("/v1/agent/service/deregister/" + instanceId, Duration.ofSeconds(5));
+        HttpResponse<String> response = put("/v1/agent/service/deregister/" + instanceId, "", Duration.ofSeconds(5));
         if (response.statusCode() != 200) {
             throw new IOException("consul deregister failed http " + response.statusCode() + ": " + response.body());
         }

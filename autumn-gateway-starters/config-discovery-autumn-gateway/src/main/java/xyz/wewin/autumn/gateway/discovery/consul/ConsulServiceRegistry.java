@@ -36,9 +36,12 @@ public class ConsulServiceRegistry implements ServiceRegistry<Registration> {
             }
             String interval = properties.getHealthCheckInterval().toSeconds() + "s";
             String timeout = properties.getHealthCheckTimeout().toSeconds() + "s";
+            String criticalAfter = properties.getHealthCheckCriticalTimeout() != null
+                    ? properties.getHealthCheckCriticalTimeout().toSeconds() + "s"
+                    : null;
 
             ConsulAgentClient.ServiceRegistration svcReg = consulReg.toServiceRegistration(
-                    healthCheckUrl, interval, timeout);
+                    healthCheckUrl, interval, timeout, criticalAfter);
             client.register(svcReg);
             log.info("Registered service [{}] instanceId=[{}] at {}:{}",
                     consulReg.getServiceId(), consulReg.getInstanceId(),

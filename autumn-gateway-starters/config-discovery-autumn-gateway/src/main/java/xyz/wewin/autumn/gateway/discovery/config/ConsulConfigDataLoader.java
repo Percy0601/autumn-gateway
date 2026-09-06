@@ -5,7 +5,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 
-import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.config.ConfigData;
@@ -17,35 +16,25 @@ import org.springframework.core.env.PropertiesPropertySource;
 import xyz.wewin.autumn.gateway.discovery.consul.ConsulKvClient;
 import xyz.wewin.autumn.gateway.discovery.consul.ConsulKvClient.ConsulKvEntry;
 
-/**
- * 实际从 Consul KV 拉取配置并转成 PropertySource。
- *
- * <p>加载两个 context（优先级从低到高）：
- * <ol>
- *   <li>{@code {prefix}/application} 全局默认配置</li>
- *   <li>{@code {prefix}/{application}} 当前应用配置（后添加 → 优先级更高，可覆盖默认）</li>
- * </ol>
- * KV key 相对部分的原样作为 property key（如 {@code config/order-service/server.port=8080}
- * → {@code server.port=8080}）。</p>
- */
 public class ConsulConfigDataLoader implements ConfigDataLoader<ConsulConfigDataResource> {
 
     private static final Logger log = LoggerFactory.getLogger(ConsulConfigDataLoader.class);
 
-    /** PropertySource 命名统一前缀，运行期刷新按该名字定位替换 */
     static final String SOURCE_PREFIX = "consul-config";
 
     @Override
     public ConfigData load(ConfigDataLoaderContext context, ConsulConfigDataResource resource) {
-        ConsulConfigProperties properties = resource.getProperties();
-        ConsulKvClient client = newClient(properties);
+        ConsulConfigProperties configProperties = resource.getProperties();
+        ConsulProperties consulProperties = resource.getConsulProperties();
+        ConsulKvClient client = newClient(consulProperties);
+
         List<org.springframework.core.env.PropertySource<?>> sources = new ArrayList<>();
-        for (String root : contextRoots(properties, null)) {
+        for (String root : contextRoots(configProperties, null)) {
             Properties values;
             try {
-                values = fetch(client, root, properties);
+                values = fetch(client, root);
             } catch (IOException e) {
-                if (properties.isFailFast()) {
+                if (configProperties.isFailFast()) {
                     throw new IllegalStateException("加载 Consul 配置失败: " + root, e);
                 }
                 log.warn("跳过 Consul 配置（fail-fast=false）: {} - {}", root, e.getMessage());
@@ -57,8 +46,7 @@ public class ConsulConfigDataLoader implements ConfigDataLoader<ConsulConfigData
         return new ConfigData(sources);
     }
 
-    private Properties fetch(ConsulKvClient client, String root, ConsulConfigProperties properties)
-            throws IOException {
+    private Properties fetch(ConsulKvClient client, String root) throws IOException {
         Properties values = new Properties();
         for (ConsulKvEntry entry : client.list(root)) {
             String key = relativeKey(root, entry.key());
@@ -69,17 +57,14 @@ public class ConsulConfigDataLoader implements ConfigDataLoader<ConsulConfigData
         return values;
     }
 
-    /** 去掉 KV 前缀，得到 property key */
     static String relativeKey(String root, String kvKey) {
         return kvKey.startsWith(root + "/") ? kvKey.substring(root.length() + 1) : kvKey;
     }
 
-    static ConsulKvClient newClient(ConsulConfigProperties properties) {
-        return new ConsulKvClient(properties.getScheme(), properties.getHost(),
-                properties.getPort(), properties.getToken(), properties.getTimeout());
+    static ConsulKvClient newClient(ConsulProperties p) {
+        return new ConsulKvClient(p.getScheme(), p.getHost(), p.getPort(), p.getToken(), p.getTimeout());
     }
 
-    /** 需要加载的 context 根（含 prefix）。env 为空时仅用于 ConfigData 阶段取不到 application 的场景兜底 */
     static List<String> contextRoots(ConsulConfigProperties properties, Environment env) {
         String prefix = properties.getPrefix() == null || properties.getPrefix().isBlank()
                 ? "config" : properties.getPrefix();
@@ -93,7 +78,5 @@ public class ConsulConfigDataLoader implements ConfigDataLoader<ConsulConfigData
         return roots;
     }
 
-    static String sourceName(String root) {
-        return SOURCE_PREFIX + ":" + root;
-    }
+    static String sourceName(String root) { return SOURCE_PREFIX + ":" + root; }
 }

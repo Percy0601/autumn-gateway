@@ -41,7 +41,8 @@ public class ConsulConfigWatchRefresher {
     private static final Logger log = LoggerFactory.getLogger(ConsulConfigWatchRefresher.class);
 
     private final ConfigurableEnvironment environment;
-    private final ConsulConfigProperties properties;
+    private final ConsulProperties consulProperties;
+    private final ConsulConfigProperties configProperties;
     private final ApplicationEventPublisher publisher;
     private final Map<String, Long> indexes = new LinkedHashMap<>();
 
@@ -49,15 +50,17 @@ public class ConsulConfigWatchRefresher {
     private volatile boolean running;
 
     public ConsulConfigWatchRefresher(ConfigurableEnvironment environment,
-                                      ConsulConfigProperties properties,
+                                      ConsulProperties consulProperties,
+                                      ConsulConfigProperties configProperties,
                                       ApplicationEventPublisher publisher) {
         this.environment = environment;
-        this.properties = properties;
+        this.consulProperties = consulProperties;
+        this.configProperties = configProperties;
         this.publisher = publisher;
     }
 
     public void start() {
-        if (!properties.isWatchEnabled() || running) {
+        if (!configProperties.isWatchEnabled() || running) {
             return;
         }
         running = true;
@@ -67,7 +70,7 @@ public class ConsulConfigWatchRefresher {
             return thread;
         };
         scheduler = Executors.newSingleThreadScheduledExecutor(threadFactory);
-        long period = Math.max(1, properties.getWatchDelay().toSeconds());
+        long period = Math.max(1, configProperties.getWatchDelay().toSeconds());
         scheduler.scheduleWithFixedDelay(this::pollOnce, 1, period, TimeUnit.SECONDS);
         log.info("Consul 配置自动刷新已启动, 周期={}s", period);
     }
@@ -84,8 +87,8 @@ public class ConsulConfigWatchRefresher {
             return;
         }
         try {
-            ConsulKvClient client = ConsulConfigDataLoader.newClient(properties);
-            List<String> roots = ConsulConfigDataLoader.contextRoots(properties, environment);
+            ConsulKvClient client = ConsulConfigDataLoader.newClient(consulProperties);
+            List<String> roots = ConsulConfigDataLoader.contextRoots(configProperties, environment);
             Set<String> changedKeys = new LinkedHashSet<>();
             boolean changed = false;
             for (String root : roots) {
@@ -104,7 +107,7 @@ public class ConsulConfigWatchRefresher {
     private boolean pollRoot(ConsulKvClient client, String root, Set<String> changedKeys) throws IOException {
         long index = indexes.getOrDefault(root, 0L);
         ConsulKvClient.WatchResult result = client.watch(root, index,
-                Duration.ofSeconds(Math.min(properties.getWatchDelay().toSeconds(), 55)));
+                Duration.ofSeconds(Math.min(configProperties.getWatchDelay().toSeconds(), 55)));
         indexes.put(root, result.index());
 
         Properties next = new Properties();

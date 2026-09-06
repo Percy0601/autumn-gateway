@@ -67,13 +67,16 @@ public class ConsulRegistration implements Registration {
         return tags;
     }
 
-    public ConsulAgentClient.ServiceRegistration toServiceRegistration(String healthCheckUrl, String healthCheckInterval, String healthCheckTimeout) {
+    public ConsulAgentClient.ServiceRegistration toServiceRegistration(String healthCheckUrl, String healthCheckInterval, String healthCheckTimeout, String deregisterCriticalServiceAfter) {
         Map<String, Object> check = null;
         if (healthCheckUrl != null) {
             check = new java.util.HashMap<>();
             check.put("HTTP", healthCheckUrl);
             check.put("Interval", healthCheckInterval);
             check.put("Timeout", healthCheckTimeout);
+            if (deregisterCriticalServiceAfter != null && !deregisterCriticalServiceAfter.isBlank()) {
+                check.put("DeregisterCriticalServiceAfter", deregisterCriticalServiceAfter);
+            }
         }
         return new ConsulAgentClient.ServiceRegistration(
                 serviceId, instanceId, host, port, false,

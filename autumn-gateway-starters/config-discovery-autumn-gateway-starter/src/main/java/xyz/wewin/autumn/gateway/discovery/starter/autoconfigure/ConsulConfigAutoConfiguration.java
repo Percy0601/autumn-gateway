@@ -21,6 +21,7 @@ import org.springframework.core.env.Environment;
 import xyz.wewin.autumn.gateway.discovery.config.ConsulConfigProperties;
 import xyz.wewin.autumn.gateway.discovery.config.ConsulConfigWatchRefresher;
 import xyz.wewin.autumn.gateway.discovery.config.ConsulDiscoveryProperties;
+import xyz.wewin.autumn.gateway.discovery.config.ConsulProperties;
 import xyz.wewin.autumn.gateway.discovery.consul.ConsulAgentClient;
 import xyz.wewin.autumn.gateway.discovery.consul.ConsulAutoServiceRegistration;
 import xyz.wewin.autumn.gateway.discovery.consul.ConsulDiscoveryClient;
@@ -29,7 +30,7 @@ import xyz.wewin.autumn.gateway.discovery.consul.ConsulRegistration;
 import xyz.wewin.autumn.gateway.discovery.consul.ConsulServiceRegistry;
 
 @AutoConfiguration
-@EnableConfigurationProperties({ConsulConfigProperties.class, ConsulDiscoveryProperties.class})
+@EnableConfigurationProperties({ConsulProperties.class, ConsulConfigProperties.class, ConsulDiscoveryProperties.class})
 public class ConsulConfigAutoConfiguration {
 
     // ==================== 配置中心（独立，不依赖 Discovery 开关） ====================
@@ -40,15 +41,16 @@ public class ConsulConfigAutoConfiguration {
             havingValue = "true", matchIfMissing = true)
     public ConsulConfigWatchRefresher consulConfigWatchRefresher(
             ConfigurableEnvironment environment,
-            ConsulConfigProperties properties,
+            ConsulProperties consulProperties,
+            ConsulConfigProperties configProperties,
             ApplicationEventPublisher publisher) {
         ConsulConfigWatchRefresher refresher =
-                new ConsulConfigWatchRefresher(environment, properties, publisher);
+                new ConsulConfigWatchRefresher(environment, consulProperties, configProperties, publisher);
         refresher.start();
         return refresher;
     }
 
-    // ==================== Discovery / Registry（独立配置类，可被 discovery 开关整体控制） ====================
+    // ==================== Discovery / Registry ====================
 
     @Configuration
     @ConditionalOnDiscoveryEnabled
@@ -58,14 +60,14 @@ public class ConsulConfigAutoConfiguration {
 
         @Bean
         @ConditionalOnMissingBean
-        public ConsulAgentClient consulAgentClient(ConsulDiscoveryProperties properties) {
+        public ConsulAgentClient consulAgentClient(ConsulProperties consulProperties) {
             return new ConsulAgentClient(
-                    properties.getScheme(),
-                    properties.getHost(),
-                    properties.getPort(),
-                    properties.getToken(),
+                    consulProperties.getScheme(),
+                    consulProperties.getHost(),
+                    consulProperties.getPort(),
+                    consulProperties.getToken(),
                     null,
-                    properties.getTimeout()
+                    consulProperties.getTimeout()
             );
         }
 

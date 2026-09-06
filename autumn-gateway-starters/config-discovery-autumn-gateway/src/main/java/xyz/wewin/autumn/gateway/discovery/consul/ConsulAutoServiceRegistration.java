@@ -15,6 +15,7 @@ public class ConsulAutoServiceRegistration implements SmartLifecycle {
 
     private volatile boolean running;
     private volatile boolean deregistered;
+    private Thread shutdownHook;
 
     public ConsulAutoServiceRegistration(ServiceRegistry<Registration> registry, Registration registration) {
         this.registry = registry;
@@ -26,18 +27,45 @@ public class ConsulAutoServiceRegistration implements SmartLifecycle {
         if (running) return;
         registry.register(registration);
         running = true;
+        registerShutdownHook();
     }
 
     @Override
     public synchronized void stop() {
         if (!running) return;
         running = false;
+        deregisterNow();
         deregistered = true;
+        unregisterShutdownHook();
+    }
+
+    private synchronized void deregisterNow() {
+        if (deregistered) return;
         try {
             registry.deregister(registration);
+            deregistered = true;
         } catch (Exception e) {
             log.warn("Deregister failed: {}", e.getMessage());
         }
+    }
+
+    private void registerShutdownHook() {
+        if (shutdownHook != null) return;
+        shutdownHook = new Thread(() -> {
+            log.info("JVM shutdown hook triggered, deregistering...");
+            deregisterNow();
+        }, "consul-deregister-shutdown-hook");
+        Runtime.getRuntime().addShutdownHook(shutdownHook);
+    }
+
+    private void unregisterShutdownHook() {
+        if (shutdownHook == null) return;
+        try {
+            Runtime.getRuntime().removeShutdownHook(shutdownHook);
+        } catch (IllegalStateException ignored) {
+            // JVM 已经在关闭中了
+        }
+        shutdownHook = null;
     }
 
     @Override
