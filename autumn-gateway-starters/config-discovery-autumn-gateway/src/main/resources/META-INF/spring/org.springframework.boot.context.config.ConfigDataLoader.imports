@@ -1,0 +1,1 @@
+# ConfigData SPI 注册见 META-INF/spring.factories（与 spring-cloud-config-client 5.x 对 Boot 4 的适配方式一致）

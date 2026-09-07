@@ -1,0 +1,6 @@
+# 与 spring-cloud-config-client 5.x（Boot 4 适配版）注册方式保持一致：
+# ConfigData resolver/loader 仍通过 spring.factories 加载
+org.springframework.boot.context.config.ConfigDataLocationResolver=\
+    xyz.wewin.autumn.gateway.discovery.config.ConsulConfigDataLocationResolver
+org.springframework.boot.context.config.ConfigDataLoader=\
+    xyz.wewin.autumn.gateway.discovery.config.ConsulConfigDataLoader

@@ -1,0 +1,159 @@
+/* ========== 全局样式（对齐 antd pro 观感，主色 #1677ff） ========== */
+:root {
+  /* Element Plus 主色变量：改为 antd pro 的 #1677ff */
+  --el-color-primary: #1677ff;
+  --el-color-primary-light-3: #69a4ff;
+  --el-color-primary-light-5: #9cc3ff;
+  --el-color-primary-light-7: #cfe3ff;
+  --el-color-primary-light-8: #e3efff;
+  --el-color-primary-light-9: #f0f6ff;
+  --el-color-primary-dark-2: #1260cc;
+  --el-color-success: #52c41a;
+  --el-color-warning: #faad14;
+  --el-color-danger: #ff4d4f;
+
+  --pro-bg: #f0f2f5;
+  --pro-text: rgba(0, 0, 0, 0.88);
+  --pro-text-secondary: rgba(0, 0, 0, 0.45);
+  --pro-border: #f0f0f0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+    'Hiragino Sans GB', 'Microsoft YaHei', Arial, sans-serif;
+  font-size: 14px;
+  color: var(--pro-text);
+  background: var(--pro-bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--el-color-primary);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+/* 页面容器（仿 antd ProTable 卡片） */
+.pro-page {
+  padding: 16px;
+}
+
+.pro-card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 24px;
+}
+
+/* 表头标题 + 操作区 */
+.pro-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  gap: 16px;
+}
+
+.pro-card-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.88);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 搜索表单区 */
+.pro-search {
+  padding: 24px 24px 0;
+  border-bottom: 1px solid #f0f0f0;
+  margin: -24px -24px 16px;
+  background: #fff;
+  border-radius: 8px 8px 0 0;
+}
+
+.pro-search .el-form-item {
+  margin-bottom: 18px;
+}
+
+/* 表格通用 */
+.pro-table-wrap {
+  width: 100%;
+}
+
+.pro-table-wrap .el-table {
+  --el-table-header-bg-color: #fafafa;
+  --el-table-header-text-color: rgba(0, 0, 0, 0.88);
+  --el-table-text-color: rgba(0, 0, 0, 0.88);
+  --el-table-border-color: #f0f0f0;
+  font-size: 14px;
+}
+
+.pro-table-wrap .el-table th.el-table__cell {
+  font-weight: 600;
+}
+
+.pro-pagination {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+/* 链接式操作按钮（仿 antd ProTable 操作列） */
+.link-op {
+  margin-right: 12px;
+  font-size: 14px;
+}
+
+.link-op.disabled-link {
+  color: #faad14;
+}
+
+.link-op.enabled-link {
+  color: #52c41a;
+}
+
+.link-op.danger-link {
+  color: #ff4d4f;
+}
+
+/* 可复制文本 */
+.copy-text {
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.copy-text:hover {
+  color: var(--el-color-primary);
+}
+
+/* 详情页描述容器 */
+.desc-box {
+  background: #fff;
+  border-radius: 8px;
+  padding: 24px;
+}
+
+/* el-drawer 表单 footer */
+.pro-drawer-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* el-descriptions 字体 */
+.el-descriptions__label {
+  color: rgba(0, 0, 0, 0.88);
+  font-weight: 500;
+}

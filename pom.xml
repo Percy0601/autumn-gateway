@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<groupId>xyz.wewin.autumn</groupId>
+	<artifactId>autumn-gateway</artifactId>
+	<version>0.0.1-SNAPSHOT</version>
+	<packaging>pom</packaging>
+
+	<parent>
+		<groupId>org.springframework.boot</groupId>
+		<artifactId>spring-boot-starter-parent</artifactId>
+		<version>4.1.0</version>
+		<relativePath/> <!-- lookup parent from repository -->
+	</parent>
+
+	<modules>
+		<module>autumn-gateway-deploy</module>
+		<module>autumn-gateway-discovery</module>
+		<module>autumn-gateway-examples</module>
+		<module>autumn-gateway-dashboard</module>
+		<module>autumn-gateway-starters</module>
+        <module>autumn-gateway-common</module>
+	</modules>
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+		<java.version>25</java.version>
+		<spring-cloud.version>2025.1.3</spring-cloud.version>
+		<jjwt-api.version>0.13.0</jjwt-api.version>
+		<maven.compiler.source>21</maven.compiler.source>
+		<maven.compiler.target>21</maven.compiler.target>
+		<lombok.version>1.18.48</lombok.version>
+        <bucket4j-core.version>8.0.1</bucket4j-core.version>
+        <caffeine.version>3.2.4</caffeine.version>
+		<mybatis-spring-boot-starter.version>4.1.0</mybatis-spring-boot-starter.version>
+        <spring-cloud-starter-gateway-server-webflux.version>5.0.3</spring-cloud-starter-gateway-server-webflux.version>
+	</properties>
+
+	<dependencies>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
+
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>org.springframework.cloud</groupId>
+				<artifactId>spring-cloud-dependencies</artifactId>
+				<version>${spring-cloud.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+            <dependency>
+                <groupId>com.github.vladimir-bukhtoyarov</groupId>
+                <artifactId>bucket4j-core</artifactId>
+                <version>${bucket4j-core.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.github.ben-manes.caffeine</groupId>
+                <artifactId>caffeine</artifactId>
+                <version>${caffeine.version}</version>
+            </dependency>
+			<dependency>
+				<groupId>io.jsonwebtoken</groupId>
+				<artifactId>jjwt-api</artifactId>
+				<version>${jjwt-api.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>io.jsonwebtoken</groupId>
+				<artifactId>jjwt-impl</artifactId>
+				<version>${jjwt-api.version}</version>
+				<scope>runtime</scope>
+			</dependency>
+			<dependency>
+				<groupId>io.jsonwebtoken</groupId>
+				<artifactId>jjwt-jackson</artifactId>
+				<version>${jjwt-api.version}</version>
+				<scope>runtime</scope>
+			</dependency>
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-starter-gateway-server-webflux</artifactId>
+                <version>${spring-cloud-starter-gateway-server-webflux.version}</version>
+			</dependency>
+            <dependency>
+                <groupId>xyz.wewin.autumn</groupId>
+                <artifactId>autumn-gateway-common</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+			<dependency>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-starter-actuator</artifactId>
+				<!-- 砍掉 micrometer，省一大块 -->
+				<exclusions>
+					<exclusion>
+						<groupId>io.micrometer</groupId>
+						<artifactId>micrometer-core</artifactId>
+					</exclusion>
+					<exclusion>
+						<groupId>io.micrometer</groupId>
+						<artifactId>micrometer-observation</artifactId>
+					</exclusion>
+				</exclusions>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
+
+</project>
