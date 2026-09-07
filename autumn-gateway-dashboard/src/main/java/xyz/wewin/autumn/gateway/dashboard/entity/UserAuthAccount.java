@@ -24,6 +24,8 @@ public class UserAuthAccount {
     @Column("union_id")
     private String unionId;
     private Boolean verified;
+    @Column("credential_updated_at")
+    private LocalDateTime credentialUpdatedAt;
     @Column("created_at")
     private LocalDateTime createdAt;
     @Column("updated_at")
@@ -107,6 +109,14 @@ public class UserAuthAccount {
 
     public void setVerified(Boolean verified) {
         this.verified = verified;
+    }
+
+    public LocalDateTime getCredentialUpdatedAt() {
+        return credentialUpdatedAt;
+    }
+
+    public void setCredentialUpdatedAt(LocalDateTime credentialUpdatedAt) {
+        this.credentialUpdatedAt = credentialUpdatedAt;
     }
 
     public LocalDateTime getCreatedAt() {

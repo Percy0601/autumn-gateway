@@ -24,16 +24,19 @@ CREATE TABLE IF NOT EXISTS application (
 -- ============================================================
 CREATE TABLE IF NOT EXISTS `user` (
   id            BIGINT PRIMARY KEY AUTO_INCREMENT,
-  username      VARCHAR(64) UNIQUE COMMENT '内部登录名，第三方登录用户可空',
+  uuid          VARCHAR(36) NOT NULL COMMENT '对外统一标识（OIDC 的 sub）：生成后永不变化，避免暴露自增ID、便于跨库合并',
+  username      VARCHAR(64) UNIQUE COMMENT '登录名（工号语义）：创建后禁止修改，如需变更只能后台改库',
   nickname      VARCHAR(64),
   avatar        VARCHAR(255),
   email         VARCHAR(128),
   phone         VARCHAR(32),
   emp_no        VARCHAR(64) COMMENT '员工工号',
   status        TINYINT DEFAULT 1 COMMENT '1=正常 0=禁用',
+  password_updated_at DATETIME COMMENT '密码最后修改时间，用于密码有效期/强制改密',
   last_login_at DATETIME,
   created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at    DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_uuid (uuid),
   INDEX idx_email (email),
   INDEX idx_phone (phone),
   INDEX idx_status (status)
@@ -61,21 +64,24 @@ CREATE TABLE IF NOT EXISTS user_auth_account (
   id            BIGINT PRIMARY KEY AUTO_INCREMENT,
   user_id       BIGINT NOT NULL,
   identity_type VARCHAR(32) NOT NULL COMMENT 'password / oidc / wechat_mp / wechat_oa / sms',
-  identifier    VARCHAR(255) NOT NULL COMMENT '手机号 / openid / oidc_sub / 邮箱',
+  identifier    VARCHAR(255) NOT NULL COMMENT '该认证方式下的登录标识：password=用户名，oidc=外部sub，wechat=openid，sms=手机号',
   credential    VARCHAR(512) COMMENT '密码 bcrypt hash / OIDC refresh_token(加密)',
   issuer        VARCHAR(255) COMMENT 'OIDC iss；微信 appid',
-  expires_at    DATETIME COMMENT 'token 过期时间',
-  refresh_token TEXT COMMENT 'OIDC refresh_token（加密存储）',
-  union_id      VARCHAR(255) COMMENT '微信 unionid，跨应用打通',
+  expires_at    DATETIME COMMENT 'token 过期时间（仅第三方登录使用）',
+  refresh_token TEXT COMMENT 'OIDC refresh_token（加密存储，仅第三方登录使用）',
+  union_id      VARCHAR(255) COMMENT '微信 unionid，跨应用打通（仅第三方登录使用）',
   verified      TINYINT DEFAULT 0 COMMENT '是否已验证',
+  credential_updated_at DATETIME COMMENT '凭据最后更新时间（改密/换绑）',
   created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at    DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  -- password 方式下 identifier 即用户名，天然保证用户名唯一
   UNIQUE KEY uk_type_identifier (identity_type, identifier),
+  -- 第三方登录防重复绑定（issuer 非空的场景下生效）
+  UNIQUE KEY uk_issuer_type_identifier (issuer, identity_type, identifier),
   INDEX idx_user (user_id),
-  INDEX idx_issuer (issuer),
   INDEX idx_union_id (union_id),
   FOREIGN KEY (user_id) REFERENCES `user`(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='认证账户：一个用户可挂多种登录方式';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='认证账户：一个用户可挂多种登录方式，登录查找入口=(identity_type, identifier)';
 
 -- ============================================================
 -- 5. 权限/资源（合并 RBAC Permission + Wolf Resource）

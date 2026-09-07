@@ -1,6 +1,7 @@
 package xyz.wewin.autumn.gateway.dashboard.entity;
 
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Transient;
 import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
 
@@ -10,18 +11,32 @@ import java.time.LocalDateTime;
 public class User {
     @Id
     private Long id;
+    /**
+     * 对外统一标识（OIDC 的 sub），生成后永不变化
+     */
+    private String uuid;
+    /**
+     * 登录名（工号语义）：创建后禁止修改，如需变更只能后台改库
+     */
     private String username;
     private String nickname;
     private String avatar;
     private String email;
     private String phone;
     private Integer status;
+    @Column("password_updated_at")
+    private LocalDateTime passwordUpdatedAt;
     @Column("last_login_at")
     private LocalDateTime lastLoginAt;
     @Column("created_at")
     private LocalDateTime createdAt;
     @Column("updated_at")
     private LocalDateTime updatedAt;
+    /**
+     * 仅用于接口入参（创建用户 / 重置密码时传递明文密码），不参与持久化
+     */
+    @Transient
+    private String password;
 
     public Long getId() {
         return id;
@@ -29,6 +44,22 @@ public class User {
 
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public String getUuid() {
+        return uuid;
+    }
+
+    public void setUuid(String uuid) {
+        this.uuid = uuid;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
     }
 
     public String getUsername() {
@@ -77,6 +108,14 @@ public class User {
 
     public void setStatus(Integer status) {
         this.status = status;
+    }
+
+    public LocalDateTime getPasswordUpdatedAt() {
+        return passwordUpdatedAt;
+    }
+
+    public void setPasswordUpdatedAt(LocalDateTime passwordUpdatedAt) {
+        this.passwordUpdatedAt = passwordUpdatedAt;
     }
 
     public LocalDateTime getLastLoginAt() {

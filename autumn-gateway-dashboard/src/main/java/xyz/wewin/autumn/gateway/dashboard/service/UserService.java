@@ -4,7 +4,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import xyz.wewin.autumn.gateway.dashboard.dto.UserRelationRole;
@@ -33,6 +34,15 @@ public class UserService {
     private RoleRepository roleRepository;
     @Autowired
     private ApplicationRepository applicationRepository;
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    /** 密码认证方式：登录查找入口 = (identity_type, identifier) */
+    public static final String IDENTITY_TYPE_PASSWORD = "password";
+
+    /** 未显式指定初始密码时使用的默认密码（首次登录后应强制修改） */
+    @Value("${autumn.user.default-password:Autumn@123456}")
+    private String defaultPassword;
 //    @Autowired
 //    private GeneralMapper generalMapper;
 
@@ -48,24 +58,64 @@ public class UserService {
         return userRepository.findById(id);
     }
 
+    /**
+     * 创建用户：同时写入 user 与 password 认证账户，保证"建完就能登录"。
+     *
+     * @param user 用户信息，其中 username 必填（工号语义，创建后不可修改）；
+     *             password 为可选初始密码，不传则使用 autumn.user.default-password
+     */
+    @Transactional
     public User create(User user) {
-        if (user.getUsername() != null && userRepository.findByUsername(user.getUsername()).isPresent()) {
+        if (user.getUsername() == null || user.getUsername().isBlank()) {
+            throw new IllegalArgumentException("用户名不能为空");
+        }
+        if (userRepository.findByUsername(user.getUsername()).isPresent()) {
             throw new IllegalArgumentException("用户名已存在");
         }
+        if (authAccountRepository.findByIdentityTypeAndIdentifier(IDENTITY_TYPE_PASSWORD, user.getUsername()).isPresent()) {
+            throw new IllegalArgumentException("该登录标识已存在");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        String rawPassword = (user.getPassword() == null || user.getPassword().isBlank())
+                ? defaultPassword : user.getPassword();
+
         user.setId(null);
-        user.setCreatedAt(LocalDateTime.now());
-        user.setUpdatedAt(LocalDateTime.now());
-        return userRepository.save(user);
+        user.setUuid(UUID.randomUUID().toString());
+        user.setPasswordUpdatedAt(now);
+        user.setCreatedAt(now);
+        user.setUpdatedAt(now);
+        User saved = userRepository.save(user);
+
+        UserAuthAccount account = new UserAuthAccount();
+        account.setUserId(saved.getId());
+        account.setIdentityType(IDENTITY_TYPE_PASSWORD);
+        account.setIdentifier(saved.getUsername());
+        account.setCredential(passwordEncoder.encode(rawPassword));
+        account.setVerified(true);
+        account.setCredentialUpdatedAt(now);
+        account.setCreatedAt(now);
+        account.setUpdatedAt(now);
+        authAccountRepository.save(account);
+
+        // 明文密码仅用于入参，绝不回传前端
+        saved.setPassword(null);
+        return saved;
     }
 
+    /**
+     * 更新用户：username 属工号语义，接口层面禁止修改（需变更请后台改库并同步 user_auth_account.identifier）
+     */
     public User update(Long id, User req) {
         User existing = userRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("用户不存在"));
+        if (req.getUsername() != null && !req.getUsername().equals(existing.getUsername())) {
+            throw new IllegalArgumentException("用户名不可修改，如需变更请联系管理员后台处理");
+        }
         if (req.getNickname() != null) existing.setNickname(req.getNickname());
         if (req.getEmail() != null) existing.setEmail(req.getEmail());
         if (req.getPhone() != null) existing.setPhone(req.getPhone());
         if (req.getStatus() != null) existing.setStatus(req.getStatus());
-        // username 一般不修改，如需修改需唯一性校验
         existing.setUpdatedAt(LocalDateTime.now());
         return userRepository.save(existing);
     }
@@ -104,9 +154,38 @@ public class UserService {
     }
 
     public void resetPassword(Long userId, String newPassword) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("用户不存在"));
         // 对密码进行 BCrypt 加密
-        String encodedPassword = new BCryptPasswordEncoder().encode(newPassword);
-        authAccountRepository.updatePassword(userId, encodedPassword);
+        authAccountRepository.updatePassword(userId, passwordEncoder.encode(newPassword));
+        user.setPasswordUpdatedAt(LocalDateTime.now());
+        user.setUpdatedAt(LocalDateTime.now());
+        userRepository.save(user);
+    }
+
+    /**
+     * 统一认证入口：与授权服务器使用完全相同的查找契约 —— (identity_type, identifier) 定位账户，
+     * 再校验凭据与用户状态。所有登录方式（口令 / OIDC / 短信）都走这里。
+     *
+     * @return 认证通过的用户
+     * @throws IllegalArgumentException 账号不存在 / 密码错误 / 账号已禁用
+     */
+    public User authenticate(String identityType, String identifier, String credential) {
+        UserAuthAccount account = authAccountRepository
+                .findByIdentityTypeAndIdentifier(identityType, identifier)
+                .orElseThrow(() -> new IllegalArgumentException("账号不存在"));
+
+        if (account.getCredential() == null
+                || !passwordEncoder.matches(credential, account.getCredential())) {
+            throw new IllegalArgumentException("账号或密码错误");
+        }
+
+        User user = userRepository.findById(account.getUserId())
+                .orElseThrow(() -> new IllegalArgumentException("账号不存在"));
+        if (user.getStatus() == null || user.getStatus() != 1) {
+            throw new IllegalArgumentException("账号已禁用");
+        }
+        return user;
     }
 
     /**

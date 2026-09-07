@@ -1,3 +1,6 @@
+-- ⚠️ 本文件为历史遗留的旧版表结构（users / category / resource 等），已废弃，请勿再使用。
+--    现行表结构以 schema.sql 为准；存量库升级脚本见 db/migration-v1-to-v2.sql。
+--
 --CREATE DATABASE `autumn_gateway_dashboard` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci */ /*!80016 DEFAULT ENCRYPTION='N' */;
 
 

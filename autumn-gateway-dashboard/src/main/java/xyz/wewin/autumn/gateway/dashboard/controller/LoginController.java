@@ -4,7 +4,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -12,11 +11,10 @@ import org.springframework.web.bind.annotation.RestController;
 import xyz.wewin.autumn.gateway.dashboard.dto.LoginRequest;
 import xyz.wewin.autumn.gateway.dashboard.entity.User;
 import xyz.wewin.autumn.gateway.dashboard.entity.UserApp;
-import xyz.wewin.autumn.gateway.dashboard.entity.UserAuthAccount;
 import xyz.wewin.autumn.gateway.dashboard.repo.UserAppRepository;
-import xyz.wewin.autumn.gateway.dashboard.repo.UserAuthAccountRepository;
 import xyz.wewin.autumn.gateway.dashboard.repo.UserRepository;
 import xyz.wewin.autumn.gateway.dashboard.security.JwtUtil;
+import xyz.wewin.autumn.gateway.dashboard.service.UserService;
 
 import java.util.HashMap;
 import java.util.List;
@@ -42,13 +40,10 @@ public class LoginController {
     private UserRepository userRepository;
 
     @Autowired
-    private UserAuthAccountRepository userAuthAccountRepository;
-
-    @Autowired
     private UserAppRepository userAppRepository;
 
     @Autowired
-    private PasswordEncoder passwordEncoder;
+    private UserService userService;
 
     @Autowired
     private JwtUtil jwtUtil;
@@ -64,14 +59,9 @@ public class LoginController {
     public Map<String, Object> account(@RequestBody LoginRequest request) {
         String type = request.getType() == null ? "account" : request.getType();
         try {
-            User user = userRepository.findByUsername(request.getUsername())
-                    .orElseThrow(() -> new IllegalArgumentException("账号不存在"));
-            UserAuthAccount authAccount = userAuthAccountRepository
-                    .findByUserIdAndIdentityType(user.getId(), "password")
-                    .orElseThrow(() -> new IllegalArgumentException("账号不存在"));
-//            if (!passwordEncoder.matches(request.getPassword(), authAccount.getCredential())) {
-//                throw new IllegalArgumentException("密码错误");
-//            }
+            // 统一认证入口：按 (identity_type=password, identifier=用户名) 查找并校验密码与账号状态
+            User user = userService.authenticate(UserService.IDENTITY_TYPE_PASSWORD,
+                    request.getUsername(), request.getPassword());
 
             String token = jwtUtil.generateToken(user.getId(), user.getUsername());
             Map<String, Object> result = new HashMap<>();
