@@ -12,7 +12,7 @@
 |---|---|
 | HTTP API 拉配置 | Consul KV REST 接口 `/v1/kv/{prefix}?recurse=true` |
 | 最少依赖 / 轻量 | 仅 `spring-boot` + `spring-cloud-context` + `jackson-databind` + `slf4j-api`；HTTP 用 JDK 自带 `java.net.http.HttpClient`，无 WebClient/RestTemplate/consul-client |
-| 自动刷新 | Consul **Blocking Query** 长轮询（`index` + `wait`），变化即时返回，非固定间隔轮询 |
+| 自动刷新 | Consul **Blocking Query** 持续长轮询：每个 context 一个独立守护线程，配置变化即时返回（不受 `wait` 影响）；连接池复用 + key 级 diff |
 | 兼容 @Value / @ConfigurationProperties | 配置以标准 `PropertySource` 注入 Environment，天然兼容两种绑定 |
 | 兼容 GraalVM Native Image | 仅 `JsonNode` 字段遍历解码（无反射）；类型绑定走 Boot 编译期绑定；HTTP 为 JDK 内置模块 |
 
@@ -34,9 +34,10 @@ PropertiesPropertySource("consul-config:config/application") 注入 Environment
 @Value / @ConfigurationProperties 正常绑定
 
 运行期（starter 自动装配 ConsulConfigWatchRefresher，可配开关）
-  GET /v1/kv/{root}?recurse&index={lastIndex}&wait=..s   （长轮询）
-        ▼ X-Consul-Index 变化
-  用新值替换同名 PropertySource + 发布 EnvironmentChangeEvent
+  每个 context 一个独立守护线程，持续阻塞循环（收到响应后立即重新发起，无固定间隔）：
+    GET /v1/kv/{root}?recurse&index={lastIndex}&wait={wait}s
+        ▼ X-Consul-Index 变化 / 内容 diff（新增、修改、删除）
+  用新值替换同名 PropertySource + 发布 EnvironmentChangeEvent（事件 keys 仅含实际变化的 key）
         ▼
   @RefreshScope Bean（@Value / @ConfigurationProperties）自动重建
   网关路由侧可监听 EnvironmentChangeEvent → RefreshRoutesEvent（见 using 模块）
@@ -69,7 +70,7 @@ consul.config.port=8500
 consul.config.prefix=config
 consul.config.fail-fast=true        # false：Consul 拉取失败也继续启动
 consul.config.watch-enabled=true    # 动态刷新开关
-consul.config.watch-delay=15s
+consul.config.watch-delay=5m        # 单次长轮询最长等待（默认 5m，服务端上限 10m，只影响空闲唤醒频率）
 ```
 
 3. 准备 KV：
@@ -112,10 +113,15 @@ class DemoController {
 
 ## 与官方 spring-cloud-consul-config 的差异（有意为之）
 
-- 不支持：watch 变更 key 级 diff 精确定位（整 context 替换）、多 profile context（`config/{app}-{profile}`）、properties/yaml 大文本格式解析、故障转移缓存、服务发现（discovery 另做）。
+- 变更事件支持 key 级 diff 精确定位（新增 / 修改 / 删除的 key 都会上报），但 PropertySource 仍按整 context 重建；
+- 不支持：多 profile context（`config/{app}-{profile}`）、properties/yaml 大文本格式解析、故障转移缓存、服务发现（discovery 另做）。
 - KV 约定：每个 KV 即一个 property（key=property key），不做大文本格式解析，天然无反射。
 
 ## 已知边界
 
-- 刷新单线程串行长轮询多个 context，context 较多时可调小 `watch-delay`；
+- 长轮询超时无变化时，Consul 会原样返回当前全量快照（服务端行为），空闲流量 ≈ 空闲唤醒次数 × 快照大小；
+  建议把 `consul.config.watch-delay` 调到 1~10 分钟——变更即时性不受 `wait` 影响（变更发生时阻塞请求立即返回），
+  调大只减少空闲唤醒，服务实例越多收益越明显；
+- 每个 context 由独立守护线程持续长轮询，context 之间互不阻塞，刷新即时性与 context 数量无关；
+- @RefreshScope Bean 的整批重建属于 Spring Cloud 语义，事件 keys 可供业务侧精确判断实际变化；
 - Consul ACL 仅支持 token（X-Consul-Token），不支持 mTLS。

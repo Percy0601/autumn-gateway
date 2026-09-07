@@ -29,6 +29,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  */
 public class ConsulKvClient {
 
+    /** Consul Blocking Query 的 wait 服务端上限（10 分钟），超过会立即返回导致 busy loop，客户端统一收敛到此值 */
+    public static final long MAX_WAIT_SECONDS = 600L;
+
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final String baseUrl;
@@ -49,12 +52,17 @@ public class ConsulKvClient {
     /**
      * Consul Blocking Query：阻塞至多 {@code wait} 秒，等待该前缀下配置变化。
      *
-     * @return 返回最新条目与下一次使用的 index（无变化时 entries 为空、index 不变）
+     * <p>wait 会收敛到服务端上限（{@link #MAX_WAIT_SECONDS}，超过会立即返回造成忙轮询）；
+     * 服务端在 wait 到期还会附加最多 {@code wait/16} 的随机抖动，因此 HTTP 读超时取
+     * {@code wait + 60s} 余量，避免把正常阻塞连接误判为超时。</p>
+     *
+     * @return 返回最新条目与下一次使用的 index（超时无变化时 entries 与上次一致、index 不变）
      */
     public WatchResult watch(String keyPrefix, long index, Duration wait) throws IOException {
+        long waitSeconds = Math.max(1, Math.min(wait.toSeconds(), MAX_WAIT_SECONDS));
         HttpResponse<String> response = get(keyPrefix
                 + "?recurse=true&index=" + index
-                + "&wait=" + Math.max(1, wait.toSeconds()) + "s", Duration.ofSeconds(120));
+                + "&wait=" + waitSeconds + "s", Duration.ofSeconds(waitSeconds + 60));
         long nextIndex = response.headers().firstValueAsLong("X-Consul-Index").orElse(index);
         return new WatchResult(toEntries(response), nextIndex);
     }
