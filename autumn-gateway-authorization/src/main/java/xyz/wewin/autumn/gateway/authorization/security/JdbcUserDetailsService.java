@@ -12,8 +12,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.sql.Types;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 从数据库加载用户与密码（与 dashboard 完全相同的账号契约）。
@@ -57,11 +59,14 @@ public class JdbcUserDetailsService implements UserDetailsService {
             """;
 
     private final NamedParameterJdbcTemplate jdbcTemplate;
+    private final LoginAttemptService loginAttemptService;
     private final Long roleAppId;
 
     public JdbcUserDetailsService(NamedParameterJdbcTemplate jdbcTemplate,
+                                  LoginAttemptService loginAttemptService,
                                   @Value("${autumn.authorization-server.role-app-id:}") String roleAppId) {
         this.jdbcTemplate = jdbcTemplate;
+        this.loginAttemptService = loginAttemptService;
         this.roleAppId = StringUtils.hasText(roleAppId) ? Long.valueOf(roleAppId) : null;
     }
 
@@ -72,18 +77,20 @@ public class JdbcUserDetailsService implements UserDetailsService {
                 .addValue("identifier", username);
 
         Map<String, Object> row = this.jdbcTemplate.query(LOAD_USER_SQL, params, (rs) -> {
-            if (rs.next()) {
-                return Map.of(
-                        "id", rs.getObject("id"),
-                        "uuid", rs.getString("uuid"),
-                        "username", rs.getString("username"),
-                        "nickname", rs.getString("nickname") == null ? "" : rs.getString("nickname"),
-                        "email", rs.getString("email") == null ? "" : rs.getString("email"),
-                        "phone", rs.getString("phone") == null ? "" : rs.getString("phone"),
-                        "status", rs.getObject("status"),
-                        "credential", rs.getString("credential"));
+            if (!rs.next()) {
+                return null;
             }
-            return null;
+            // 用 HashMap 而非 Map.of：uuid / username / credential 等列都可能为 NULL
+            Map<String, Object> result = new HashMap<>();
+            result.put("id", rs.getObject("id"));
+            result.put("uuid", rs.getString("uuid"));
+            result.put("username", rs.getString("username"));
+            result.put("nickname", rs.getString("nickname") == null ? "" : rs.getString("nickname"));
+            result.put("email", rs.getString("email") == null ? "" : rs.getString("email"));
+            result.put("phone", rs.getString("phone") == null ? "" : rs.getString("phone"));
+            result.put("status", rs.getObject("status"));
+            result.put("credential", rs.getString("credential"));
+            return result;
         });
 
         if (row == null) {
@@ -101,14 +108,18 @@ public class JdbcUserDetailsService implements UserDetailsService {
 
         Integer status = row.get("status") == null ? 1 : ((Number) row.get("status")).intValue();
         String uuid = row.get("uuid") == null ? String.valueOf(userId) : (String) row.get("uuid");
+        String loginName = row.get("username") == null ? username : (String) row.get("username");
+        // 连续失败超限 → 锁定，由 Spring Security 抛出 LockedException
+        boolean locked = this.loginAttemptService.isLocked(loginName);
 
         return new AutumnUserDetails(uuid,
-                (String) row.get("username"),
+                loginName,
                 credential,
                 (String) row.get("nickname"),
                 (String) row.get("email"),
                 (String) row.get("phone"),
                 status == 1,
+                !locked,
                 authorities);
     }
 
@@ -120,6 +131,6 @@ public class JdbcUserDetailsService implements UserDetailsService {
         return codes.stream()
                 .filter(StringUtils::hasText)
                 .map(SimpleGrantedAuthority::new)
-                .collect(java.util.stream.Collectors.toList());
+                .collect(Collectors.toList());
     }
 }

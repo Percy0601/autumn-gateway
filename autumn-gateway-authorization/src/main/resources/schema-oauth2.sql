@@ -62,6 +62,15 @@ CREATE TABLE IF NOT EXISTS oauth2_authorization (
   INDEX idx_principal_name (principal_name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='授权记录（授权码/令牌）';
 
+-- JWT 签名密钥（含私钥）。生产环境建议对 jwk_set_json 做加密存储，并限制库账号权限
+CREATE TABLE IF NOT EXISTS oauth2_jwk (
+  id            VARCHAR(100) NOT NULL COMMENT '密钥ID（kid），多个实例共用同一条',
+  jwk_set_json  TEXT NOT NULL COMMENT 'JWK Set JSON（含私钥）',
+  created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at    DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='JWT 签名密钥对';
+
 CREATE TABLE IF NOT EXISTS oauth2_authorization_consent (
   registered_client_id VARCHAR(100) NOT NULL,
   principal_name       VARCHAR(200) NOT NULL,

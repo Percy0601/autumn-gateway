@@ -25,8 +25,9 @@ public class AutumnUserDetails extends User {
                              String email,
                              String phone,
                              boolean enabled,
+                             boolean accountNonLocked,
                              Collection<? extends GrantedAuthority> authorities) {
-        super(username, password, enabled, true, true, true, authorities);
+        super(username, password, enabled, true, true, accountNonLocked, authorities);
         this.uuid = uuid;
         this.nickname = nickname;
         this.email = email;
