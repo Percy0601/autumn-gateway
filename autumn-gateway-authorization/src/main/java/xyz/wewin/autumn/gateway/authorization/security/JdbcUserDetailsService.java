@@ -47,6 +47,21 @@ public class JdbcUserDetailsService implements UserDetailsService {
             """;
 
     /**
+     * 按用户 id 加载（微信等第三方登录用，不做密码/锁定校验）
+     */
+    private static final String LOAD_USER_BY_ID_SQL = """
+            SELECT u.id            AS id,
+                   u.uuid          AS uuid,
+                   u.username      AS username,
+                   u.nickname      AS nickname,
+                   u.email         AS email,
+                   u.phone         AS phone,
+                   u.status        AS status
+            FROM `user` u
+            WHERE u.id = :id
+            """;
+
+    /**
      * 角色查询：未过期的角色；appId 为空表示不按应用过滤
      */
     private static final String LOAD_ROLES_SQL = """
@@ -120,6 +135,50 @@ public class JdbcUserDetailsService implements UserDetailsService {
                 (String) row.get("phone"),
                 status == 1,
                 !locked,
+                authorities);
+    }
+
+    /**
+     * 按用户 id 构造 {@link AutumnUserDetails}（第三方登录：密码为空、不校验锁定）。
+     * 供微信登录等编程式登录完成后，把本地用户注入 SecurityContext 使用。
+     */
+    public AutumnUserDetails loadUserById(Long userId) {
+        Map<String, Object> row = this.jdbcTemplate.query(LOAD_USER_BY_ID_SQL,
+                new MapSqlParameterSource("id", userId), (rs) -> {
+                    if (!rs.next()) {
+                        return null;
+                    }
+                    Map<String, Object> result = new HashMap<>();
+                    result.put("id", rs.getObject("id"));
+                    result.put("uuid", rs.getString("uuid"));
+                    result.put("username", rs.getString("username"));
+                    result.put("nickname", rs.getString("nickname") == null ? "" : rs.getString("nickname"));
+                    result.put("email", rs.getString("email") == null ? "" : rs.getString("email"));
+                    result.put("phone", rs.getString("phone") == null ? "" : rs.getString("phone"));
+                    result.put("status", rs.getObject("status"));
+                    return result;
+                });
+
+        if (row == null) {
+            throw new UsernameNotFoundException("账号不存在: id=" + userId);
+        }
+
+        Long uid = ((Number) row.get("id")).longValue();
+        List<GrantedAuthority> authorities = loadAuthorities(uid);
+
+        Integer status = row.get("status") == null ? 1 : ((Number) row.get("status")).intValue();
+        String uuid = row.get("uuid") == null ? String.valueOf(uid) : (String) row.get("uuid");
+        String loginName = row.get("username") == null ? ("wx_" + uid) : (String) row.get("username");
+
+        // 第三方登录不受密码连续失败锁定限制
+        return new AutumnUserDetails(uuid,
+                loginName,
+                "",
+                (String) row.get("nickname"),
+                (String) row.get("email"),
+                (String) row.get("phone"),
+                status == 1,
+                true,
                 authorities);
     }
 
