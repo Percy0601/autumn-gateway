@@ -5,6 +5,7 @@ import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
+import xyz.wewin.autumn.gateway.authorization.config.WeChatProperties;
 
 import java.util.Map;
 
@@ -17,6 +18,12 @@ import java.util.Map;
  */
 @Controller
 public class LoginPageController {
+
+    private final WeChatProperties weChatProperties;
+
+    public LoginPageController(WeChatProperties weChatProperties) {
+        this.weChatProperties = weChatProperties;
+    }
 
     /**
      * 登录页（Spring Security formLogin 配置的 loginPage 指向这里）
@@ -48,5 +55,14 @@ public class LoginPageController {
                 "headerName", token.getHeaderName(),
                 "parameterName", token.getParameterName(),
                 "token", token.getToken());
+    }
+
+    /**
+     * 暴露当前启用的第三方登录方式，前端据此决定是否显示对应按钮
+     */
+    @GetMapping("/api/auth-providers")
+    @ResponseBody
+    public Map<String, Object> authProviders() {
+        return Map.of("wechat", this.weChatProperties.isEnabled());
     }
 }

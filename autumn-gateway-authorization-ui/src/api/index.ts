@@ -14,6 +14,10 @@ export interface LoginResponse {
   maxAttempts?: number
 }
 
+export interface AuthProviders {
+  wechat: boolean
+}
+
 /** 验证码图片地址：带时间戳避免浏览器缓存 */
 export const captchaUrl = () => `/api/captcha?t=${Date.now()}`
 
@@ -21,6 +25,12 @@ export async function fetchCsrf(): Promise<CsrfToken | null> {
   const res = await fetch('/api/csrf', { credentials: 'include' })
   if (!res.ok) return null
   return (await res.json()) as CsrfToken
+}
+
+export async function fetchProviders(): Promise<AuthProviders> {
+  const res = await fetch('/api/auth-providers', { credentials: 'include' })
+  if (!res.ok) return { wechat: false }
+  return (await res.json()) as AuthProviders
 }
 
 export async function login(payload: {

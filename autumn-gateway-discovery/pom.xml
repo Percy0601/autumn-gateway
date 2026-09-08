@@ -14,10 +14,11 @@
 		<java.version>25</java.version>
 	</properties>
 	<dependencies>
-		<!-- Spring Cloud Gateway -->
+	<!-- Spring Cloud Gateway：optional，避免传递进 Servlet 应用与 MVC 冲突 -->
 		<dependency>
 			<groupId>org.springframework.cloud</groupId>
 			<artifactId>spring-cloud-starter-gateway-server-webflux</artifactId>
+			<optional>true</optional>
 		</dependency>
 
 	</dependencies>

@@ -59,7 +59,8 @@ public class SecurityConfig {
         http
                 .authorizeHttpRequests((authorize) -> authorize
                         .requestMatchers("/login", "/index.html", "/favicon.ico",
-                                "/assets/**", "/api/captcha", "/api/csrf")
+                                "/assets/**", "/api/captcha", "/api/csrf",
+                                "/api/auth-providers", "/login/wechat", "/login/wechat/callback")
                         .permitAll()
                         .anyRequest().authenticated())
                 .formLogin((form) -> form

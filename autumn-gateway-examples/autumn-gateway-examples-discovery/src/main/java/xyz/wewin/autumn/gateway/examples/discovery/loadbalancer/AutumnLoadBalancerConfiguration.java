@@ -5,7 +5,6 @@ import org.springframework.cloud.client.ServiceInstance;
 import org.springframework.cloud.client.discovery.DiscoveryClient;
 import org.springframework.cloud.loadbalancer.core.ServiceInstanceListSupplier;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
 
 /**
@@ -24,9 +23,13 @@ import org.springframework.core.env.Environment;
  *         会覆盖默认实现——这就是"自定义 LoadBalancer 策略"的标准姿势。</li>
  * </ul>
  *
+ * <p>注意：本类<strong>不能</strong>加 {@code @Configuration}，也不能被组件扫描到——
+ * 它只能作为 {@code defaultConfiguration} 由 {@code LoadBalancerClientFactory} 加载进
+ * lb:// 子上下文（子上下文的 Environment 才带 {@code loadbalancer.client.name}）。
+ * 若被主上下文扫描注册，supplier 构造时会因 serviceId 为空直接抛异常。</p>
+ *
  * @author: autumn-gateway
  */
-@Configuration(proxyBeanMethods = false)
 public class AutumnLoadBalancerConfiguration {
 
     /**

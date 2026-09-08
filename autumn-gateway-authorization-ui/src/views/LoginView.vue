@@ -33,8 +33,13 @@ const onSubmit = async () => {
   if (auth.locked) startCountdown(1)
 }
 
+const loginWithWeChat = () => {
+  window.location.href = '/login/wechat'
+}
+
 onMounted(() => {
   auth.ensureCsrf()
+  auth.loadProviders()
   auth.refreshCaptcha()
 })
 onUnmounted(() => window.clearInterval(timer))
@@ -156,6 +161,26 @@ const countdownText = () => {
             </svg>
             <span>{{ auth.loading ? '登录中…' : auth.locked ? '账号已锁定' : '登 录' }}</span>
           </button>
+
+          <!-- 微信登录（仅后端 autumn.wechat.enabled=true 时显示） -->
+          <div v-if="auth.wechatEnabled" class="mt-4">
+            <div class="flex items-center gap-3">
+              <div class="flex-1 h-px bg-gray-100"></div>
+              <span class="text-12px text-gray-400">其他登录方式</span>
+              <div class="flex-1 h-px bg-gray-100"></div>
+            </div>
+            <button
+              type="button"
+              @click="loginWithWeChat"
+              class="mt-4 w-full h-11 rounded-xl text-15px font-medium text-white shadow-lg shadow-[#07c160]/25 transition bg-[#07c160] hover:bg-[#06ad56] flex items-center justify-center gap-2"
+            >
+              <svg viewBox="0 0 24 24" class="w-5 h-5" fill="currentColor">
+                <path d="M9.1 3.5C5.2 3.5 2 6.2 2 9.5c0 1.9 1.1 3.6 2.8 4.8l-.7 2.1 2.4-1.2c.9.2 1.8.4 2.6.4h.7a5.6 5.6 0 01-.2-1.5c0-3.3 3.1-5.9 6.9-5.9h.7C14.5 5.5 12 3.5 9.1 3.5z" />
+                <path d="M22 13.8c0-2.8-2.7-5.1-6-5.1s-6 2.3-6 5.1 2.7 5.1 6 5.1c.8 0 1.5-.1 2.2-.3l2 .9-.6-1.6c1.5-1 2.4-2.5 2.4-3.9z" />
+              </svg>
+              <span>微信扫码登录</span>
+            </button>
+          </div>
         </form>
 
         <p class="mt-6 text-center text-12px text-gray-400">

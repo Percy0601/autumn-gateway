@@ -35,10 +35,11 @@
             <artifactId>spring-cloud-starter-loadbalancer</artifactId>
         </dependency>
 
-        <!-- Consul 服务发现 -->
+        <!-- Consul 服务发现：optional，由使用方自行声明（避免把 Consul 强加给非 Consul 应用） -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-consul-discovery</artifactId>
+            <optional>true</optional>
         </dependency>
     </dependencies>
 

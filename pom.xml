@@ -10,7 +10,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>4.1.0</version>
+		<version>4.1.1</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 
@@ -35,7 +35,7 @@
         <bucket4j-core.version>8.0.1</bucket4j-core.version>
         <caffeine.version>3.2.4</caffeine.version>
 		<mybatis-spring-boot-starter.version>4.1.0</mybatis-spring-boot-starter.version>
-        <spring-boot-starter-oauth2-authorization-server.version>4.1.1</spring-boot-starter-oauth2-authorization-server.version>
+		<spring-boot-starter-oauth2-authorization-server.version>4.1.1</spring-boot-starter-oauth2-authorization-server.version>
         <spring-cloud-starter-gateway-server-webflux.version>5.0.3</spring-cloud-starter-gateway-server-webflux.version>
 	</properties>
 
@@ -109,7 +109,7 @@
 				</exclusions>
 			</dependency>
 
-            <!-- 新版 OAuth2 授权服务器 -->
+            <!-- 新版 OAuth2 授权服务器（Boot 父 POM 未托管其版本，需显式指定，与 Boot 版本保持一致） -->
             <dependency>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-starter-oauth2-authorization-server</artifactId>

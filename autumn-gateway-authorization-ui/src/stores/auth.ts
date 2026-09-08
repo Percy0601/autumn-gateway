@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { captchaUrl, fetchCsrf, login, type CsrfToken, type LoginResponse } from '@/api'
+import { captchaUrl, fetchCsrf, fetchProviders, login, type AuthProviders, type CsrfToken, type LoginResponse } from '@/api'
 
 export const useAuthStore = defineStore('auth', () => {
   const csrf = ref<CsrfToken | null>(null)
@@ -10,11 +10,18 @@ export const useAuthStore = defineStore('auth', () => {
   const locked = ref(false)
   const remainingAttempts = ref<number | null>(null)
   const maxAttempts = ref(10)
+  const providers = ref<AuthProviders>({ wechat: false })
+  const wechatEnabled = ref(false)
 
   async function ensureCsrf(force = false) {
     if (!csrf.value || force) {
       csrf.value = await fetchCsrf()
     }
+  }
+
+  async function loadProviders() {
+    providers.value = await fetchProviders()
+    wechatEnabled.value = providers.value.wechat
   }
 
   function refreshCaptcha() {
@@ -65,7 +72,9 @@ export const useAuthStore = defineStore('auth', () => {
     locked,
     remainingAttempts,
     maxAttempts,
+    wechatEnabled,
     ensureCsrf,
+    loadProviders,
     refreshCaptcha,
     submit,
   }

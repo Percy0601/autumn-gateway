@@ -4,7 +4,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.cloud.client.discovery.DiscoveryClient;
 import org.springframework.cloud.loadbalancer.core.ServiceInstanceListSupplier;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
 
 /**
@@ -16,9 +15,11 @@ import org.springframework.core.env.Environment;
  * {@code @LoadBalancerClients(defaultConfiguration = ...)} 注册进去后，
  * 自定义 supplier 会覆盖默认实现——这是自定义 LoadBalancer 策略的标准姿势。</p>
  *
+ * <p>注意：本类<strong>不能</strong>加 {@code @Configuration}，否则会被组件扫描进主上下文，
+ * 导致 supplier 在缺 {@code loadbalancer.client.name} 的环境下构造失败。</p>
+ *
  * @author: autumn-gateway
  */
-@Configuration(proxyBeanMethods = false)
 public class AutumnLoadBalancerConfiguration {
 
     @Bean
