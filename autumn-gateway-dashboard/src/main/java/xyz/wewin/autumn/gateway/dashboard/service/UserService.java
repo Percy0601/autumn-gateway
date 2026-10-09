@@ -43,8 +43,6 @@ public class UserService {
     /** 未显式指定初始密码时使用的默认密码（首次登录后应强制修改） */
     @Value("${autumn.user.default-password:Autumn@123456}")
     private String defaultPassword;
-//    @Autowired
-//    private GeneralMapper generalMapper;
 
     public Page<User> list(int page, int size, String username, String nickname, String phone) {
         long offset = (long) (page - 1) * size;
@@ -261,7 +259,7 @@ public class UserService {
                 .collect(Collectors.toList());
         if (roleIds.isEmpty())
             return Collections.emptyList();
-        List<Role> roles = null;
+        List<Role> roles = new ArrayList<>();
         roleRepository.findAllById(roleIds)
                 .forEach(roles::add);
         return roles;

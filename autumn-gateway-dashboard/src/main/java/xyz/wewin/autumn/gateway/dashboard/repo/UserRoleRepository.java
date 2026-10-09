@@ -49,7 +49,7 @@ public interface UserRoleRepository extends CrudRepository<UserRole, Long> {
         WHERE (:appId IS NULL OR ur.app_id = :appId)
           AND (:userId IS NULL OR ur.user_id= :userId)
         ORDER BY id DESC
-        LIMIT :limit, :offset
+        LIMIT :offset OFFSET :limit
         """)
     List<UserRole> findByAppIdAndUserId(@Param("appId") Long appId,
                                                 @Param("userId") Long userId,

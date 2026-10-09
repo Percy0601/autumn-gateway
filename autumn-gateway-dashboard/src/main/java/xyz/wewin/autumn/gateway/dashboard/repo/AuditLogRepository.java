@@ -21,7 +21,7 @@ public interface AuditLogRepository extends CrudRepository<AuditLog, Long> {
           AND (:startTime IS NULL OR a.created_at >= :startTime)
           AND (:endTime IS NULL OR a.created_at <= :endTime)
         ORDER BY a.created_at DESC
-        LIMIT :limit, :offset
+        LIMIT :offset OFFSET :limit
         """)
     List<AuditLog> findWithPage(@Param("appId") Long appId,
                                 @Param("userId") Long userId,

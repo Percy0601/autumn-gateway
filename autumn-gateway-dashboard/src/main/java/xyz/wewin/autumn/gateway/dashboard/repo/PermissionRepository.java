@@ -16,11 +16,11 @@ public interface PermissionRepository extends CrudRepository<Permission, Long> {
     @Query("""
         SELECT p.* FROM permission p
         WHERE (:appId IS NULL OR p.app_id = :appId)
-          AND (:code IS NULL OR p.code LIKE '%' || :code || '%')
-          AND (:name IS NULL OR p.name LIKE '%' || :name || '%')
+          AND (:code IS NULL OR p.code LIKE CONCAT('%', :code, '%'))
+          AND (:name IS NULL OR p.name LIKE CONCAT('%', :name, '%'))
           AND (:permType IS NULL OR p.perm_type = :permType)
         ORDER BY p.id DESC
-        LIMIT :limit, :offset
+        LIMIT :offset OFFSET :limit
         """)
     List<Permission> findWithPage(@Param("appId") Long appId,
                                   @Param("code") String code,
@@ -34,8 +34,8 @@ public interface PermissionRepository extends CrudRepository<Permission, Long> {
     @Query("""
         SELECT COUNT(1) FROM permission p
         WHERE (:appId IS NULL OR p.app_id = :appId)
-          AND (:code IS NULL OR p.code LIKE '%' || :code || '%')
-          AND (:name IS NULL OR p.name LIKE '%' || :name || '%')
+          AND (:code IS NULL OR p.code LIKE CONCAT('%', :code, '%'))
+          AND (:name IS NULL OR p.name LIKE CONCAT('%', :name, '%'))
           AND (:permType IS NULL OR p.perm_type = :permType)
         """)
     long countWithFilter(Long appId, String code, String name, String permType);

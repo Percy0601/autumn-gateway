@@ -17,10 +17,10 @@ public interface RoleRepository extends CrudRepository<Role, Long> {
     @Query("""
         SELECT r.* FROM role r
         WHERE (:appId IS NULL OR r.app_id = :appId)
-          AND (:code IS NULL OR r.code LIKE '%' || :code || '%')
-          AND (:name IS NULL OR r.name LIKE '%' || :name || '%')
+          AND (:code IS NULL OR r.code LIKE CONCAT('%', :code, '%'))
+          AND (:name IS NULL OR r.name LIKE CONCAT('%', :name, '%'))
         ORDER BY r.id DESC
-        LIMIT :limit, :offset
+        LIMIT :offset OFFSET :limit
         """)
     List<Role> findWithPage(@Param("appId") Long appId,
                             @Param("code") String code,
@@ -34,9 +34,8 @@ public interface RoleRepository extends CrudRepository<Role, Long> {
     @Query("""
         SELECT COUNT(1) FROM role r
         WHERE (:appId IS NULL OR r.app_id = :appId)
-          AND (:code IS NULL OR r.code LIKE '%' || :code || '%')
-          AND (:name IS NULL OR r.name LIKE '%' || :name || '%')
-        ORDER BY r.id DESC
+          AND (:code IS NULL OR r.code LIKE CONCAT('%', :code, '%'))
+          AND (:name IS NULL OR r.name LIKE CONCAT('%', :name, '%'))
         """)
     long countWithFilter(Long appId, String code, String name);
 }

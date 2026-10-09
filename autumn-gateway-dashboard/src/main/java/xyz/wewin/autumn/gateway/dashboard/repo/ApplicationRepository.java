@@ -16,7 +16,7 @@ public interface ApplicationRepository extends CrudRepository<Application, Long>
         WHERE (:appId IS NULL OR :appId = '' OR app.appid = :appId)
           AND (:name IS NULL OR :name = '' OR app.name LIKE CONCAT('%', :name, '%'))
         ORDER BY id DESC
-        LIMIT :limit, :offset
+        LIMIT :offset OFFSET :limit
         """)
     List<Application> findWithPage(@Param("appId")String appId,
                                    @Param("name")String name,

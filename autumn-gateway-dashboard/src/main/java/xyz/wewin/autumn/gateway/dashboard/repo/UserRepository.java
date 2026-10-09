@@ -14,12 +14,12 @@ import java.util.Optional;
 public interface UserRepository extends CrudRepository<User, Long> {
 
     @Query("""
-        SELECT u.* FROM user u
+        SELECT u.* FROM "user" u
         WHERE (:username IS NULL OR u.username LIKE CONCAT('%', :username, '%'))
           AND (:nickname IS NULL OR u.nickname LIKE CONCAT('%', :nickname, '%'))
           AND (:phone IS NULL OR u.phone LIKE CONCAT('%', :phone, '%'))
         ORDER BY u.id DESC
-        LIMIT :limit, :offset
+        LIMIT :offset OFFSET :limit
         """)
     List<User> findWithPage(@Param("username") String username,
                             @Param("nickname") String nickname,
@@ -30,11 +30,10 @@ public interface UserRepository extends CrudRepository<User, Long> {
     Optional<User> findByUsername(String username);
 
     @Query("""
-        SELECT COUNT(1) FROM user u
-        WHERE (:username IS NULL OR u.username LIKE '%' || :username || '%')
-          AND (:nickname IS NULL OR u.nickname LIKE '%' || :nickname || '%')
-          AND (:phone IS NULL OR u.phone LIKE '%' || :phone || '%')
-        ORDER BY u.id DESC
+        SELECT COUNT(1) FROM "user" u
+        WHERE (:username IS NULL OR u.username LIKE CONCAT('%', :username, '%'))
+          AND (:nickname IS NULL OR u.nickname LIKE CONCAT('%', :nickname, '%'))
+          AND (:phone IS NULL OR u.phone LIKE CONCAT('%', :phone, '%'))
         """)
     long countWithFilter(String username, String nickname, String phone);
 }
