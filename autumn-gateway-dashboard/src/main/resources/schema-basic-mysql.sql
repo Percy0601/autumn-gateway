@@ -173,13 +173,13 @@ CREATE TABLE IF NOT EXISTS `basic_role_permission` (
 -- basic_user 基础用户表
 CREATE TABLE IF NOT EXISTS `basic_user` (
     `id`             BIGINT NOT NULL AUTO_INCREMENT COMMENT 'ID',
-    `emp_id`         VARCHAR(50) NOT NULL DEFAULT '' COMMENT 'ESB人员工号',
+    `emp_no`         VARCHAR(50) NOT NULL DEFAULT '' COMMENT 'ESB人员工号',
     `admin`          INT NOT NULL DEFAULT 0 COMMENT '是否是管理员：1-是；0：否',
     `latest_role_id` BIGINT NOT NULL DEFAULT 0 COMMENT '最近登录使用角色Id',
     `create_time`    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time`    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (`id`),
-    KEY `basic_user_emp_id_IDX` (`emp_id`)
+    KEY `user_emp_no_IDX` (`emp_no`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='基础用户表';
 
 
@@ -218,7 +218,6 @@ CREATE TABLE IF NOT EXISTS `basic_user_group` (
 CREATE TABLE IF NOT EXISTS `basic_user_role` (
     `id`          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'ID',
     `app_id`      TINYINT NOT NULL DEFAULT 0 COMMENT '应用ID：1-运营后台 2-POP后台 3-B2B后台 4-互联网医院后台 5-数据中台 6-销售助手 100-商家后台',
-    `eid`         BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '企业ID',
     `user_id`     BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '用户ID',
     `role_id`     BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '角色ID',
     `del_flag`    TINYINT NOT NULL DEFAULT 0 COMMENT '是否删除：0-否 1-是',
