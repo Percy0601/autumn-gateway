@@ -13,6 +13,8 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/system/role")
+/** @deprecated 已迁移到 /api/system/basic/role（basic_role），后续删除。 */
+@Deprecated
 public class RoleController {
 
     @Autowired

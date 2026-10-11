@@ -32,6 +32,53 @@ export const PERM_TYPE_MAP = {
 export const MATCH_TYPES = ['exact', 'prefix', 'suffix']
 export const HTTP_METHODS = ['ALL', 'GET', 'POST', 'PUT', 'DELETE', 'PATCH']
 
+/** 应用编号枚举（basic_role / basic_menu 的 app_id 为 TINYINT 应用编码，非 basic_app.id） */
+export const APP_ID_OPTIONS = [
+  { value: 1, label: '1-运营后台' },
+  { value: 2, label: '2-POP后台' },
+  { value: 3, label: '3-B2B后台' },
+  { value: 4, label: '4-互联网医院后台' },
+  { value: 5, label: '5-数据中台' },
+  { value: 6, label: '6-销售助手' },
+  { value: 10, label: '10-数据洞察' },
+  { value: 100, label: '100-商家后台' },
+]
+export const appIdLabel = (v) =>
+  APP_ID_OPTIONS.find((o) => o.value === v)?.label || `应用#${v}`
+
+/** 角色类型：1-系统角色 2-自定义角色 */
+export const ROLE_TYPE_OPTIONS = [
+  { value: 1, label: '系统角色' },
+  { value: 2, label: '自定义角色' },
+]
+export const roleTypeLabel = (v) =>
+  ROLE_TYPE_OPTIONS.find((o) => o.value === v)?.label || `类型#${v}`
+
+/** 角色管理员标记：1-管理员 2-普通 */
+export const MASTER_OPTIONS = [
+  { value: 1, label: '管理员' },
+  { value: 2, label: '普通' },
+]
+export const masterLabel = (v) =>
+  MASTER_OPTIONS.find((o) => o.value === v)?.label || `标记#${v}`
+
+/** 菜单类型：1-目录 2-菜单 3-按钮 */
+export const MENU_TYPE_OPTIONS = [
+  { value: 1, label: '目录' },
+  { value: 2, label: '菜单' },
+  { value: 3, label: '按钮' },
+]
+export const menuTypeLabel = (v) =>
+  MENU_TYPE_OPTIONS.find((o) => o.value === v)?.label || `类型#${v}`
+
+/** 菜单状态：1-启用 2-停用 */
+export const MENU_STATUS_TAG = { 1: 'success', 2: 'info' }
+export const menuStatusLabel = (v) => (v === 1 ? '启用' : '停用')
+
+/** 操作日志状态：0-正常 1-异常 */
+export const OPER_STATUS_TAG = { 0: 'success', 1: 'danger' }
+export const operStatusLabel = (v) => (v === 1 ? '异常' : '正常')
+
 export const PERM_TYPE_TAG = {
   MENU: 'purple',
   API: 'primary',

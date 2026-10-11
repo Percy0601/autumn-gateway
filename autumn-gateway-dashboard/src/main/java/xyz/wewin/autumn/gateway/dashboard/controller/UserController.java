@@ -15,6 +15,8 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/system/user")
+/** @deprecated 已迁移到 /api/system/basic/user（basic_user），后续删除。 */
+@Deprecated
 public class UserController {
 
     @Autowired

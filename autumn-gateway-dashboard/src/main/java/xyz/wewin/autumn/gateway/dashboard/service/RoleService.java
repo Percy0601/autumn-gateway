@@ -18,6 +18,8 @@ import java.util.stream.Collectors;
 
 @Service
 @Transactional
+/** @deprecated 已迁移到 BasicRoleService（basic_role），后续删除。 */
+@Deprecated
 public class RoleService {
 
     @Autowired

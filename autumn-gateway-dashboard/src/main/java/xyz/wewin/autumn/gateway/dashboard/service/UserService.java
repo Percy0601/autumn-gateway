@@ -20,6 +20,8 @@ import java.util.stream.Collectors;
 
 @Service
 @Transactional
+/** @deprecated 已迁移到 BasicUserService（basic_user），后续删除。 */
+@Deprecated
 public class UserService {
 
     @Autowired

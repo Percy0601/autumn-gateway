@@ -11,6 +11,8 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/system/app")
+/** @deprecated 已迁移到 /api/system/basic/app（basic_app），后续删除。 */
+@Deprecated
 public class ApplicationController {
     @Autowired
     private ApplicationService applicationService;

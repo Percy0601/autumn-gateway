@@ -4,8 +4,13 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   CaretBottom,
+  Coin,
+  Connection,
+  Document,
   Expand,
+  Files,
   Fold,
+  Menu as MenuIcon,
   Setting,
   SwitchButton,
   UserFilled,
@@ -28,10 +33,16 @@ const menus = [
     title: '系统管理',
     icon: Setting,
     children: [
-      { index: '/system/app', title: '应用管理' },
-      { index: '/system/role', title: '角色管理' },
-      { index: '/system/user', title: '用户管理' },
-      { index: '/system/permission', title: '权限管理' },
+      { index: '/system/app', title: '应用管理', icon: Setting },
+      { index: '/system/role', title: '角色管理', icon: UserFilled },
+      { index: '/system/user', title: '用户管理', icon: UserFilled },
+      { index: '/system/menu', title: '菜单管理', icon: MenuIcon },
+      { index: '/system/permission', title: '权限管理', icon: MenuIcon },
+      { index: '/system/resource', title: '资源管理', icon: Coin },
+      { index: '/system/group', title: '用户组管理', icon: Files },
+      { index: '/system/group-role', title: '用户组-角色', icon: Connection },
+      { index: '/system/user-group', title: '用户-用户组', icon: Connection },
+      { index: '/system/oper-log', title: '日志管理', icon: Document },
     ],
   },
 ]
@@ -90,7 +101,8 @@ onMounted(() => {
                 <span>{{ menu.title }}</span>
               </template>
               <el-menu-item v-for="child in menu.children" :key="child.index" :index="child.index">
-                {{ child.title }}
+                <el-icon v-if="child.icon"><component :is="child.icon" /></el-icon>
+                <span>{{ child.title }}</span>
               </el-menu-item>
             </el-sub-menu>
             <el-menu-item v-else :index="menu.index">

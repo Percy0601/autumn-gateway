@@ -1,12 +1,9 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Key, Plus, Search, UserFilled } from '@element-plus/icons-vue'
-import http from '../../../utils/request'
-import { copyText, fmtDateTime, REGEX } from '../../../utils/format'
-
-const router = useRouter()
+import { Plus, Search } from '@element-plus/icons-vue'
+import { basicUserApi } from '../../../api/basic'
+import { copyText, fmtDateTime } from '../../../utils/format'
 
 const loading = ref(false)
 const rows = ref([])
@@ -15,14 +12,13 @@ const total = ref(0)
 const query = reactive({
   current: 1,
   pageSize: 10,
-  username: '',
-  nickname: '',
+  empNo: '',
 })
 
 async function loadData() {
   loading.value = true
   try {
-    const body = await http.get('/api/system/user', { params: query })
+    const body = await basicUserApi.list(query)
     rows.value = body.data || []
     total.value = body.total || 0
   } finally {
@@ -36,28 +32,22 @@ function handleSearch() {
 }
 
 function handleReset() {
-  query.username = ''
-  query.nickname = ''
+  query.empNo = ''
   handleSearch()
 }
 
-function goDetail(row) {
-  router.push(`/system/user/detail/${row.id}`)
-}
-
-async function changeStatus(row) {
-  const disable = row.status === 1
+async function handleRemove(row) {
   try {
     await ElMessageBox.confirm(
-      disable ? '确定禁用？' : '确定启用？',
+      `确定删除员工 ${row.empNo} 吗？`,
       '提示',
       { type: 'warning', confirmButtonText: '确定', cancelButtonText: '取消' },
     )
   } catch {
     return
   }
-  await http.put(`/api/system/user/${row.id}/${disable ? 'disable' : 'enable'}`)
-  ElMessage.success(disable ? '已禁用' : '已启用')
+  await basicUserApi.remove(row.id)
+  ElMessage.success('已删除')
   loadData()
 }
 
@@ -67,51 +57,30 @@ const saving = ref(false)
 const currentRow = ref(null)
 const formRef = ref()
 const form = reactive({
-  username: '',
-  nickname: '',
-  avatar: '',
-  email: '',
-  phone: '',
   empNo: '',
-  status: true,
+  admin: false,
+  latestRoleId: '',
 })
 
 const rules = {
-  username: [
-    { required: true, message: '请输入用户名', trigger: 'blur' },
-    {
-      pattern: REGEX.username,
-      message: '以字母开头，只允许字母、数字、下划线，3-32位',
-      trigger: 'blur',
-    },
+  empNo: [
+    { required: true, message: '请输入员工工号', trigger: 'blur' },
+    { min: 3, max: 50, message: '长度 3-50 位', trigger: 'blur' },
   ],
-  email: [{ type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' }],
 }
 
 function openCreate() {
   currentRow.value = null
-  Object.assign(form, {
-    username: '',
-    nickname: '',
-    avatar: '',
-    email: '',
-    phone: '',
-    empNo: '',
-    status: true,
-  })
+  Object.assign(form, { empNo: '', admin: false, latestRoleId: '' })
   drawerOpen.value = true
 }
 
 function openEdit(row) {
   currentRow.value = row
   Object.assign(form, {
-    username: row.username,
-    nickname: row.nickname || '',
-    avatar: row.avatar || '',
-    email: row.email || '',
-    phone: row.phone || '',
-    empNo: row.empNo || '',
-    status: row.status === 1,
+    empNo: row.empNo,
+    admin: row.admin === 1,
+    latestRoleId: row.latestRoleId || '',
   })
   drawerOpen.value = true
 }
@@ -122,19 +91,15 @@ function handleSubmit() {
     saving.value = true
     try {
       const payload = {
-        ...form,
-        nickname: form.nickname || undefined,
-        avatar: form.avatar || undefined,
-        email: form.email || undefined,
-        phone: form.phone || undefined,
-        empNo: form.empNo || undefined,
-        status: form.status ? 1 : 0,
+        empNo: form.empNo,
+        admin: form.admin ? 1 : 0,
+        latestRoleId: Number(form.latestRoleId) || 0,
       }
       if (currentRow.value) {
-        await http.put(`/api/system/user/${currentRow.value.id}`, payload)
+        await basicUserApi.update(currentRow.value.id, payload)
         ElMessage.success('更新成功')
       } else {
-        await http.post('/api/system/user', payload)
+        await basicUserApi.create(payload)
         ElMessage.success('创建成功')
       }
       drawerOpen.value = false
@@ -143,37 +108,6 @@ function handleSubmit() {
       saving.value = false
     }
   })
-}
-
-// ---------- 重置密码 ----------
-const pwdModalOpen = ref(false)
-const pwdTarget = ref(null)
-const newPassword = ref('')
-const resetting = ref(false)
-
-function openPwdModal(row) {
-  pwdTarget.value = row
-  newPassword.value = ''
-  pwdModalOpen.value = true
-}
-
-async function handleResetPassword() {
-  if (!newPassword.value || newPassword.value.length < 6) {
-    ElMessage.warning('密码长度至少6位')
-    return
-  }
-  resetting.value = true
-  try {
-    await http.put(`/api/system/user/${pwdTarget.value.id}/reset-password`, {
-      password: newPassword.value,
-    })
-    ElMessage.success(`已重置 ${pwdTarget.value.username} 的密码`)
-    pwdModalOpen.value = false
-  } catch {
-    ElMessage.error('重置密码失败')
-  } finally {
-    resetting.value = false
-  }
 }
 
 onMounted(loadData)
@@ -191,18 +125,9 @@ onMounted(loadData)
 
       <!-- 搜索 -->
       <el-form inline class="pro-search" @submit.prevent>
-        <el-form-item label="用户名">
+        <el-form-item label="员工工号">
           <el-input
-            v-model="query.username"
-            placeholder="请输入"
-            clearable
-            style="width: 220px"
-            @keyup.enter="handleSearch"
-          />
-        </el-form-item>
-        <el-form-item label="昵称">
-          <el-input
-            v-model="query.nickname"
+            v-model="query.empNo"
             placeholder="请输入"
             clearable
             style="width: 220px"
@@ -218,61 +143,36 @@ onMounted(loadData)
       <!-- 表格 -->
       <div class="pro-table-wrap">
         <el-table v-loading="loading" :data="rows" row-key="id" stripe>
-          <el-table-column prop="id" label="ID" width="60" />
-          <el-table-column label="用户名" min-width="120">
+          <el-table-column prop="id" label="ID" width="70" />
+          <el-table-column label="员工工号" min-width="140">
             <template #default="{ row }">
               <el-tooltip content="点击复制" placement="top">
-                <span class="copy-text" @click="copyText(row.username)">{{ row.username }}</span>
+                <span class="copy-text" @click="copyText(row.empNo)">{{ row.empNo }}</span>
               </el-tooltip>
             </template>
           </el-table-column>
-          <el-table-column label="昵称" min-width="140" show-overflow-tooltip>
+          <el-table-column label="是否管理员" width="100" align="center">
             <template #default="{ row }">
-              <span class="nickname-cell">
-                <el-avatar :size="24" :src="row.avatar">
-                  <el-icon><UserFilled /></el-icon>
-                </el-avatar>
-                <span>{{ row.nickname || '-' }}</span>
-              </span>
-            </template>
-          </el-table-column>
-          <el-table-column prop="email" label="邮箱" min-width="170" show-overflow-tooltip>
-            <template #default="{ row }">{{ row.email || '-' }}</template>
-          </el-table-column>
-          <el-table-column prop="phone" label="手机" min-width="120">
-            <template #default="{ row }">{{ row.phone || '-' }}</template>
-          </el-table-column>
-          <el-table-column prop="empNo" label="员工号" min-width="100">
-            <template #default="{ row }">{{ row.empNo || '-' }}</template>
-          </el-table-column>
-          <el-table-column label="状态" width="80" align="center">
-            <template #default="{ row }">
-              <el-tag :type="row.status === 1 ? 'success' : 'danger'" size="small">
-                {{ row.status === 1 ? '正常' : '禁用' }}
+              <el-tag :type="row.admin === 1 ? 'danger' : 'info'" size="small">
+                {{ row.admin === 1 ? '管理员' : '普通' }}
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="最后登录" width="170">
-            <template #default="{ row }">{{ fmtDateTime(row.lastLoginAt) }}</template>
-          </el-table-column>
-          <el-table-column label="操作" width="250" fixed="right">
+          <el-table-column label="最近登录角色" min-width="130">
             <template #default="{ row }">
-              <el-link type="primary" class="link-op" @click="goDetail(row)">详情</el-link>
+              {{ row.latestRoleId ? `角色#${row.latestRoleId}` : '-' }}
+            </template>
+          </el-table-column>
+          <el-table-column label="创建时间" width="170">
+            <template #default="{ row }">{{ fmtDateTime(row.createTime) }}</template>
+          </el-table-column>
+          <el-table-column label="更新时间" width="170">
+            <template #default="{ row }">{{ fmtDateTime(row.updateTime) }}</template>
+          </el-table-column>
+          <el-table-column label="操作" width="140" fixed="right">
+            <template #default="{ row }">
               <el-link type="primary" class="link-op" @click="openEdit(row)">编辑</el-link>
-              <el-link class="link-op orange-link" :icon="Key" @click="openPwdModal(row)">
-                重置密码
-              </el-link>
-              <el-popconfirm
-                :title="row.status === 1 ? '确定禁用？' : '确定启用？'"
-                width="160"
-                @confirm="changeStatus(row)"
-              >
-                <template #reference>
-                  <el-link :class="row.status === 1 ? 'link-op disabled-link' : 'link-op enabled-link'">
-                    {{ row.status === 1 ? '禁用' : '启用' }}
-                  </el-link>
-                </template>
-              </el-popconfirm>
+              <el-link type="danger" class="link-op" @click="handleRemove(row)">删除</el-link>
             </template>
           </el-table-column>
         </el-table>
@@ -297,34 +197,22 @@ onMounted(loadData)
     <el-drawer
       v-model="drawerOpen"
       :title="currentRow ? '编辑用户' : '新增用户'"
-      size="450px"
+      size="420px"
       :close-on-click-modal="false"
     >
-      <el-form ref="formRef" :model="form" :rules="rules" label-width="90px">
-        <el-form-item label="用户名" prop="username">
+      <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
+        <el-form-item label="员工工号" prop="empNo">
           <el-input
-            v-model="form.username"
+            v-model="form.empNo"
             :disabled="!!currentRow"
-            placeholder="例如：admin"
+            placeholder="例如：E10086"
           />
         </el-form-item>
-        <el-form-item label="昵称">
-          <el-input v-model="form.nickname" placeholder="例如：管理员" />
+        <el-form-item label="是否管理员">
+          <el-switch v-model="form.admin" active-text="是" inactive-text="否" />
         </el-form-item>
-        <el-form-item label="头像 URL">
-          <el-input v-model="form.avatar" placeholder="https://example.com/avatar.png" />
-        </el-form-item>
-        <el-form-item label="邮箱" prop="email">
-          <el-input v-model="form.email" placeholder="admin@example.com" />
-        </el-form-item>
-        <el-form-item label="手机号">
-          <el-input v-model="form.phone" placeholder="13800138000" />
-        </el-form-item>
-        <el-form-item label="员工号">
-          <el-input v-model="form.empNo" placeholder="EMP-001" />
-        </el-form-item>
-        <el-form-item label="状态">
-          <el-switch v-model="form.status" active-text="启用" inactive-text="禁用" />
+        <el-form-item label="最近登录角色">
+          <el-input-number v-model="form.latestRoleId" :min="0" :precision="0" style="width: 100%" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -334,42 +222,5 @@ onMounted(loadData)
         </div>
       </template>
     </el-drawer>
-
-    <!-- 重置密码弹窗 -->
-    <el-dialog
-      v-model="pwdModalOpen"
-      :title="`重置密码 — ${pwdTarget?.username || ''}`"
-      width="420px"
-      :close-on-click-modal="false"
-    >
-      <div style="margin-bottom: 8px">
-        为用户 <strong>{{ pwdTarget?.username }}</strong> 设置新密码：
-      </div>
-      <el-input
-        v-model="newPassword"
-        type="password"
-        show-password
-        placeholder="请输入新密码（至少6位）"
-        @keyup.enter="handleResetPassword"
-      />
-      <template #footer>
-        <el-button @click="pwdModalOpen = false">取消</el-button>
-        <el-button type="primary" :loading="resetting" @click="handleResetPassword">
-          确认重置
-        </el-button>
-      </template>
-    </el-dialog>
   </div>
 </template>
-
-<style scoped>
-.nickname-cell {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.orange-link {
-  color: #fa8c16;
-}
-</style>

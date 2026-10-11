@@ -16,6 +16,8 @@ import java.util.Optional;
 
 @Service
 @Transactional
+/** @deprecated 已迁移到 BasicAppService（basic_app），后续删除。 */
+@Deprecated
 public class ApplicationService {
 
     @Autowired

@@ -16,6 +16,8 @@ import java.util.Optional;
 
 @Service
 @Transactional
+/** @deprecated 权限能力已由 BasicResourceService / BasicMenuService 承接，后续删除。 */
+@Deprecated
 public class PermissionService {
 
     @Autowired

@@ -2,7 +2,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search } from '@element-plus/icons-vue'
-import http from '../../../utils/request'
+import { basicAppApi } from '../../../api/basic'
 import { copyText, fmtDateTime, REGEX } from '../../../utils/format'
 
 const loading = ref(false)
@@ -12,14 +12,14 @@ const total = ref(0)
 const query = reactive({
   current: 1,
   pageSize: 10,
-  appid: '',
+  appCode: '',
   name: '',
 })
 
 async function loadData() {
   loading.value = true
   try {
-    const body = await http.get('/api/system/app', { params: query })
+    const body = await basicAppApi.list(query)
     rows.value = body.data || []
     total.value = body.total || 0
   } finally {
@@ -33,7 +33,7 @@ function handleSearch() {
 }
 
 function handleReset() {
-  query.appid = ''
+  query.appCode = ''
   query.name = ''
   handleSearch()
 }
@@ -49,7 +49,8 @@ async function changeStatus(row) {
   } catch {
     return
   }
-  await http.put(`/api/system/app/${row.id}/${disable ? 'disable' : 'enable'}`)
+  if (disable) await basicAppApi.disable(row.id)
+  else await basicAppApi.enable(row.id)
   ElMessage.success(disable ? '已禁用' : '已启用')
   loadData()
 }
@@ -60,7 +61,7 @@ const saving = ref(false)
 const currentRow = ref(null)
 const formRef = ref()
 const form = reactive({
-  appid: '',
+  appCode: '',
   name: '',
   basePath: '',
   description: '',
@@ -68,7 +69,7 @@ const form = reactive({
 })
 
 const rules = {
-  appid: [
+  appCode: [
     { required: true, message: '请输入应用标识', trigger: 'blur' },
     { pattern: REGEX.appid, message: '以小写字母开头，3-32位', trigger: 'blur' },
   ],
@@ -85,7 +86,7 @@ const rules = {
 function openCreate() {
   currentRow.value = null
   Object.assign(form, {
-    appid: '',
+    appCode: '',
     name: '',
     basePath: '',
     description: '',
@@ -97,7 +98,7 @@ function openCreate() {
 function openEdit(row) {
   currentRow.value = row
   Object.assign(form, {
-    appid: row.appid,
+    appCode: row.appCode,
     name: row.name,
     basePath: row.basePath || '',
     description: row.description || '',
@@ -118,10 +119,10 @@ function handleSubmit() {
         status: form.status ? 1 : 0,
       }
       if (currentRow.value) {
-        await http.put(`/api/system/app/${currentRow.value.id}`, payload)
+        await basicAppApi.update(currentRow.value.id, payload)
         ElMessage.success('更新成功')
       } else {
-        await http.post('/api/system/app', payload)
+        await basicAppApi.create(payload)
         ElMessage.success('创建成功')
       }
       drawerOpen.value = false
@@ -149,7 +150,7 @@ onMounted(loadData)
       <el-form inline class="pro-search" @submit.prevent>
         <el-form-item label="应用标识">
           <el-input
-            v-model="query.appid"
+            v-model="query.appCode"
             placeholder="请输入"
             clearable
             style="width: 220px"
@@ -178,7 +179,7 @@ onMounted(loadData)
           <el-table-column label="应用标识" min-width="120">
             <template #default="{ row }">
               <el-tooltip content="点击复制" placement="top">
-                <span class="copy-text" @click="copyText(row.appid)">{{ row.appid }}</span>
+                <span class="copy-text" @click="copyText(row.appCode)">{{ row.appCode }}</span>
               </el-tooltip>
             </template>
           </el-table-column>
@@ -241,9 +242,9 @@ onMounted(loadData)
       :close-on-click-modal="false"
     >
       <el-form ref="formRef" :model="form" :rules="rules" label-width="90px">
-        <el-form-item label="应用标识" prop="appid">
+        <el-form-item label="应用标识" prop="appCode">
           <el-input
-            v-model="form.appid"
+            v-model="form.appCode"
             :disabled="!!currentRow"
             placeholder="例如：order"
           />

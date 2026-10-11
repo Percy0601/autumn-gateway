@@ -1,17 +1,21 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search } from '@element-plus/icons-vue'
-import http from '../../../utils/request'
-import { copyText, fmtDateTime, REGEX } from '../../../utils/format'
-
-const router = useRouter()
+import { basicRoleApi } from '../../../api/basic'
+import {
+  APP_ID_OPTIONS,
+  appIdLabel,
+  copyText,
+  fmtDateTime,
+  MASTER_OPTIONS,
+  REGEX,
+  ROLE_TYPE_OPTIONS,
+} from '../../../utils/format'
 
 const loading = ref(false)
 const rows = ref([])
 const total = ref(0)
-const applications = ref([])
 
 const query = reactive({
   current: 1,
@@ -21,32 +25,10 @@ const query = reactive({
   name: '',
 })
 
-// 应用下拉选项：名称 (标识)
-const appOptions = ref([])
-
-async function loadApps() {
-  try {
-    const body = await http.get('/api/system/app/list')
-    applications.value = body.data || []
-    appOptions.value = applications.value.map((app) => ({
-      label: `${app.name} (${app.appid})`,
-      value: app.id,
-    }))
-  } catch {
-    applications.value = []
-    appOptions.value = []
-  }
-}
-
-function appName(appId) {
-  const app = applications.value.find((a) => a.id === appId)
-  return app ? `${app.name} (${app.appid})` : '-'
-}
-
 async function loadData() {
   loading.value = true
   try {
-    const body = await http.get('/api/system/role', { params: query })
+    const body = await basicRoleApi.list(query)
     rows.value = body.data || []
     total.value = body.total || 0
   } finally {
@@ -66,27 +48,20 @@ function handleReset() {
   handleSearch()
 }
 
-function goDetail(row) {
-  router.push(`/system/role/detail/${row.id}`)
-}
-
-function goTab(row, tab) {
-  router.push({ path: `/system/role/detail/${row.id}`, query: { tab } })
-}
-
 async function changeStatus(row) {
   const disable = row.status === 1
   try {
     await ElMessageBox.confirm(
-      disable ? '确定禁用该角色？' : '确定启用该角色？',
+      disable ? '确定停用该角色？' : '确定启用该角色？',
       '提示',
       { type: 'warning', confirmButtonText: '确定', cancelButtonText: '取消' },
     )
   } catch {
     return
   }
-  await http.put(`/api/system/role/${row.id}/${disable ? 'disable' : 'enable'}`)
-  ElMessage.success(disable ? '已禁用' : '已启用')
+  if (disable) await basicRoleApi.disable(row.id)
+  else await basicRoleApi.enable(row.id)
+  ElMessage.success(disable ? '已停用' : '已启用')
   loadData()
 }
 
@@ -99,7 +74,9 @@ const form = reactive({
   appId: undefined,
   code: '',
   name: '',
-  description: '',
+  type: 2,
+  master: 2,
+  remark: '',
   status: true,
 })
 
@@ -122,7 +99,9 @@ function openCreate() {
     appId: undefined,
     code: '',
     name: '',
-    description: '',
+    type: 2,
+    master: 2,
+    remark: '',
     status: true,
   })
   drawerOpen.value = true
@@ -134,7 +113,9 @@ function openEdit(row) {
     appId: row.appId,
     code: row.code,
     name: row.name,
-    description: row.description || '',
+    type: row.type || 2,
+    master: row.master || 2,
+    remark: row.remark || '',
     status: row.status === 1,
   })
   drawerOpen.value = true
@@ -147,14 +128,16 @@ function handleSubmit() {
     try {
       const payload = {
         ...form,
-        description: form.description || undefined,
-        status: form.status ? 1 : 0,
+        remark: form.remark || undefined,
+        type: Number(form.type),
+        master: Number(form.master),
+        status: form.status ? 1 : 2,
       }
       if (currentRow.value) {
-        await http.put(`/api/system/role/${currentRow.value.id}`, payload)
+        await basicRoleApi.update(currentRow.value.id, payload)
         ElMessage.success('更新成功')
       } else {
-        await http.post('/api/system/role', payload)
+        await basicRoleApi.create(payload)
         ElMessage.success('创建成功')
       }
       drawerOpen.value = false
@@ -165,10 +148,7 @@ function handleSubmit() {
   })
 }
 
-onMounted(() => {
-  loadApps()
-  loadData()
-})
+onMounted(loadData)
 </script>
 
 <template>
@@ -188,11 +168,10 @@ onMounted(() => {
             v-model="query.appId"
             placeholder="全部"
             clearable
-            filterable
-            style="width: 220px"
+            style="width: 180px"
           >
             <el-option
-              v-for="opt in appOptions"
+              v-for="opt in APP_ID_OPTIONS"
               :key="opt.value"
               :label="opt.label"
               :value="opt.value"
@@ -235,35 +214,44 @@ onMounted(() => {
             </template>
           </el-table-column>
           <el-table-column prop="name" label="角色名称" min-width="140" show-overflow-tooltip />
-          <el-table-column label="所属应用" min-width="180" show-overflow-tooltip>
-            <template #default="{ row }">{{ appName(row.appId) }}</template>
+          <el-table-column label="所属应用" min-width="150">
+            <template #default="{ row }">{{ appIdLabel(row.appId) }}</template>
+          </el-table-column>
+          <el-table-column label="类型" width="100" align="center">
+            <template #default="{ row }">
+              <el-tag size="small" :type="row.type === 1 ? 'warning' : 'info'">
+                {{ row.type === 1 ? '系统角色' : '自定义角色' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="管理员" width="90" align="center">
+            <template #default="{ row }">
+              <el-tag size="small" :type="row.master === 1 ? 'danger' : ''">
+                {{ row.master === 1 ? '管理员' : '普通' }}
+              </el-tag>
+            </template>
           </el-table-column>
           <el-table-column label="状态" width="80" align="center">
             <template #default="{ row }">
-              <el-tag :type="row.status === 1 ? 'success' : 'danger'" size="small">
-                {{ row.status === 1 ? '正常' : '禁用' }}
+              <el-tag :type="row.status === 1 ? 'success' : 'info'" size="small">
+                {{ row.status === 1 ? '启用' : '停用' }}
               </el-tag>
             </template>
           </el-table-column>
           <el-table-column label="创建时间" width="170">
-            <template #default="{ row }">{{ fmtDateTime(row.createdAt) }}</template>
+            <template #default="{ row }">{{ fmtDateTime(row.createTime) }}</template>
           </el-table-column>
-          <el-table-column label="操作" width="300" fixed="right">
+          <el-table-column label="操作" width="150" fixed="right">
             <template #default="{ row }">
-              <el-link type="primary" class="link-op" @click="goDetail(row)">详情</el-link>
-              <el-link type="primary" class="link-op" @click="goTab(row, 'permissions')">
-                分配权限
-              </el-link>
-              <el-link type="primary" class="link-op" @click="goTab(row, 'users')">分配用户</el-link>
               <el-link type="primary" class="link-op" @click="openEdit(row)">编辑</el-link>
               <el-popconfirm
-                :title="row.status === 1 ? '确定禁用该角色？' : '确定启用该角色？'"
+                :title="row.status === 1 ? '确定停用该角色？' : '确定启用该角色？'"
                 width="170"
                 @confirm="changeStatus(row)"
               >
                 <template #reference>
                   <el-link :class="row.status === 1 ? 'link-op disabled-link' : 'link-op enabled-link'">
-                    {{ row.status === 1 ? '禁用' : '启用' }}
+                    {{ row.status === 1 ? '停用' : '启用' }}
                   </el-link>
                 </template>
               </el-popconfirm>
@@ -296,14 +284,9 @@ onMounted(() => {
     >
       <el-form ref="formRef" :model="form" :rules="rules" label-width="90px">
         <el-form-item label="所属应用" prop="appId">
-          <el-select
-            v-model="form.appId"
-            placeholder="请选择应用"
-            filterable
-            style="width: 100%"
-          >
+          <el-select v-model="form.appId" placeholder="请选择应用" style="width: 100%">
             <el-option
-              v-for="opt in appOptions"
+              v-for="opt in APP_ID_OPTIONS"
               :key="opt.value"
               :label="opt.label"
               :value="opt.value"
@@ -320,16 +303,36 @@ onMounted(() => {
         <el-form-item label="角色名称" prop="name">
           <el-input v-model="form.name" placeholder="例如：管理员" />
         </el-form-item>
-        <el-form-item label="描述">
+        <el-form-item label="角色类型" prop="type">
+          <el-select v-model="form.type" style="width: 100%">
+            <el-option
+              v-for="opt in ROLE_TYPE_OPTIONS"
+              :key="opt.value"
+              :label="opt.label"
+              :value="opt.value"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="是否管理员" prop="master">
+          <el-select v-model="form.master" style="width: 100%">
+            <el-option
+              v-for="opt in MASTER_OPTIONS"
+              :key="opt.value"
+              :label="opt.label"
+              :value="opt.value"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="备注">
           <el-input
-            v-model="form.description"
+            v-model="form.remark"
             type="textarea"
             :rows="3"
-            placeholder="请输入描述"
+            placeholder="请输入备注"
           />
         </el-form-item>
         <el-form-item label="状态">
-          <el-switch v-model="form.status" active-text="启用" inactive-text="禁用" />
+          <el-switch v-model="form.status" active-text="启用" inactive-text="停用" />
         </el-form-item>
       </el-form>
       <template #footer>

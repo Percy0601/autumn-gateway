@@ -11,6 +11,8 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/system/permission")
+/** @deprecated 权限能力已由 /api/system/basic/resource + basic_menu 承接，后续删除。 */
+@Deprecated
 public class PermissionController {
 
     @Autowired
