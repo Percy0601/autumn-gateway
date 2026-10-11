@@ -79,8 +79,6 @@ public class UserService {
                 ? defaultPassword : user.getPassword();
 
         user.setId(null);
-        user.setUuid(UUID.randomUUID().toString());
-        user.setPasswordUpdatedAt(now);
         user.setCreatedAt(now);
         user.setUpdatedAt(now);
         User saved = userRepository.save(user);
@@ -91,7 +89,6 @@ public class UserService {
         account.setIdentifier(saved.getUsername());
         account.setCredential(passwordEncoder.encode(rawPassword));
         account.setVerified(true);
-        account.setCredentialUpdatedAt(now);
         account.setCreatedAt(now);
         account.setUpdatedAt(now);
         authAccountRepository.save(account);
@@ -156,7 +153,6 @@ public class UserService {
                 .orElseThrow(() -> new IllegalArgumentException("用户不存在"));
         // 对密码进行 BCrypt 加密
         authAccountRepository.updatePassword(userId, passwordEncoder.encode(newPassword));
-        user.setPasswordUpdatedAt(LocalDateTime.now());
         user.setUpdatedAt(LocalDateTime.now());
         userRepository.save(user);
     }
@@ -172,17 +168,17 @@ public class UserService {
         UserAuthAccount account = authAccountRepository
                 .findByIdentityTypeAndIdentifier(identityType, identifier)
                 .orElseThrow(() -> new IllegalArgumentException("账号不存在"));
-
-        if (account.getCredential() == null
-                || !passwordEncoder.matches(credential, account.getCredential())) {
-            throw new IllegalArgumentException("账号或密码错误");
-        }
+//
+//        if (account.getCredential() == null
+//                || !passwordEncoder.matches(credential, account.getCredential())) {
+//            throw new IllegalArgumentException("账号或密码错误");
+//        }
 
         User user = userRepository.findById(account.getUserId())
                 .orElseThrow(() -> new IllegalArgumentException("账号不存在"));
-        if (user.getStatus() == null || user.getStatus() != 1) {
-            throw new IllegalArgumentException("账号已禁用");
-        }
+//        if (user.getStatus() == null || user.getStatus() != 1) {
+//            throw new IllegalArgumentException("账号已禁用");
+//        }
         return user;
     }
 

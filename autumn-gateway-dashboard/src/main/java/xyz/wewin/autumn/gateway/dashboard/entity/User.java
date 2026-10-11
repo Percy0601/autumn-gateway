@@ -12,10 +12,6 @@ public class User {
     @Id
     private Long id;
     /**
-     * 对外统一标识（OIDC 的 sub），生成后永不变化
-     */
-    private String uuid;
-    /**
      * 登录名（工号语义）：创建后禁止修改，如需变更只能后台改库
      */
     private String username;
@@ -24,8 +20,6 @@ public class User {
     private String email;
     private String phone;
     private Integer status;
-    @Column("password_updated_at")
-    private LocalDateTime passwordUpdatedAt;
     @Column("last_login_at")
     private LocalDateTime lastLoginAt;
     @Column("created_at")
@@ -44,14 +38,6 @@ public class User {
 
     public void setId(Long id) {
         this.id = id;
-    }
-
-    public String getUuid() {
-        return uuid;
-    }
-
-    public void setUuid(String uuid) {
-        this.uuid = uuid;
     }
 
     public String getPassword() {
@@ -108,14 +94,6 @@ public class User {
 
     public void setStatus(Integer status) {
         this.status = status;
-    }
-
-    public LocalDateTime getPasswordUpdatedAt() {
-        return passwordUpdatedAt;
-    }
-
-    public void setPasswordUpdatedAt(LocalDateTime passwordUpdatedAt) {
-        this.passwordUpdatedAt = passwordUpdatedAt;
     }
 
     public LocalDateTime getLastLoginAt() {

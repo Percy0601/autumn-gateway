@@ -39,7 +39,6 @@ public class AuthController {
             return Result.success(Map.of(
                     "token", token,
                     "user_id", user.getId(),
-                    "uuid", user.getUuid() == null ? "" : user.getUuid(),
                     "username", user.getUsername()
             ));
         } catch (IllegalArgumentException e) {

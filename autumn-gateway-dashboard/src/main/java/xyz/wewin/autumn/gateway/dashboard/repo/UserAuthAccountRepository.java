@@ -24,7 +24,7 @@ public interface UserAuthAccountRepository extends CrudRepository<UserAuthAccoun
 
     // 重置密码时用到（同步维护 credential_updated_at）
     @Modifying
-    @Query("UPDATE user_auth_account SET credential = :credential, credential_updated_at = NOW(), updated_at = NOW() " +
+    @Query("UPDATE user_auth_account SET credential = :credential, updated_at = NOW() " +
            "WHERE user_id = :userId AND identity_type = 'password'")
     void updatePassword(@Param("userId") Long userId, @Param("credential") String credential);
 }
