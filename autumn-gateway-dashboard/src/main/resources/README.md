@@ -40,3 +40,15 @@ curl -X POST http://localhost:8080/api/auth/login \
 ```
 
 成功返回 token。之后访问其他接口需在 Header 中添加 Authorization: Bearer <token>。
+
+### 虚拟机-Postgres
+
+- 主机 Host: 192.168.0.115
+- 端口 Port: 5432
+- 用户名 User: postgres
+- 密码 Password: 5e0db08e654ac86f236e2dce
+- 默认库 Database: postgres
+
+
+
+
