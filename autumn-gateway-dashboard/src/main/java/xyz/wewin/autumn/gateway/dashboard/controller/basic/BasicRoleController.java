@@ -11,7 +11,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import xyz.wewin.autumn.gateway.dashboard.common.Result;
+import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicMenu;
+import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicResource;
 import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicRole;
+import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicUser;
 import xyz.wewin.autumn.gateway.dashboard.service.basic.BasicRoleService;
 
 import java.util.List;
@@ -85,5 +88,58 @@ public class BasicRoleController {
     @GetMapping("/list")
     public Result<List<BasicRole>> listAll() {
         return Result.success(service.listAll());
+    }
+
+    // ---------- 关联维护 ----------
+
+    /** 角色已关联的用户 */
+    @GetMapping("/{id}/users")
+    public Result<List<BasicUser>> users(@PathVariable Long id) {
+        return Result.success(service.getUsers(id));
+    }
+
+    /** 全量覆盖关联：body 为用户 id 数组 */
+    @PutMapping("/{id}/users")
+    public Result<Void> setUsers(@PathVariable Long id, @RequestBody List<Long> userIds) {
+        try {
+            service.setUsers(id, userIds);
+            return Result.success(null);
+        } catch (IllegalArgumentException e) {
+            return Result.error(400, e.getMessage());
+        }
+    }
+
+    /** 角色已授权的菜单（basic_role_permission.type=1） */
+    @GetMapping("/{id}/menus")
+    public Result<List<BasicMenu>> menus(@PathVariable Long id) {
+        return Result.success(service.getMenus(id));
+    }
+
+    /** 全量覆盖菜单授权：body 为菜单 id 数组 */
+    @PutMapping("/{id}/menus")
+    public Result<Void> setMenus(@PathVariable Long id, @RequestBody List<Long> menuIds) {
+        try {
+            service.setMenus(id, menuIds);
+            return Result.success(null);
+        } catch (IllegalArgumentException e) {
+            return Result.error(400, e.getMessage());
+        }
+    }
+
+    /** 角色已授权的资源（basic_role_permission.type=2） */
+    @GetMapping("/{id}/resources")
+    public Result<List<BasicResource>> resources(@PathVariable Long id) {
+        return Result.success(service.getResources(id));
+    }
+
+    /** 全量覆盖资源授权：body 为资源 id 数组 */
+    @PutMapping("/{id}/resources")
+    public Result<Void> setResources(@PathVariable Long id, @RequestBody List<Long> resourceIds) {
+        try {
+            service.setResources(id, resourceIds);
+            return Result.success(null);
+        } catch (IllegalArgumentException e) {
+            return Result.error(400, e.getMessage());
+        }
     }
 }

@@ -49,6 +49,8 @@ public class BasicAppService {
             throw new IllegalArgumentException("应用标识已存在: " + app.getAppCode());
         }
         app.setId(null);
+        // name 在库里是 NOT NULL（无默认值），前端省略时兜底
+        if (app.getName() == null) app.setName("");
         if (app.getStatus() == null) app.setStatus(1);
         app.setCreatedAt(LocalDateTime.now());
         app.setUpdatedAt(LocalDateTime.now());

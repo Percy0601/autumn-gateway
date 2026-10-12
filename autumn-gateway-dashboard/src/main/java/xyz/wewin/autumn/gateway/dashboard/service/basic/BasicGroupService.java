@@ -9,10 +9,16 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicGroup;
 import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicRole;
+import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicGroupGroup;
 import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicRoleGroup;
+import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicUser;
+import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicUserGroup;
+import xyz.wewin.autumn.gateway.dashboard.repo.BasicGroupGroupRepository;
 import xyz.wewin.autumn.gateway.dashboard.repo.BasicGroupRepository;
 import xyz.wewin.autumn.gateway.dashboard.repo.BasicRoleGroupRepository;
 import xyz.wewin.autumn.gateway.dashboard.repo.BasicRoleRepository;
+import xyz.wewin.autumn.gateway.dashboard.repo.BasicUserGroupRepository;
+import xyz.wewin.autumn.gateway.dashboard.repo.BasicUserRepository;
 import xyz.wewin.autumn.gateway.dashboard.security.RequestContext;
 
 import java.time.LocalDateTime;
@@ -35,6 +41,15 @@ public class BasicGroupService {
 
     @Autowired
     private BasicRoleRepository roleRepository;
+
+    @Autowired
+    private BasicUserGroupRepository userGroupRepository;
+
+    @Autowired
+    private BasicUserRepository userRepository;
+
+    @Autowired
+    private BasicGroupGroupRepository groupGroupRepository;
 
     private static String nvl(String v) {
         return v == null ? "" : v.trim();
@@ -77,13 +92,15 @@ public class BasicGroupService {
         return repository.save(existing);
     }
 
-    /** 软删除：deleted = 1 */
+    /** 软删除：deleted = 1，同时解除与其它用户组的上下级关联 */
     public void remove(Long id) {
         BasicGroup existing = repository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("用户组不存在: " + id));
         existing.setDeleted(1);
         existing.setUpdateTime(LocalDateTime.now());
         repository.save(existing);
+        groupGroupRepository.findByParentGroupId(id).forEach(groupGroupRepository::delete);
+        groupGroupRepository.findByGroupId(id).forEach(groupGroupRepository::delete);
     }
 
     public List<BasicGroup> listAll() {
@@ -127,6 +144,123 @@ public class BasicGroupService {
             rg.setCreateTime(now);
             rg.setUpdateTime(now);
             roleGroupRepository.save(rg);
+        }
+    }
+
+    // ---------- 用户组 - 用户关联（basic_user_group） ----------
+
+    /** 查询用户组已关联的用户（组视角，对应 /group/{id}/users） */
+    public List<BasicUser> getUsers(Long groupId) {
+        List<Long> userIds = userGroupRepository.findByGroupId(groupId).stream()
+                .filter(ug -> ug.getDeleted() == null || ug.getDeleted() == 0)
+                .map(BasicUserGroup::getUserId)
+                .distinct()
+                .toList();
+        if (userIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+        return (List<BasicUser>) userRepository.findAllById(userIds);
+    }
+
+    /** 全量覆盖用户组的用户关联 */
+    public void setUsers(Long groupId, List<Long> userIds) {
+        if (!repository.existsById(groupId)) {
+            throw new IllegalArgumentException("用户组不存在: " + groupId);
+        }
+        userGroupRepository.findByGroupId(groupId).forEach(userGroupRepository::delete);
+        if (userIds == null || userIds.isEmpty()) {
+            return;
+        }
+        LocalDateTime now = LocalDateTime.now();
+        for (Long userId : userIds) {
+            if (userId == null) continue;
+            BasicUserGroup ug = new BasicUserGroup();
+            ug.setId(null);
+            ug.setUserId(userId);
+            ug.setGroupId(groupId);
+            ug.setDeleted(0);
+            ug.setCreateTime(now);
+            ug.setUpdateTime(now);
+            userGroupRepository.save(ug);
+        }
+    }
+
+    // ---------- 用户组 - 用户组关联（basic_group_group，组层级） ----------
+
+    /** 查询某个用户组的直属下级组 */
+    public List<BasicGroup> getSubGroups(Long groupId) {
+        List<Long> ids = groupGroupRepository.findByParentGroupId(groupId).stream()
+                .filter(gg -> gg.getDeleted() == null || gg.getDeleted() == 0)
+                .map(BasicGroupGroup::getGroupId)
+                .distinct()
+                .toList();
+        if (ids.isEmpty()) {
+            return new ArrayList<>();
+        }
+        return (List<BasicGroup>) repository.findAllById(ids);
+    }
+
+    /** 全量覆盖某个用户组的下级组 */
+    public void setSubGroups(Long groupId, List<Long> subIds) {
+        if (!repository.existsById(groupId)) {
+            throw new IllegalArgumentException("用户组不存在: " + groupId);
+        }
+        if (subIds != null && subIds.contains(groupId)) {
+            throw new IllegalArgumentException("不能把用户组设为自己的下级");
+        }
+        groupGroupRepository.findByParentGroupId(groupId).forEach(groupGroupRepository::delete);
+        saveGroupLinks(groupId, subIds);
+    }
+
+    /** 查询某个用户组的直属上级组 */
+    public List<BasicGroup> getParentGroups(Long groupId) {
+        List<Long> ids = groupGroupRepository.findByGroupId(groupId).stream()
+                .filter(gg -> gg.getDeleted() == null || gg.getDeleted() == 0)
+                .map(BasicGroupGroup::getParentGroupId)
+                .distinct()
+                .toList();
+        if (ids.isEmpty()) {
+            return new ArrayList<>();
+        }
+        return (List<BasicGroup>) repository.findAllById(ids);
+    }
+
+    /** 全量覆盖某个用户组的上级组 */
+    public void setParentGroups(Long groupId, List<Long> parentIds) {
+        if (!repository.existsById(groupId)) {
+            throw new IllegalArgumentException("用户组不存在: " + groupId);
+        }
+        if (parentIds != null && parentIds.contains(groupId)) {
+            throw new IllegalArgumentException("不能把用户组设为自己的上级");
+        }
+        groupGroupRepository.findByGroupId(groupId).forEach(groupGroupRepository::delete);
+        if (parentIds == null || parentIds.isEmpty()) {
+            return;
+        }
+        for (Long parentId : parentIds) {
+            if (parentId == null) continue;
+            saveGroupLinks(parentId, List.of(groupId));
+        }
+    }
+
+    /** 建立 parentId -> childIds 的上下级关联 */
+    private void saveGroupLinks(Long parentId, List<Long> childIds) {
+        if (childIds == null || childIds.isEmpty()) {
+            return;
+        }
+        LocalDateTime now = LocalDateTime.now();
+        Long opUser = RequestContext.currentUserId();
+        for (Long childId : childIds) {
+            if (childId == null) continue;
+            BasicGroupGroup gg = new BasicGroupGroup();
+            gg.setId(null);
+            gg.setParentGroupId(parentId);
+            gg.setGroupId(childId);
+            gg.setDeleted(0);
+            gg.setOpUserId(opUser);
+            gg.setCreateTime(now);
+            gg.setUpdateTime(now);
+            groupGroupRepository.save(gg);
         }
     }
 }

@@ -67,6 +67,30 @@ const routes = [
         meta: { title: '用户-用户组' },
       },
       {
+        path: '/system/user-role',
+        name: 'system-user-role',
+        component: () => import('../views/system/user-role/index.vue'),
+        meta: { title: '用户-角色' },
+      },
+      {
+        path: '/system/group-group',
+        name: 'system-group-group',
+        component: () => import('../views/system/group-group/index.vue'),
+        meta: { title: '用户组-用户组' },
+      },
+      {
+        path: '/system/role-menu',
+        name: 'system-role-menu',
+        component: () => import('../views/system/role-menu/index.vue'),
+        meta: { title: '角色-菜单' },
+      },
+      {
+        path: '/system/role-resource',
+        name: 'system-role-resource',
+        component: () => import('../views/system/role-resource/index.vue'),
+        meta: { title: '角色-资源' },
+      },
+      {
         path: '/system/oper-log',
         name: 'system-oper-log',
         component: () => import('../views/system/operLog/index.vue'),

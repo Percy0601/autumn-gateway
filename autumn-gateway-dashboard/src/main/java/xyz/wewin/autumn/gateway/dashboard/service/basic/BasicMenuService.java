@@ -49,6 +49,12 @@ public class BasicMenuService {
             throw new IllegalArgumentException("菜单名称不能为空");
         }
         menu.setId(null);
+        // menu_url / menu_identification / menu_icon / remark 在库里都是 NOT NULL DEFAULT ''，
+        // 前端省略空字段时为 null，必须兜底，否则插入会触发非空约束冲突
+        if (menu.getMenuUrl() == null) menu.setMenuUrl("");
+        if (menu.getMenuIdentification() == null) menu.setMenuIdentification("");
+        if (menu.getMenuIcon() == null) menu.setMenuIcon("");
+        if (menu.getRemark() == null) menu.setRemark("");
         if (menu.getParentId() == null) menu.setParentId(0L);
         if (menu.getMenuStatus() == null) menu.setMenuStatus(1);
         if (menu.getMenuType() == null) menu.setMenuType(2);

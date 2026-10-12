@@ -13,9 +13,9 @@ public interface BasicUserRoleRepository extends CrudRepository<BasicUserRole, L
 
     List<BasicUserRole> findByRoleId(Long roleId);
 
-    List<BasicUserRole> findByAppId(Integer appId);
+    List<BasicUserRole> findByAppId(Long appId);
 
-    List<BasicUserRole> findByAppIdAndUserId(Integer appId, Long userId);
+    List<BasicUserRole> findByAppIdAndUserId(Long appId, Long userId);
 
     List<BasicUserRole> findByUserIdAndRoleId(Long userId, Long roleId);
 }

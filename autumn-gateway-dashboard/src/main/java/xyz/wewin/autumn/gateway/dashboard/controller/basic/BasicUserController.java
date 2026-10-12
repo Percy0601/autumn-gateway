@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import xyz.wewin.autumn.gateway.dashboard.common.Result;
 import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicGroup;
+import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicRole;
 import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicUser;
 import xyz.wewin.autumn.gateway.dashboard.service.basic.BasicUserService;
 
@@ -29,12 +30,15 @@ public class BasicUserController {
     @Autowired
     private BasicUserService service;
 
-    /** 分页列表：?current=1&pageSize=10&empNo= */
+    /** 分页列表：?current=1&pageSize=10&empNo=&username=&phone=&status=（status 不传或 -1 表示不过滤） */
     @GetMapping
     public Result<List<BasicUser>> list(@RequestParam(defaultValue = "1") int current,
                                         @RequestParam(defaultValue = "10") int pageSize,
-                                        @RequestParam(required = false) String empNo) {
-        Page<BasicUser> page = service.list(empNo, current, pageSize);
+                                        @RequestParam(required = false) String empNo,
+                                        @RequestParam(required = false) String username,
+                                        @RequestParam(required = false) String phone,
+                                        @RequestParam(required = false) Integer status) {
+        Page<BasicUser> page = service.list(empNo, username, phone, status, current, pageSize);
         return Result.success(page.getContent(), page.getTotalElements());
     }
 
@@ -84,6 +88,23 @@ public class BasicUserController {
     public Result<Void> setGroups(@PathVariable Long id, @RequestBody List<Long> groupIds) {
         try {
             service.setGroups(id, groupIds);
+            return Result.success(null);
+        } catch (IllegalArgumentException e) {
+            return Result.error(400, e.getMessage());
+        }
+    }
+
+    /** 用户已直接关联的角色 */
+    @GetMapping("/{id}/roles")
+    public Result<List<BasicRole>> roles(@PathVariable Long id) {
+        return Result.success(service.getRoles(id));
+    }
+
+    /** 全量覆盖关联：body 为角色 id 数组 */
+    @PutMapping("/{id}/roles")
+    public Result<Void> setRoles(@PathVariable Long id, @RequestBody List<Long> roleIds) {
+        try {
+            service.setRoles(id, roleIds);
             return Result.success(null);
         } catch (IllegalArgumentException e) {
             return Result.error(400, e.getMessage());

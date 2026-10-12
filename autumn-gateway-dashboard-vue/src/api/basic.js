@@ -26,6 +26,15 @@ export const basicRoleApi = {
   update: (id, data) => http.put(`${base}/role/${id}`, data),
   enable: (id) => http.put(`${base}/role/${id}/enable`),
   disable: (id) => http.put(`${base}/role/${id}/disable`),
+  // 关联用户 basic_user_role
+  users: (id) => http.get(`${base}/role/${id}/users`),
+  setUsers: (id, ids) => http.put(`${base}/role/${id}/users`, ids),
+  // 授权菜单 basic_role_permission（type=1）
+  menus: (id) => http.get(`${base}/role/${id}/menus`),
+  setMenus: (id, ids) => http.put(`${base}/role/${id}/menus`, ids),
+  // 授权资源 basic_role_permission（type=2）
+  resources: (id) => http.get(`${base}/role/${id}/resources`),
+  setResources: (id, ids) => http.put(`${base}/role/${id}/resources`, ids),
 }
 
 // ---------------- 用户 basic_user ----------------
@@ -38,6 +47,9 @@ export const basicUserApi = {
   // 关联用户组 basic_user_group
   groups: (id) => http.get(`${base}/user/${id}/groups`),
   setGroups: (id, ids) => http.put(`${base}/user/${id}/groups`, ids),
+  // 关联角色 basic_user_role
+  roles: (id) => http.get(`${base}/user/${id}/roles`),
+  setRoles: (id, ids) => http.put(`${base}/user/${id}/roles`, ids),
 }
 
 // ---------------- 菜单 basic_menu ----------------
@@ -48,6 +60,7 @@ export const basicMenuApi = {
   update: (id, data) => http.put(`${base}/menu/${id}`, data),
   enable: (id) => http.put(`${base}/menu/${id}/enable`),
   disable: (id) => http.put(`${base}/menu/${id}/disable`),
+  listAll: () => http.get(`${base}/menu/list`),
 }
 
 // ---------------- 资源 basic_resource ----------------
@@ -75,6 +88,11 @@ export const basicGroupApi = {
   // 关联用户 basic_user_group（组视角）
   users: (id) => http.get(`${base}/group/${id}/users`),
   setUsers: (id, ids) => http.put(`${base}/group/${id}/users`, ids),
+  // 关联用户组 basic_group_group（组层级）
+  subGroups: (id) => http.get(`${base}/group/${id}/sub-groups`),
+  setSubGroups: (id, ids) => http.put(`${base}/group/${id}/sub-groups`, ids),
+  parentGroups: (id) => http.get(`${base}/group/${id}/parent-groups`),
+  setParentGroups: (id, ids) => http.put(`${base}/group/${id}/parent-groups`, ids),
 }
 
 // ---------------- 操作日志 basic_oper_log（只读） ----------------

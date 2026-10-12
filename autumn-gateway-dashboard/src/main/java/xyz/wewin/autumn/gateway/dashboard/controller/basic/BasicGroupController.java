@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 import xyz.wewin.autumn.gateway.dashboard.common.Result;
 import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicGroup;
 import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicRole;
+import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicUser;
 import xyz.wewin.autumn.gateway.dashboard.service.basic.BasicGroupService;
 
 import java.util.List;
@@ -90,6 +91,57 @@ public class BasicGroupController {
     public Result<Void> setRoles(@PathVariable Long id, @RequestBody List<Long> roleIds) {
         try {
             service.setRoles(id, roleIds);
+            return Result.success(null);
+        } catch (IllegalArgumentException e) {
+            return Result.error(400, e.getMessage());
+        }
+    }
+
+    /** 用户组已关联的用户（组视角，与 /user/{id}/groups 互为反向） */
+    @GetMapping("/{id}/users")
+    public Result<List<BasicUser>> users(@PathVariable Long id) {
+        return Result.success(service.getUsers(id));
+    }
+
+    /** 全量覆盖关联：body 为用户 id 数组 */
+    @PutMapping("/{id}/users")
+    public Result<Void> setUsers(@PathVariable Long id, @RequestBody List<Long> userIds) {
+        try {
+            service.setUsers(id, userIds);
+            return Result.success(null);
+        } catch (IllegalArgumentException e) {
+            return Result.error(400, e.getMessage());
+        }
+    }
+
+    /** 用户组的直属下级组（basic_group_group） */
+    @GetMapping("/{id}/sub-groups")
+    public Result<List<BasicGroup>> subGroups(@PathVariable Long id) {
+        return Result.success(service.getSubGroups(id));
+    }
+
+    /** 全量覆盖下级组：body 为用户组 id 数组 */
+    @PutMapping("/{id}/sub-groups")
+    public Result<Void> setSubGroups(@PathVariable Long id, @RequestBody List<Long> subIds) {
+        try {
+            service.setSubGroups(id, subIds);
+            return Result.success(null);
+        } catch (IllegalArgumentException e) {
+            return Result.error(400, e.getMessage());
+        }
+    }
+
+    /** 用户组的直属上级组（basic_group_group） */
+    @GetMapping("/{id}/parent-groups")
+    public Result<List<BasicGroup>> parentGroups(@PathVariable Long id) {
+        return Result.success(service.getParentGroups(id));
+    }
+
+    /** 全量覆盖上级组：body 为用户组 id 数组 */
+    @PutMapping("/{id}/parent-groups")
+    public Result<Void> setParentGroups(@PathVariable Long id, @RequestBody List<Long> parentIds) {
+        try {
+            service.setParentGroups(id, parentIds);
             return Result.success(null);
         } catch (IllegalArgumentException e) {
             return Result.error(400, e.getMessage());
