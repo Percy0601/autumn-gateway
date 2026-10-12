@@ -53,10 +53,6 @@
 <!--&lt;!&ndash;            <artifactId>micrometer-tracing-bridge-otel</artifactId>&ndash;&gt;-->
 <!--&lt;!&ndash;        </dependency>&ndash;&gt;-->
         <dependency>
-            <groupId>io.opentelemetry</groupId>
-            <artifactId>opentelemetry-exporter-otlp</artifactId>
-        </dependency>
-        <dependency>
             <groupId>io.opentelemetry.semconv</groupId>
             <artifactId>opentelemetry-semconv</artifactId>
             <version>1.27.0-alpha</version>
