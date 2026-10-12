@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicRole;
 import xyz.wewin.autumn.gateway.dashboard.repo.BasicRoleRepository;
+import xyz.wewin.autumn.gateway.dashboard.security.RequestContext;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -16,6 +17,9 @@ import java.util.Optional;
 
 /**
  * 角色服务，基于 basic_role。
+ *
+ * <p>basic_role 的 create_user / update_user 为 NOT NULL，
+ * 这里统一从 {@link RequestContext}（由 JWT 解析得到）取当前操作人。
  */
 @Service
 @Transactional
@@ -28,7 +32,7 @@ public class BasicRoleService {
         return v == null ? "" : v.trim();
     }
 
-    public Page<BasicRole> list(Integer appId, String code, String name, int current, int size) {
+    public Page<BasicRole> list(Long appId, String code, String name, int current, int size) {
         Pageable pageable = PageRequest.of(Math.max(current - 1, 0), size);
         long offset = (long) Math.max(current - 1, 0) * size;
         List<BasicRole> content = repository.findWithPage(appId, nvl(code), nvl(name), offset, (long) size);
@@ -52,6 +56,8 @@ public class BasicRoleService {
         if (role.getType() == null) role.setType(2);
         if (role.getMaster() == null) role.setMaster(2);
         if (role.getDelFlag() == null) role.setDelFlag(0);
+        role.setCreateUser(RequestContext.currentUserId());
+        role.setUpdateUser(RequestContext.currentUserId());
         role.setCreateTime(LocalDateTime.now());
         role.setUpdateTime(LocalDateTime.now());
         return repository.save(role);
@@ -67,6 +73,7 @@ public class BasicRoleService {
         if (req.getStatus() != null) existing.setStatus(req.getStatus());
         if (req.getMaster() != null) existing.setMaster(req.getMaster());
         if (req.getRemark() != null) existing.setRemark(req.getRemark());
+        existing.setUpdateUser(RequestContext.currentUserId());
         existing.setUpdateTime(LocalDateTime.now());
         return repository.save(existing);
     }
@@ -76,6 +83,7 @@ public class BasicRoleService {
         BasicRole existing = repository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("角色不存在: " + id));
         existing.setStatus(status);
+        existing.setUpdateUser(RequestContext.currentUserId());
         existing.setUpdateTime(LocalDateTime.now());
         return repository.save(existing);
     }

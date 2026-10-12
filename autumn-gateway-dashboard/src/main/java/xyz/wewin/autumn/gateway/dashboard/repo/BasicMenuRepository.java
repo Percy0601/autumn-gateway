@@ -11,7 +11,7 @@ import java.util.List;
 @Repository
 public interface BasicMenuRepository extends CrudRepository<BasicMenu, Long> {
 
-    List<BasicMenu> findByAppId(Integer appId);
+    List<BasicMenu> findByAppId(Long appId);
 
     List<BasicMenu> findByParentId(Long parentId);
 
@@ -23,7 +23,7 @@ public interface BasicMenuRepository extends CrudRepository<BasicMenu, Long> {
         ORDER BY m.id DESC
         LIMIT :offset OFFSET :limit
         """)
-    List<BasicMenu> findWithPage(@Param("appId") Integer appId,
+    List<BasicMenu> findWithPage(@Param("appId") Long appId,
                                  @Param("menuName") String menuName,
                                  @Param("menuType") Integer menuType,
                                  @Param("limit") long limit,
@@ -35,5 +35,5 @@ public interface BasicMenuRepository extends CrudRepository<BasicMenu, Long> {
           AND (:menuName IS NULL OR :menuName = '' OR menu_name LIKE CONCAT('%', :menuName, '%'))
           AND (:menuType IS NULL OR menu_type = :menuType)
         """)
-    long countWithFilter(Integer appId, String menuName, Integer menuType);
+    long countWithFilter(Long appId, String menuName, Integer menuType);
 }

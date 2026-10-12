@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS `basic_group` (
 -- basic_menu 菜单
 CREATE TABLE IF NOT EXISTS `basic_menu` (
     `id`                  BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'ID',
-    `app_id`              TINYINT NOT NULL DEFAULT 0 COMMENT '应用ID',
+    `app_id`              BIGINT NOT NULL DEFAULT 0 COMMENT '应用ID，关联 basic_app.id',
     `parent_id`           BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '父级ID',
     `menu_type`           TINYINT NOT NULL DEFAULT 0 COMMENT '权限类型：1-目录 2-菜单 3-按钮',
     `menu_name`           VARCHAR(50) NOT NULL DEFAULT '' COMMENT '菜单名称',
@@ -123,7 +123,7 @@ CREATE TABLE IF NOT EXISTS `basic_resource` (
 -- basic_role 角色表
 CREATE TABLE IF NOT EXISTS `basic_role` (
     `id`          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'ID',
-    `app_id`      TINYINT NOT NULL DEFAULT 10 COMMENT '应用ID：1-运营后台 2-POP后台 3-B2B后台 4-互联网医院后台 5-数据中台 6-销售助手 10-数据洞察 100-商家后台',
+    `app_id`      BIGINT NOT NULL DEFAULT 0 COMMENT '应用ID，关联 basic_app.id',
     `code`        VARCHAR(50) NOT NULL DEFAULT '' COMMENT '角色编码',
     `name`        VARCHAR(50) NOT NULL DEFAULT '' COMMENT '角色名',
     `type`        TINYINT NOT NULL DEFAULT 0 COMMENT '角色类型：1-系统角色 2-自定义角色',

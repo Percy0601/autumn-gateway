@@ -13,6 +13,7 @@ import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicRoleGroup;
 import xyz.wewin.autumn.gateway.dashboard.repo.BasicGroupRepository;
 import xyz.wewin.autumn.gateway.dashboard.repo.BasicRoleGroupRepository;
 import xyz.wewin.autumn.gateway.dashboard.repo.BasicRoleRepository;
+import xyz.wewin.autumn.gateway.dashboard.security.RequestContext;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -121,6 +122,8 @@ public class BasicGroupService {
             rg.setGroupId(groupId);
             rg.setRoleId(roleId);
             rg.setDeleted(0);
+            // basic_role_group.op_user_id 为 NOT NULL
+            rg.setOpUserId(RequestContext.currentUserId());
             rg.setCreateTime(now);
             rg.setUpdateTime(now);
             roleGroupRepository.save(rg);

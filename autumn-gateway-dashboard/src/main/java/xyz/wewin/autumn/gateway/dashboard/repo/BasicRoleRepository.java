@@ -12,11 +12,11 @@ import java.util.Optional;
 @Repository
 public interface BasicRoleRepository extends CrudRepository<BasicRole, Long> {
 
-    List<BasicRole> findByAppId(Integer appId);
+    List<BasicRole> findByAppId(Long appId);
 
     List<BasicRole> findByCode(String code);
 
-    Optional<BasicRole> findByAppIdAndCode(Integer appId, String code);
+    Optional<BasicRole> findByAppIdAndCode(Long appId, String code);
 
     @Query("""
         SELECT r.* FROM basic_role r
@@ -26,7 +26,7 @@ public interface BasicRoleRepository extends CrudRepository<BasicRole, Long> {
         ORDER BY r.id DESC
         LIMIT :offset OFFSET :limit
         """)
-    List<BasicRole> findWithPage(@Param("appId") Integer appId,
+    List<BasicRole> findWithPage(@Param("appId") Long appId,
                                  @Param("code") String code,
                                  @Param("name") String name,
                                  @Param("limit") long limit,
@@ -38,5 +38,5 @@ public interface BasicRoleRepository extends CrudRepository<BasicRole, Long> {
           AND (:code IS NULL OR :code = '' OR code LIKE CONCAT('%', :code, '%'))
           AND (:name IS NULL OR :name = '' OR name LIKE CONCAT('%', :name, '%'))
         """)
-    long countWithFilter(Integer appId, String code, String name);
+    long countWithFilter(Long appId, String code, String name);
 }

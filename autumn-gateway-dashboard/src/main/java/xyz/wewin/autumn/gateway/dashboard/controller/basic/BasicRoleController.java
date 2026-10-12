@@ -30,7 +30,7 @@ public class BasicRoleController {
     @GetMapping
     public Result<List<BasicRole>> list(@RequestParam(defaultValue = "1") int current,
                                         @RequestParam(defaultValue = "10") int pageSize,
-                                        @RequestParam(required = false) Integer appId,
+                                        @RequestParam(required = false) Long appId,
                                         @RequestParam(required = false) String code,
                                         @RequestParam(required = false) String name) {
         Page<BasicRole> page = service.list(appId, code, name, current, pageSize);

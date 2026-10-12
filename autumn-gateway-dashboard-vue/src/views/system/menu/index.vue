@@ -1,10 +1,9 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { Plus, Refresh, Search } from '@element-plus/icons-vue'
-import { basicMenuApi } from '../../../api/basic'
+import { basicAppApi, basicMenuApi } from '../../../api/basic'
 import {
-  APP_ID_OPTIONS,
   appIdLabel,
   fmtDateTime,
   MENU_STATUS_TAG,
@@ -14,6 +13,24 @@ import {
 
 const loading = ref(false)
 const flatRows = ref([])
+
+// 所属应用下拉：从应用列表（basic_app）查询，而非写死的枚举
+const appOptions = ref([])
+
+async function loadApps() {
+  try {
+    const body = await basicAppApi.listAll()
+    appOptions.value = body.data || []
+  } catch {
+    appOptions.value = []
+  }
+}
+
+/** 表格展示：优先用应用名称，查不到时回退到应用编号枚举 */
+const appLabel = (id) => {
+  const app = appOptions.value.find((a) => a.id === id)
+  return app ? `${app.name}（${app.appCode}）` : appIdLabel(id)
+}
 
 const query = reactive({
   appId: undefined,
@@ -192,22 +209,16 @@ function handleSubmit() {
 
 async function changeStatus(row) {
   const disable = row.menuStatus === 1
-  try {
-    await ElMessageBox.confirm(
-      disable ? '确定停用该菜单？' : '确定启用该菜单？',
-      '提示',
-      { type: 'warning', confirmButtonText: '确定', cancelButtonText: '取消' },
-    )
-  } catch {
-    return
-  }
   if (disable) await basicMenuApi.disable(row.id)
   else await basicMenuApi.enable(row.id)
   ElMessage.success(disable ? '已停用' : '已启用')
   loadData()
 }
 
-onMounted(loadData)
+onMounted(() => {
+  loadApps()
+  loadData()
+})
 </script>
 
 <template>
@@ -234,10 +245,10 @@ onMounted(loadData)
           @change="loadData"
         >
           <el-option
-            v-for="opt in APP_ID_OPTIONS"
-            :key="opt.value"
-            :label="opt.label"
-            :value="opt.value"
+            v-for="app in appOptions"
+            :key="app.id"
+            :label="app.name"
+            :value="app.id"
           />
         </el-select>
         <el-input
@@ -275,7 +286,7 @@ onMounted(loadData)
             </template>
           </el-table-column>
           <el-table-column label="所属应用" min-width="150">
-            <template #default="{ row }">{{ appIdLabel(row.appId) }}</template>
+            <template #default="{ row }">{{ appLabel(row.appId) }}</template>
           </el-table-column>
           <el-table-column label="菜单URL" min-width="200" show-overflow-tooltip>
             <template #default="{ row }">
@@ -324,12 +335,12 @@ onMounted(loadData)
     >
       <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
         <el-form-item label="所属应用" prop="appId">
-          <el-select v-model="form.appId" placeholder="请选择应用" style="width: 100%">
+          <el-select v-model="form.appId" placeholder="请选择应用" filterable style="width: 100%">
             <el-option
-              v-for="opt in APP_ID_OPTIONS"
-              :key="opt.value"
-              :label="opt.label"
-              :value="opt.value"
+              v-for="app in appOptions"
+              :key="app.id"
+              :label="`${app.name}（${app.appCode}）`"
+              :value="app.id"
             />
           </el-select>
         </el-form-item>

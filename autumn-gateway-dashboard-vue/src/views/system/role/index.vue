@@ -1,10 +1,9 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { Plus, Search } from '@element-plus/icons-vue'
-import { basicRoleApi } from '../../../api/basic'
+import { basicAppApi, basicRoleApi } from '../../../api/basic'
 import {
-  APP_ID_OPTIONS,
   appIdLabel,
   copyText,
   fmtDateTime,
@@ -16,6 +15,24 @@ import {
 const loading = ref(false)
 const rows = ref([])
 const total = ref(0)
+
+// 所属应用下拉：从应用列表（basic_app）查询，而非写死的枚举
+const appOptions = ref([])
+
+async function loadApps() {
+  try {
+    const body = await basicAppApi.listAll()
+    appOptions.value = body.data || []
+  } catch {
+    appOptions.value = []
+  }
+}
+
+/** 表格展示：优先用应用名称，查不到时回退到应用编号枚举 */
+const appLabel = (id) => {
+  const app = appOptions.value.find((a) => a.id === id)
+  return app ? `${app.name}（${app.appCode}）` : appIdLabel(id)
+}
 
 const query = reactive({
   current: 1,
@@ -50,15 +67,6 @@ function handleReset() {
 
 async function changeStatus(row) {
   const disable = row.status === 1
-  try {
-    await ElMessageBox.confirm(
-      disable ? '确定停用该角色？' : '确定启用该角色？',
-      '提示',
-      { type: 'warning', confirmButtonText: '确定', cancelButtonText: '取消' },
-    )
-  } catch {
-    return
-  }
   if (disable) await basicRoleApi.disable(row.id)
   else await basicRoleApi.enable(row.id)
   ElMessage.success(disable ? '已停用' : '已启用')
@@ -104,6 +112,8 @@ function openCreate() {
     remark: '',
     status: true,
   })
+  // 应用列表还没加载出来时先补一次，避免下拉为空
+  if (!appOptions.value.length) loadApps()
   drawerOpen.value = true
 }
 
@@ -118,6 +128,7 @@ function openEdit(row) {
     remark: row.remark || '',
     status: row.status === 1,
   })
+  if (!appOptions.value.length) loadApps()
   drawerOpen.value = true
 }
 
@@ -148,7 +159,10 @@ function handleSubmit() {
   })
 }
 
-onMounted(loadData)
+onMounted(() => {
+  loadApps()
+  loadData()
+})
 </script>
 
 <template>
@@ -171,10 +185,10 @@ onMounted(loadData)
             style="width: 180px"
           >
             <el-option
-              v-for="opt in APP_ID_OPTIONS"
-              :key="opt.value"
-              :label="opt.label"
-              :value="opt.value"
+              v-for="app in appOptions"
+              :key="app.id"
+              :label="app.name"
+              :value="app.id"
             />
           </el-select>
         </el-form-item>
@@ -215,7 +229,7 @@ onMounted(loadData)
           </el-table-column>
           <el-table-column prop="name" label="角色名称" min-width="140" show-overflow-tooltip />
           <el-table-column label="所属应用" min-width="150">
-            <template #default="{ row }">{{ appIdLabel(row.appId) }}</template>
+            <template #default="{ row }">{{ appLabel(row.appId) }}</template>
           </el-table-column>
           <el-table-column label="类型" width="100" align="center">
             <template #default="{ row }">
@@ -284,12 +298,17 @@ onMounted(loadData)
     >
       <el-form ref="formRef" :model="form" :rules="rules" label-width="90px">
         <el-form-item label="所属应用" prop="appId">
-          <el-select v-model="form.appId" placeholder="请选择应用" style="width: 100%">
+          <el-select
+            v-model="form.appId"
+            placeholder="请选择应用"
+            filterable
+            style="width: 100%"
+          >
             <el-option
-              v-for="opt in APP_ID_OPTIONS"
-              :key="opt.value"
-              :label="opt.label"
-              :value="opt.value"
+              v-for="app in appOptions"
+              :key="app.id"
+              :label="`${app.name}（${app.appCode}）`"
+              :value="app.id"
             />
           </el-select>
         </el-form-item>

@@ -1,6 +1,6 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { Plus, Search } from '@element-plus/icons-vue'
 import { basicAppApi } from '../../../api/basic'
 import { copyText, fmtDateTime, REGEX } from '../../../utils/format'
@@ -40,15 +40,6 @@ function handleReset() {
 
 async function changeStatus(row) {
   const disable = row.status === 1
-  try {
-    await ElMessageBox.confirm(
-      disable ? '确定禁用？' : '确定启用？',
-      '提示',
-      { type: 'warning', confirmButtonText: '确定', cancelButtonText: '取消' },
-    )
-  } catch {
-    return
-  }
   if (disable) await basicAppApi.disable(row.id)
   else await basicAppApi.enable(row.id)
   ElMessage.success(disable ? '已禁用' : '已启用')

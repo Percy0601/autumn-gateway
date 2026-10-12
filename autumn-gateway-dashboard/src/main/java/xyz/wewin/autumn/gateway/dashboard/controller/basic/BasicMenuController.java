@@ -31,14 +31,14 @@ public class BasicMenuController {
     @GetMapping
     public Result<List<BasicMenu>> list(@RequestParam(defaultValue = "1") int current,
                                         @RequestParam(defaultValue = "10") int pageSize,
-                                        @RequestParam(required = false) Integer appId) {
+                                        @RequestParam(required = false) Long appId) {
         Page<BasicMenu> page = service.list(appId, current, pageSize);
         return Result.success(page.getContent(), page.getTotalElements());
     }
 
     /** 按应用返回全量菜单 */
     @GetMapping("/list")
-    public Result<List<BasicMenu>> listByApp(@RequestParam(required = false) Integer appId) {
+    public Result<List<BasicMenu>> listByApp(@RequestParam(required = false) Long appId) {
         return Result.success(service.listByApp(appId));
     }
 

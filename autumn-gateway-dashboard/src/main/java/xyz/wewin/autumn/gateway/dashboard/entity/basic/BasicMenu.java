@@ -14,7 +14,7 @@ public class BasicMenu {
     @Id
     private Long id;
     @Column("app_id")
-    private Integer appId; // 应用ID
+    private Long appId; // 应用ID，关联 basic_app.id
     @Column("parent_id")
     private Long parentId; // 父级ID
     @Column("menu_type")
@@ -46,8 +46,8 @@ public class BasicMenu {
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
-    public Integer getAppId() { return appId; }
-    public void setAppId(Integer appId) { this.appId = appId; }
+    public Long getAppId() { return appId; }
+    public void setAppId(Long appId) { this.appId = appId; }
 
     public Long getParentId() { return parentId; }
     public void setParentId(Long parentId) { this.parentId = parentId; }
