@@ -29,12 +29,15 @@ public class BasicUserController {
     @Autowired
     private BasicUserService service;
 
-    /** 分页列表：?current=1&pageSize=10&empNo= */
+    /** 分页列表：?current=1&pageSize=10&empNo=&username=&phone=&status=（status 不传或 -1 表示不过滤） */
     @GetMapping
     public Result<List<BasicUser>> list(@RequestParam(defaultValue = "1") int current,
                                         @RequestParam(defaultValue = "10") int pageSize,
-                                        @RequestParam(required = false) String empNo) {
-        Page<BasicUser> page = service.list(empNo, current, pageSize);
+                                        @RequestParam(required = false) String empNo,
+                                        @RequestParam(required = false) String username,
+                                        @RequestParam(required = false) String phone,
+                                        @RequestParam(required = false) Integer status) {
+        Page<BasicUser> page = service.list(empNo, username, phone, status, current, pageSize);
         return Result.success(page.getContent(), page.getTotalElements());
     }
 

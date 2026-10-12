@@ -18,9 +18,16 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * 基础用户服务，基于 basic_user，并维护 basic_user_group（用户-用户组关联）。
+ *
+ * <p>basic_user 已整合旧 user 主表字段（uuid / username / nickname / avatar /
+ * email / phone / status / password_updated_at / last_login_at）。
+ *
+ * <p>约定：username 与 uuid 创建后禁止修改（update 时忽略传入值），
+ * 需要变更只能后台改库。
  */
 @Service
 @Transactional
@@ -39,11 +46,16 @@ public class BasicUserService {
         return v == null ? "" : v.trim();
     }
 
-    public Page<BasicUser> list(String empNo, int current, int size) {
+    /** 分页列表；status 传 null 或 -1 表示不过滤 */
+    public Page<BasicUser> list(String empNo, String username, String phone, Integer status,
+                                int current, int size) {
+        int statusFilter = (status == null) ? -1 : status;
         Pageable pageable = PageRequest.of(Math.max(current - 1, 0), size);
         long offset = (long) Math.max(current - 1, 0) * size;
-        List<BasicUser> content = repository.findWithPage(nvl(empNo), offset, (long) size);
-        long total = repository.countWithFilter(nvl(empNo));
+        List<BasicUser> content = repository.findWithPage(
+                nvl(empNo), nvl(username), nvl(phone), statusFilter, offset, (long) size);
+        long total = repository.countWithFilter(
+                nvl(empNo), nvl(username), nvl(phone), statusFilter);
         return new PageImpl<>(content, pageable, total);
     }
 
@@ -55,14 +67,34 @@ public class BasicUserService {
         if (user.getEmpNo() == null || user.getEmpNo().isBlank()) {
             throw new IllegalArgumentException("员工工号不能为空");
         }
+        if (user.getUsername() == null || user.getUsername().isBlank()) {
+            throw new IllegalArgumentException("登录名不能为空");
+        }
         if (repository.findByEmpNo(user.getEmpNo()).isPresent()) {
             throw new IllegalArgumentException("员工工号已存在: " + user.getEmpNo());
         }
+        if (repository.findByUsername(user.getUsername()).isPresent()) {
+            throw new IllegalArgumentException("登录名已存在: " + user.getUsername());
+        }
         user.setId(null);
+        // uuid 为对外统一标识，未指定时自动生成，生成后永不变化
+        if (user.getUuid() == null || user.getUuid().isBlank()) {
+            user.setUuid(UUID.randomUUID().toString());
+        }
+        if (user.getNickname() == null) user.setNickname("");
+        if (user.getAvatar() == null) user.setAvatar("");
+        if (user.getEmail() == null) user.setEmail("");
+        if (user.getPhone() == null) user.setPhone("");
         if (user.getAdmin() == null) user.setAdmin(0);
+        if (user.getStatus() == null) user.setStatus(1);
         if (user.getLatestRoleId() == null) user.setLatestRoleId(0L);
-        user.setCreateTime(LocalDateTime.now());
-        user.setUpdateTime(LocalDateTime.now());
+        // 新用户未登录过、也未设置过密码
+        user.setLastLoginAt(null);
+        user.setPasswordUpdatedAt(null);
+
+        LocalDateTime now = LocalDateTime.now();
+        user.setCreateTime(now);
+        user.setUpdateTime(now);
         return repository.save(user);
     }
 
@@ -70,10 +102,25 @@ public class BasicUserService {
         BasicUser existing = repository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("用户不存在: " + id));
         if (req.getEmpNo() != null) existing.setEmpNo(req.getEmpNo());
+        if (req.getNickname() != null) existing.setNickname(req.getNickname());
+        if (req.getAvatar() != null) existing.setAvatar(req.getAvatar());
+        if (req.getEmail() != null) existing.setEmail(req.getEmail());
+        if (req.getPhone() != null) existing.setPhone(req.getPhone());
         if (req.getAdmin() != null) existing.setAdmin(req.getAdmin());
+        if (req.getStatus() != null) existing.setStatus(req.getStatus());
         if (req.getLatestRoleId() != null) existing.setLatestRoleId(req.getLatestRoleId());
+        // username / uuid 创建后禁止修改，忽略传入值
         existing.setUpdateTime(LocalDateTime.now());
         return repository.save(existing);
+    }
+
+    /** 记录一次登录：刷新最近登录时间与最近使用角色（供网关鉴权成功后调用） */
+    public void recordLogin(Long id, Long latestRoleId) {
+        BasicUser existing = repository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("用户不存在: " + id));
+        existing.setLastLoginAt(LocalDateTime.now());
+        if (latestRoleId != null) existing.setLatestRoleId(latestRoleId);
+        repository.save(existing);
     }
 
     public void remove(Long id) {

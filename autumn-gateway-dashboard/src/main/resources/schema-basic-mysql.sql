@@ -171,16 +171,33 @@ CREATE TABLE IF NOT EXISTS `basic_role_permission` (
 
 
 -- basic_user 基础用户表
+-- 已整合旧 user 主表字段：uuid / username / nickname / avatar / email / phone /
+-- status / password_updated_at / last_login_at，旧 user 表不再使用。
+-- 命名沿用 basic_* 规范（create_time / update_time 对应旧表的 created_at / updated_at）。
 CREATE TABLE IF NOT EXISTS `basic_user` (
-    `id`             BIGINT NOT NULL AUTO_INCREMENT COMMENT 'ID',
-    `emp_no`         VARCHAR(50) NOT NULL DEFAULT '' COMMENT 'ESB人员工号',
-    `admin`          INT NOT NULL DEFAULT 0 COMMENT '是否是管理员：1-是；0：否',
-    `latest_role_id` BIGINT NOT NULL DEFAULT 0 COMMENT '最近登录使用角色Id',
-    `create_time`    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    `update_time`    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `id`                  BIGINT NOT NULL AUTO_INCREMENT COMMENT 'ID',
+    `uuid`                VARCHAR(36) DEFAULT NULL COMMENT '对外统一标识（OIDC 的 sub）：生成后永不变化，避免暴露自增ID、便于跨库合并；唯一，可为 NULL',
+    `username`            VARCHAR(64) DEFAULT NULL COMMENT '登录名（工号语义）：创建后禁止修改，如需变更只能后台改库；唯一，可为 NULL',
+    `nickname`            VARCHAR(64) NOT NULL DEFAULT '' COMMENT '昵称/姓名',
+    `avatar`              VARCHAR(255) NOT NULL DEFAULT '' COMMENT '头像地址',
+    `email`               VARCHAR(128) NOT NULL DEFAULT '' COMMENT '邮箱',
+    `phone`               VARCHAR(32) NOT NULL DEFAULT '' COMMENT '手机号',
+    `emp_no`              VARCHAR(50) NOT NULL DEFAULT '' COMMENT 'ESB人员工号',
+    `admin`               INT NOT NULL DEFAULT 0 COMMENT '是否是管理员：1-是；0：否',
+    `status`              TINYINT NOT NULL DEFAULT 1 COMMENT '状态：1-正常 0=禁用',
+    `latest_role_id`      BIGINT NOT NULL DEFAULT 0 COMMENT '最近登录使用角色Id',
+    `password_updated_at` DATETIME DEFAULT NULL COMMENT '密码最后修改时间，用于密码有效期/强制改密',
+    `last_login_at`       DATETIME DEFAULT NULL COMMENT '最近登录时间',
+    `create_time`         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_time`         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (`id`),
-    KEY `user_emp_no_IDX` (`emp_no`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='基础用户表';
+    UNIQUE KEY `uk_basic_user_uuid` (`uuid`),
+    UNIQUE KEY `uk_basic_user_username` (`username`),
+    KEY `user_emp_no_IDX` (`emp_no`),
+    KEY `idx_basic_user_email` (`email`),
+    KEY `idx_basic_user_phone` (`phone`),
+    KEY `idx_basic_user_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='基础用户表（已整合旧 user 主表字段）';
 
 
 -- basic_user_access_role 用户最后登录角色，解决多端登录
