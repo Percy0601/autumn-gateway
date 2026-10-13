@@ -37,8 +37,9 @@ public class BasicUserController {
                                         @RequestParam(required = false) String empNo,
                                         @RequestParam(required = false) String username,
                                         @RequestParam(required = false) String phone,
-                                        @RequestParam(required = false) Integer status) {
-        Page<BasicUser> page = service.list(empNo, username, phone, status, current, pageSize);
+                                        @RequestParam(required = false) Integer status,
+                                        @RequestParam(required = false) List<Long> boundIds) {
+        Page<BasicUser> page = service.list(empNo, username, phone, status, boundIds, current, pageSize);
         return Result.success(page.getContent(), page.getTotalElements());
     }
 
@@ -106,6 +107,26 @@ public class BasicUserController {
         try {
             service.setRoles(id, roleIds);
             return Result.success(null);
+        } catch (IllegalArgumentException e) {
+            return Result.error(400, e.getMessage());
+        }
+    }
+
+    /** 启用：status = 1 */
+    @PutMapping("/{id}/enable")
+    public Result<BasicUser> enable(@PathVariable Long id) {
+        try {
+            return Result.success(service.updateStatus(id, 1));
+        } catch (IllegalArgumentException e) {
+            return Result.error(400, e.getMessage());
+        }
+    }
+
+    /** 停用：status = 0 */
+    @PutMapping("/{id}/disable")
+    public Result<BasicUser> disable(@PathVariable Long id) {
+        try {
+            return Result.success(service.updateStatus(id, 0));
         } catch (IllegalArgumentException e) {
             return Result.error(400, e.getMessage());
         }

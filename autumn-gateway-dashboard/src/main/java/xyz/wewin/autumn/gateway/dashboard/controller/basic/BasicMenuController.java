@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import xyz.wewin.autumn.gateway.dashboard.common.Result;
 import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicMenu;
+import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicResource;
+import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicRole;
 import xyz.wewin.autumn.gateway.dashboard.service.basic.BasicMenuService;
 
 import java.util.List;
@@ -31,8 +33,10 @@ public class BasicMenuController {
     @GetMapping
     public Result<List<BasicMenu>> list(@RequestParam(defaultValue = "1") int current,
                                         @RequestParam(defaultValue = "10") int pageSize,
-                                        @RequestParam(required = false) Long appId) {
-        Page<BasicMenu> page = service.list(appId, current, pageSize);
+                                        @RequestParam(required = false) Long appId,
+                                        @RequestParam(required = false) String menuName,
+                                        @RequestParam(required = false) List<Long> boundIds) {
+        Page<BasicMenu> page = service.list(appId, menuName, boundIds, current, pageSize);
         return Result.success(page.getContent(), page.getTotalElements());
     }
 
@@ -85,5 +89,30 @@ public class BasicMenuController {
         } catch (IllegalArgumentException e) {
             return Result.error(400, e.getMessage());
         }
+    }
+
+    // ---------- 关联维护 ----------
+
+    /** 菜单已关联的资源（basic_menu_resource） */
+    @GetMapping("/{id}/resources")
+    public Result<List<BasicResource>> resources(@PathVariable Long id) {
+        return Result.success(service.getResources(id));
+    }
+
+    /** 全量覆盖菜单的资源关联：body 为资源 id 数组 */
+    @PutMapping("/{id}/resources")
+    public Result<Void> setResources(@PathVariable Long id, @RequestBody List<Long> resourceIds) {
+        try {
+            service.setResources(id, resourceIds);
+            return Result.success(null);
+        } catch (IllegalArgumentException e) {
+            return Result.error(400, e.getMessage());
+        }
+    }
+
+    /** 反查：哪些角色授权了这个菜单（只读） */
+    @GetMapping("/{id}/roles")
+    public Result<List<BasicRole>> roles(@PathVariable Long id) {
+        return Result.success(service.getRoles(id));
     }
 }

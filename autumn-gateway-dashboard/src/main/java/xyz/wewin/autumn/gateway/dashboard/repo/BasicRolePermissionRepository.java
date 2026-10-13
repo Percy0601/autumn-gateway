@@ -14,4 +14,7 @@ public interface BasicRolePermissionRepository extends CrudRepository<BasicRoleP
     List<BasicRolePermission> findByRoleIdAndRefId(Long roleId, Long refId);
 
     List<BasicRolePermission> findByRoleIdAndType(Long roleId, Integer type);
+
+    /** 反查：某个菜单/资源被哪些角色授权（配合 type 使用） */
+    List<BasicRolePermission> findByRefIdAndType(Long refId, Integer type);
 }

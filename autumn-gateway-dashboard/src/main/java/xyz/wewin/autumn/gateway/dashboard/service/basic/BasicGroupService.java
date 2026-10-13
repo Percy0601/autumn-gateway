@@ -263,4 +263,13 @@ public class BasicGroupService {
             groupGroupRepository.save(gg);
         }
     }
+
+    /** status: 1=正常 0=停用 */
+    public BasicGroup updateStatus(Long id, Integer status) {
+        BasicGroup existing = repository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("用户组不存在: " + id));
+        existing.setStatus(status);
+        existing.setUpdateTime(LocalDateTime.now());
+        return repository.save(existing);
+    }
 }

@@ -8,11 +8,21 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicApp;
+import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicMenu;
+import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicMenuResource;
 import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicResource;
+import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicRole;
+import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicRolePermission;
 import xyz.wewin.autumn.gateway.dashboard.repo.BasicAppRepository;
+import xyz.wewin.autumn.gateway.dashboard.repo.BasicMenuRepository;
+import xyz.wewin.autumn.gateway.dashboard.repo.BasicMenuResourceRepository;
 import xyz.wewin.autumn.gateway.dashboard.repo.BasicResourceRepository;
+import xyz.wewin.autumn.gateway.dashboard.repo.BasicRolePermissionRepository;
+import xyz.wewin.autumn.gateway.dashboard.repo.BasicRoleRepository;
+import xyz.wewin.autumn.gateway.dashboard.security.RequestContext;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -29,16 +39,38 @@ public class BasicResourceService {
     @Autowired
     private BasicAppRepository appRepository;
 
+    @Autowired
+    private BasicMenuResourceRepository menuResourceRepository;
+
+    @Autowired
+    private BasicMenuRepository menuRepository;
+
+    @Autowired
+    private BasicRolePermissionRepository rolePermissionRepository;
+
+    @Autowired
+    private BasicRoleRepository roleRepository;
+
+    /** basic_role_permission.type：1-菜单 2-资源 */
+    private static final int PERM_TYPE_RESOURCE = 2;
+
     private static String nvl(String v) {
         return v == null ? "" : v.trim();
     }
 
-    public Page<BasicResource> list(Long appId, String name, String httpMethod, int current, int size) {
+    /** 空集合用 {-1} 占位，避免 SQL 出现 IN () */
+    private static List<Long> normalizeBoundIds(List<Long> boundIds) {
+        return (boundIds == null || boundIds.isEmpty()) ? List.of(-1L) : boundIds;
+    }
+
+    public Page<BasicResource> list(Long appId, String name, String httpMethod,
+                                    List<Long> boundIds, int current, int size) {
         Pageable pageable = PageRequest.of(Math.max(current - 1, 0), size);
         long offset = (long) Math.max(current - 1, 0) * size;
+        List<Long> bound = normalizeBoundIds(boundIds);
         List<BasicResource> content =
-                repository.findWithPage(appId, nvl(name), nvl(httpMethod), offset, (long) size);
-        long total = repository.countWithFilter(appId, nvl(name), nvl(httpMethod));
+                repository.findWithPage(appId, nvl(name), nvl(httpMethod), bound, offset, (long) size);
+        long total = repository.countWithFilter(appId, nvl(name), nvl(httpMethod), bound);
         return new PageImpl<>(content, pageable, total);
     }
 
@@ -94,5 +126,60 @@ public class BasicResourceService {
 
     public List<BasicResource> listAll() {
         return (List<BasicResource>) repository.findAll();
+    }
+
+    // ---------- 资源 - 菜单关联（basic_menu_resource） ----------
+
+    /** 资源被哪些菜单关联 */
+    public List<BasicMenu> getMenus(Long resourceId) {
+        List<Long> ids = menuResourceRepository.findByResourceId(resourceId).stream()
+                .filter(mr -> mr.getDeleted() == null || mr.getDeleted() == 0)
+                .map(BasicMenuResource::getMenuId)
+                .distinct()
+                .toList();
+        if (ids.isEmpty()) {
+            return new ArrayList<>();
+        }
+        return (List<BasicMenu>) menuRepository.findAllById(ids);
+    }
+
+    /** 全量覆盖资源的菜单关联 */
+    public void setMenus(Long resourceId, List<Long> menuIds) {
+        if (!repository.existsById(resourceId)) {
+            throw new IllegalArgumentException("资源不存在: " + resourceId);
+        }
+        menuResourceRepository.findByResourceId(resourceId).forEach(menuResourceRepository::delete);
+        if (menuIds == null || menuIds.isEmpty()) {
+            return;
+        }
+        LocalDateTime now = LocalDateTime.now();
+        Long opUser = RequestContext.currentUserId();
+        for (Long menuId : menuIds) {
+            if (menuId == null) continue;
+            BasicMenuResource mr = new BasicMenuResource();
+            mr.setId(null);
+            mr.setMenuId(menuId);
+            mr.setResourceId(resourceId);
+            mr.setDeleted(0);
+            mr.setOpUserId(opUser);
+            mr.setCreateTime(now);
+            mr.setUpdateTime(now);
+            menuResourceRepository.save(mr);
+        }
+    }
+
+    // ---------- 资源 - 角色（反查，只读） ----------
+
+    /** 哪些角色授权了这个资源（basic_role_permission.type=2 反查） */
+    public List<BasicRole> getRoles(Long resourceId) {
+        List<Long> ids = rolePermissionRepository.findByRefIdAndType(resourceId, PERM_TYPE_RESOURCE).stream()
+                .filter(p -> p.getDelFlag() == null || p.getDelFlag() == 0)
+                .map(BasicRolePermission::getRoleId)
+                .distinct()
+                .toList();
+        if (ids.isEmpty()) {
+            return new ArrayList<>();
+        }
+        return (List<BasicRole>) roleRepository.findAllById(ids);
     }
 }

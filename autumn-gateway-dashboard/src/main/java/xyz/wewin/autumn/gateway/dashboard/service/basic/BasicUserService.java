@@ -57,16 +57,22 @@ public class BasicUserService {
         return v == null ? "" : v.trim();
     }
 
+    /** 空集合用 {-1} 占位，避免 SQL 出现 IN () */
+    private static List<Long> normalizeBoundIds(List<Long> boundIds) {
+        return (boundIds == null || boundIds.isEmpty()) ? List.of(-1L) : boundIds;
+    }
+
     /** 分页列表；status 传 null 或 -1 表示不过滤 */
     public Page<BasicUser> list(String empNo, String username, String phone, Integer status,
-                                int current, int size) {
+                                List<Long> boundIds, int current, int size) {
         int statusFilter = (status == null) ? -1 : status;
         Pageable pageable = PageRequest.of(Math.max(current - 1, 0), size);
         long offset = (long) Math.max(current - 1, 0) * size;
+        List<Long> bound = normalizeBoundIds(boundIds);
         List<BasicUser> content = repository.findWithPage(
-                nvl(empNo), nvl(username), nvl(phone), statusFilter, offset, (long) size);
+                nvl(empNo), nvl(username), nvl(phone), statusFilter, bound, offset, (long) size);
         long total = repository.countWithFilter(
-                nvl(empNo), nvl(username), nvl(phone), statusFilter);
+                nvl(empNo), nvl(username), nvl(phone), statusFilter, bound);
         return new PageImpl<>(content, pageable, total);
     }
 
@@ -225,5 +231,14 @@ public class BasicUserService {
             ur.setRemark("");
             userRoleRepository.save(ur);
         }
+    }
+
+    /** status: 1=正常 0=停用 */
+    public BasicUser updateStatus(Long id, Integer status) {
+        BasicUser existing = repository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("用户不存在: " + id));
+        existing.setStatus(status);
+        existing.setUpdateTime(LocalDateTime.now());
+        return repository.save(existing);
     }
 }

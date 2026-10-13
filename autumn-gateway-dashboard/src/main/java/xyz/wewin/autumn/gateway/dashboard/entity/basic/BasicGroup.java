@@ -24,6 +24,7 @@ public class BasicGroup {
     private Long orgId; // 部门名称
     @Column("job_id")
     private Long jobId; // 岗位ID
+    private Integer status; // 状态：1-正常 0-停用
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -48,4 +49,7 @@ public class BasicGroup {
 
     public Long getJobId() { return jobId; }
     public void setJobId(Long jobId) { this.jobId = jobId; }
+
+    public Integer getStatus() { return status; }
+    public void setStatus(Integer status) { this.status = status; }
 }

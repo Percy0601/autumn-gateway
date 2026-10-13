@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import xyz.wewin.autumn.gateway.dashboard.common.Result;
+import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicGroup;
 import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicMenu;
 import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicResource;
 import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicRole;
@@ -137,6 +138,23 @@ public class BasicRoleController {
     public Result<Void> setResources(@PathVariable Long id, @RequestBody List<Long> resourceIds) {
         try {
             service.setResources(id, resourceIds);
+            return Result.success(null);
+        } catch (IllegalArgumentException e) {
+            return Result.error(400, e.getMessage());
+        }
+    }
+
+    /** 角色已关联的用户组（basic_role_group） */
+    @GetMapping("/{id}/groups")
+    public Result<List<BasicGroup>> groups(@PathVariable Long id) {
+        return Result.success(service.getGroups(id));
+    }
+
+    /** 全量覆盖关联：body 为用户组 id 数组 */
+    @PutMapping("/{id}/groups")
+    public Result<Void> setGroups(@PathVariable Long id, @RequestBody List<Long> groupIds) {
+        try {
+            service.setGroups(id, groupIds);
             return Result.success(null);
         } catch (IllegalArgumentException e) {
             return Result.error(400, e.getMessage());

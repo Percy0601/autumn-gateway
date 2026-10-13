@@ -7,14 +7,18 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicGroup;
 import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicMenu;
 import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicResource;
 import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicRole;
+import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicRoleGroup;
 import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicRolePermission;
 import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicUser;
 import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicUserRole;
+import xyz.wewin.autumn.gateway.dashboard.repo.BasicGroupRepository;
 import xyz.wewin.autumn.gateway.dashboard.repo.BasicMenuRepository;
 import xyz.wewin.autumn.gateway.dashboard.repo.BasicResourceRepository;
+import xyz.wewin.autumn.gateway.dashboard.repo.BasicRoleGroupRepository;
 import xyz.wewin.autumn.gateway.dashboard.repo.BasicRolePermissionRepository;
 import xyz.wewin.autumn.gateway.dashboard.repo.BasicRoleRepository;
 import xyz.wewin.autumn.gateway.dashboard.repo.BasicUserRepository;
@@ -38,6 +42,12 @@ public class BasicRoleService {
 
     @Autowired
     private BasicRoleRepository repository;
+
+    @Autowired
+    private BasicRoleGroupRepository roleGroupRepository;
+
+    @Autowired
+    private BasicGroupRepository groupRepository;
 
     @Autowired
     private BasicUserRoleRepository userRoleRepository;
@@ -239,6 +249,46 @@ public class BasicRoleService {
             p.setCreateTime(now);
             p.setUpdateTime(now);
             rolePermissionRepository.save(p);
+        }
+    }
+
+    // ---------- 角色 - 用户组关联（basic_role_group） ----------
+
+    /** 角色已关联的用户组 */
+    public List<BasicGroup> getGroups(Long roleId) {
+        List<Long> ids = roleGroupRepository.findByRoleId(roleId).stream()
+                .filter(rg -> rg.getDeleted() == null || rg.getDeleted() == 0)
+                .map(BasicRoleGroup::getGroupId)
+                .distinct()
+                .toList();
+        if (ids.isEmpty()) {
+            return new ArrayList<>();
+        }
+        return (List<BasicGroup>) groupRepository.findAllById(ids);
+    }
+
+    /** 全量覆盖角色的用户组关联 */
+    public void setGroups(Long roleId, List<Long> groupIds) {
+        if (!repository.existsById(roleId)) {
+            throw new IllegalArgumentException("角色不存在: " + roleId);
+        }
+        roleGroupRepository.findByRoleId(roleId).forEach(roleGroupRepository::delete);
+        if (groupIds == null || groupIds.isEmpty()) {
+            return;
+        }
+        LocalDateTime now = LocalDateTime.now();
+        Long opUser = RequestContext.currentUserId();
+        for (Long groupId : groupIds) {
+            if (groupId == null) continue;
+            BasicRoleGroup rg = new BasicRoleGroup();
+            rg.setId(null);
+            rg.setRoleId(roleId);
+            rg.setGroupId(groupId);
+            rg.setDeleted(0);
+            rg.setOpUserId(opUser);
+            rg.setCreateTime(now);
+            rg.setUpdateTime(now);
+            roleGroupRepository.save(rg);
         }
     }
 }

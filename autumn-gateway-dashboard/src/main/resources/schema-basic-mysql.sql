@@ -48,6 +48,7 @@ CREATE TABLE IF NOT EXISTS `basic_group` (
     `code`        VARCHAR(100) NOT NULL DEFAULT '' COMMENT '岗位编码',
     `org_id`      BIGINT NOT NULL DEFAULT 0 COMMENT '部门名称',
     `job_id`      BIGINT NOT NULL DEFAULT 0 COMMENT '岗位ID',
+    `status`      INT NOT NULL DEFAULT 1 COMMENT '状态：1-正常 0-停用',
     PRIMARY KEY (`id`),
     KEY `basic_user_group_name_IDX` (`name`),
     KEY `basic_group_org_id_IDX` (`org_id`)
@@ -68,6 +69,22 @@ CREATE TABLE IF NOT EXISTS `basic_group_group` (
     KEY `idx_group_group_parent` (`parent_group_id`),
     KEY `idx_group_group_child` (`group_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户组与用户组关联表（组层级）';
+
+
+-- basic_menu_resource 菜单与资源关联表（一个菜单下挂哪些接口资源）
+CREATE TABLE IF NOT EXISTS `basic_menu_resource` (
+    `id`          BIGINT NOT NULL AUTO_INCREMENT COMMENT 'ID',
+    `menu_id`     BIGINT NOT NULL DEFAULT 0 COMMENT '菜单ID',
+    `resource_id` BIGINT NOT NULL DEFAULT 0 COMMENT '资源ID',
+    `deleted`     INT NOT NULL DEFAULT 0 COMMENT '删除状态：0-否 1-是',
+    `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `op_user_id`  BIGINT NOT NULL DEFAULT 0 COMMENT '操作人',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_menu_resource` (`menu_id`, `resource_id`),
+    KEY `idx_menu_resource_menu` (`menu_id`),
+    KEY `idx_menu_resource_res` (`resource_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='菜单与资源关联表';
 
 
 -- basic_menu 菜单

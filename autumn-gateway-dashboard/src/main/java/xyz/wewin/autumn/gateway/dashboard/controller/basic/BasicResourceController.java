@@ -11,7 +11,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import xyz.wewin.autumn.gateway.dashboard.common.Result;
+import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicMenu;
 import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicResource;
+import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicRole;
 import xyz.wewin.autumn.gateway.dashboard.service.basic.BasicResourceService;
 
 import java.util.List;
@@ -32,8 +34,9 @@ public class BasicResourceController {
                                             @RequestParam(defaultValue = "10") int pageSize,
                                             @RequestParam(required = false) Long appId,
                                             @RequestParam(required = false) String name,
-                                            @RequestParam(required = false) String httpMethod) {
-        Page<BasicResource> page = service.list(appId, name, httpMethod, current, pageSize);
+                                            @RequestParam(required = false) String httpMethod,
+                                            @RequestParam(required = false) List<Long> boundIds) {
+        Page<BasicResource> page = service.list(appId, name, httpMethod, boundIds, current, pageSize);
         return Result.success(page.getContent(), page.getTotalElements());
     }
 
@@ -85,5 +88,30 @@ public class BasicResourceController {
     @GetMapping("/list")
     public Result<List<BasicResource>> listAll() {
         return Result.success(service.listAll());
+    }
+
+    // ---------- 关联维护 ----------
+
+    /** 资源被哪些菜单关联（basic_menu_resource） */
+    @GetMapping("/{id}/menus")
+    public Result<List<BasicMenu>> menus(@PathVariable Long id) {
+        return Result.success(service.getMenus(id));
+    }
+
+    /** 全量覆盖资源的菜单关联：body 为菜单 id 数组 */
+    @PutMapping("/{id}/menus")
+    public Result<Void> setMenus(@PathVariable Long id, @RequestBody List<Long> menuIds) {
+        try {
+            service.setMenus(id, menuIds);
+            return Result.success(null);
+        } catch (IllegalArgumentException e) {
+            return Result.error(400, e.getMessage());
+        }
+    }
+
+    /** 反查：哪些角色授权了这个资源（只读） */
+    @GetMapping("/{id}/roles")
+    public Result<List<BasicRole>> roles(@PathVariable Long id) {
+        return Result.success(service.getRoles(id));
     }
 }

@@ -2,8 +2,9 @@
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search } from '@element-plus/icons-vue'
-import { basicUserApi } from '../../../api/basic'
-import { copyText, fmtDateTime, REGEX } from '../../../utils/format'
+import { basicGroupApi, basicRoleApi, basicUserApi } from '../../../api/basic'
+import { appIdLabel, copyText, fmtDateTime, REGEX, roleTypeLabel } from '../../../utils/format'
+import RelationDetailDialog from '../../../components/RelationDetailDialog.vue'
 
 /** 状态：1-正常 0-禁用 */
 const STATUS_OPTIONS = [
@@ -61,6 +62,59 @@ async function handleRemove(row) {
   await basicUserApi.remove(row.id)
   ElMessage.success('已删除')
   loadData()
+}
+
+async function changeStatus(row) {
+  const disable = row.status !== 0
+  if (disable) await basicUserApi.disable(row.id)
+  else await basicUserApi.enable(row.id)
+  ElMessage.success(disable ? '已停用' : '已启用')
+  loadData()
+}
+
+// ---------- 详情弹窗：基本信息 + 关联分录 ----------
+const detailVisible = ref(false)
+const detailRow = ref(null)
+
+const detailFields = [
+  { label: 'ID', prop: 'id' },
+  { label: '登录名', prop: 'username' },
+  { label: '昵称', prop: 'nickname' },
+  { label: '员工工号', prop: 'empNo' },
+  { label: '手机号', prop: 'phone' },
+  { label: '邮箱', prop: 'email' },
+  { label: '管理员', prop: 'admin', formatter: (v) => (v === 1 ? '管理员' : '普通') },
+  { label: '状态', prop: 'status', formatter: (v) => (v === 0 ? '停用' : '正常') },
+  { label: '最近角色', prop: 'latestRoleId' },
+  { label: '最近登录', prop: 'lastLoginAt', formatter: fmtDateTime },
+  { label: '创建时间', prop: 'createTime', formatter: fmtDateTime },
+  { label: '更新时间', prop: 'updateTime', formatter: fmtDateTime },
+]
+
+const detailTabs = [
+  {
+    key: 'roles',
+    title: '关联角色',
+    keywordLabel: '角色名称',
+    boundList: (id) => basicUserApi.roles(id),
+    boundSet: (id, ids) => basicUserApi.setRoles(id, ids),
+    sourceList: ({ keyword, boundIds, current, pageSize }) =>
+      basicRoleApi.list({ current, pageSize, name: keyword, boundIds }),
+  },
+  {
+    key: 'groups',
+    title: '关联用户组（岗位）',
+    keywordLabel: '岗位名称',
+    boundList: (id) => basicUserApi.groups(id),
+    boundSet: (id, ids) => basicUserApi.setGroups(id, ids),
+    sourceList: ({ keyword, boundIds, current, pageSize }) =>
+      basicGroupApi.list({ current, pageSize, name: keyword, boundIds }),
+  },
+]
+
+function openDetail(row) {
+  detailRow.value = row
+  detailVisible.value = true
 }
 
 // ---------- 抽屉表单 ----------
@@ -274,9 +328,23 @@ onMounted(loadData)
           <el-table-column label="创建时间" width="170">
             <template #default="{ row }">{{ fmtDateTime(row.createTime) }}</template>
           </el-table-column>
-          <el-table-column label="操作" width="140" fixed="right">
+          <el-table-column label="操作" width="270" fixed="right">
             <template #default="{ row }">
+              <el-link type="info" class="link-op" @click="openDetail(row)">详情</el-link>
               <el-link type="primary" class="link-op" @click="openEdit(row)">编辑</el-link>
+              <el-popconfirm
+                :title="row.status === 0 ? '确定启用该用户？' : '确定停用该用户？'"
+                width="170"
+                @confirm="changeStatus(row)"
+              >
+                <template #reference>
+                  <el-link
+                    :class="row.status === 0 ? 'link-op enabled-link' : 'link-op disabled-link'"
+                  >
+                    {{ row.status === 0 ? '启用' : '停用' }}
+                  </el-link>
+                </template>
+              </el-popconfirm>
               <el-link type="danger" class="link-op" @click="handleRemove(row)">删除</el-link>
             </template>
           </el-table-column>
@@ -349,5 +417,33 @@ onMounted(loadData)
         </div>
       </template>
     </el-drawer>
+
+    <!-- 详情弹窗：上基本信息 + 下关联分录页签 -->
+    <RelationDetailDialog
+      v-model="detailVisible"
+      title="用户详情"
+      :row="detailRow"
+      :fields="detailFields"
+      :tabs="detailTabs"
+    >
+      <template #roles-columns>
+        <el-table-column prop="code" label="角色编码" min-width="130" show-overflow-tooltip />
+        <el-table-column prop="name" label="角色名称" min-width="120" show-overflow-tooltip />
+        <el-table-column label="应用" min-width="140">
+          <template #default="{ row }">{{ appIdLabel(row.appId) }}</template>
+        </el-table-column>
+        <el-table-column label="类型" width="100">
+          <template #default="{ row }">
+            <el-tag size="small" :type="row.type === 1 ? 'warning' : 'info'">
+              {{ roleTypeLabel(row.type) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+      </template>
+      <template #groups-columns>
+        <el-table-column prop="name" label="岗位名称" min-width="150" show-overflow-tooltip />
+        <el-table-column prop="code" label="岗位编码" min-width="130" show-overflow-tooltip />
+      </template>
+    </RelationDetailDialog>
   </div>
 </template>

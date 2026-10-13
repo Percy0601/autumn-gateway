@@ -18,25 +18,32 @@ public interface BasicResourceRepository extends CrudRepository<BasicResource, L
 
     Optional<BasicResource> findByAppIdAndName(Long appId, String name);
 
+    /** boundIds：已关联的资源 id，不受过滤条件影响且排在最前；未传时用 {-1} 占位 */
     @Query("""
         SELECT r.* FROM basic_resource r
-        WHERE (:appId IS NULL OR :appId = '' OR r.app_id = :appId)
-          AND (:name IS NULL OR :name = '' OR r.name LIKE CONCAT('%', :name, '%'))
-          AND (:httpMethod IS NULL OR :httpMethod = '' OR r.http_method = :httpMethod)
-        ORDER BY r.id DESC
+        WHERE ( ( :appId IS NULL OR r.app_id = :appId )
+            AND ( :name IS NULL OR :name = '' OR r.name LIKE CONCAT('%', :name, '%') )
+            AND ( :httpMethod IS NULL OR :httpMethod = '' OR r.http_method = :httpMethod ) )
+           OR r.id IN (:boundIds)
+        ORDER BY CASE WHEN r.id IN (:boundIds) THEN 0 ELSE 1 END, r.id DESC
         LIMIT :offset OFFSET :limit
         """)
     List<BasicResource> findWithPage(@Param("appId") Long appId,
                                      @Param("name") String name,
                                      @Param("httpMethod") String httpMethod,
+                                     @Param("boundIds") List<Long> boundIds,
                                      @Param("limit") long limit,
                                      @Param("offset") long offset);
 
     @Query("""
         SELECT COUNT(1) FROM basic_resource
-        WHERE (:appId IS NULL OR :appId = '' OR app_id = :appId)
-          AND (:name IS NULL OR :name = '' OR name LIKE CONCAT('%', :name, '%'))
-          AND (:httpMethod IS NULL OR :httpMethod = '' OR http_method = :httpMethod)
+        WHERE ( ( :appId IS NULL OR app_id = :appId )
+            AND ( :name IS NULL OR :name = '' OR name LIKE CONCAT('%', :name, '%') )
+            AND ( :httpMethod IS NULL OR :httpMethod = '' OR http_method = :httpMethod ) )
+           OR id IN (:boundIds)
         """)
-    long countWithFilter(Long appId, String name, String httpMethod);
+    long countWithFilter(@Param("appId") Long appId,
+                         @Param("name") String name,
+                         @Param("httpMethod") String httpMethod,
+                         @Param("boundIds") List<Long> boundIds);
 }
