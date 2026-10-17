@@ -1,0 +1,74 @@
+// 列表页统一约定：查询区下方操作条 + 操作列链接间距
+// 对齐 maku-admin 原生布局（查询栏 -> 操作栏 -> 表格）
+
+// 工具栏：白色底色，与上方搜索区保留纵向间隔
+.pro-toolbar {
+  margin: 10px 0 12px;
+  display: flex;
+  gap: 12px;
+  background: #fff;
+  padding: 12px 16px;
+  border-radius: 2px;
+}
+
+// 操作列各操作项之间留间距
+.link-op {
+  margin: 0 10px;
+}
+
+// 全局：所有表格增加内部边框（网格线）+ 外框，对齐 maku-admin
+// index.scss 在 element-plus 之后导入，所以这里可以覆盖 EP 的默认变量
+.el-table {
+  // EP 默认 --el-table-border-color(#ebeef5) 太浅几乎看不见，调深让网格线清晰
+  --el-table-border-color: #dcdfe6;
+
+  th.el-table__cell,
+  td.el-table__cell {
+    border-right: 1px solid var(--el-table-border-color);
+    border-bottom: 1px solid var(--el-table-border-color);
+  }
+
+  // 外框（底边由最后一行的 td border-bottom 补齐）
+  border-top: 1px solid var(--el-table-border-color);
+  border-left: 1px solid var(--el-table-border-color);
+  border-right: 1px solid var(--el-table-border-color);
+
+  // 表头居中、内容左对齐（覆盖列上 align="center" 产生的内联样式）
+  th.el-table__cell {
+    text-align: center !important;
+  }
+
+  td.el-table__cell {
+    text-align: left !important;
+  }
+
+  // 多选框列保持居中
+  td.el-table__cell.el-table-column--selection {
+    text-align: center !important;
+  }
+
+  // 例外：位数固定（手机号）、状态、时间、操作列 —— 内容居中
+  td.el-table__cell.col-center {
+    text-align: center !important;
+  }
+}
+
+// 用户组标签：多个时留间距
+.group-tag + .group-tag {
+  margin-left: 4px;
+}
+
+// 搜索区 / 筛选区：白色底色
+.pro-search,
+.filter-bar {
+  background: #fff;
+  padding: 16px 16px 0;
+  border-radius: 2px;
+}
+
+// 分页区：白色底色
+.pro-pagination {
+  background: #fff;
+  padding: 12px 16px;
+  border-radius: 2px;
+}

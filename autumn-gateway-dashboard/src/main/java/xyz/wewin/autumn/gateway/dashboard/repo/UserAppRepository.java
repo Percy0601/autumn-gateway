@@ -11,13 +11,13 @@ import java.util.List;
 @Repository
 public interface UserAppRepository extends CrudRepository<UserApp, Long> {
     @Query("""
-        SELECT ua.* FROM user_app ua
-        WHERE (:userId IS NULL OR ua.user_id = :userId)
+        SELECT ua.* FROM "user_app" ua
+        WHERE (:userId IS NULL OR ua."user_id" = :userId)
         """)
     List<UserApp> findByUserId(Long userId);
 
     @Modifying
-    @Query("DELETE FROM user_app WHERE user_id = :userId")
+    @Query("DELETE FROM \"user_app\" WHERE \"user_id\" = :userId")
     void deleteByUserId(Long userId);
     boolean existsByUserIdAndAppId(Long userId, Long appId);
 }

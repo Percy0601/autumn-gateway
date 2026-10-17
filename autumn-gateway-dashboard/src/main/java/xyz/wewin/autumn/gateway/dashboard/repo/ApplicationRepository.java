@@ -12,8 +12,8 @@ import java.util.List;
 public interface ApplicationRepository extends CrudRepository<Application, Long> {
 
     @Query("""
-        SELECT app.* FROM application app
-        WHERE (:appId IS NULL OR :appId = '' OR app.appid = :appId)
+        SELECT app.* FROM "application" app
+        WHERE (:appId IS NULL OR :appId = '' OR app."appid" = :appId)
           AND (:name IS NULL OR :name = '' OR app.name LIKE CONCAT('%', :name, '%'))
         ORDER BY id DESC
         LIMIT :offset OFFSET :limit
@@ -23,17 +23,17 @@ public interface ApplicationRepository extends CrudRepository<Application, Long>
                                    @Param("limit")long limit,
                                    @Param("offset")long offset);
 
-    @Query("SELECT COUNT(1) FROM application")
+    @Query("SELECT COUNT(1) FROM \"application\"")
     long countAll();
 
     @Query("""
-        SELECT COUNT(1) FROM application
-        WHERE appid = :appid
+        SELECT COUNT(1) FROM "application"
+        WHERE "appid" = :appid
         """)
     int countByAppid(String appid);
     @Query("""
-        SELECT count(1) FROM application app
-        WHERE (:appId IS NULL OR :appId = '' OR app.appid = :appId)
+        SELECT count(1) FROM "application" app
+        WHERE (:appId IS NULL OR :appId = '' OR app."appid" = :appId)
           AND (:name IS NULL OR :name = '' OR app.name LIKE CONCAT('%', :name, '%'))
         ORDER BY id DESC
         """)
