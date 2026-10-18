@@ -20,6 +20,10 @@ public class BasicApp {
     private String basePath; // 该应用 API 统一前缀，如 /api/order
     private String description;
     private Integer status; // 1=正常 0=禁用
+    @Column("namespace_id")
+    private Long namespaceId; // 所属命名空间ID，关联 basic_namespace.id
+    @Column("namespace_code")
+    private String namespaceCode; // 所属命名空间编码（冗余存储，便于查询）
     @Column("created_at")
     private LocalDateTime createdAt;
     @Column("updated_at")
@@ -42,6 +46,12 @@ public class BasicApp {
 
     public Integer getStatus() { return status; }
     public void setStatus(Integer status) { this.status = status; }
+
+    public Long getNamespaceId() { return namespaceId; }
+    public void setNamespaceId(Long namespaceId) { this.namespaceId = namespaceId; }
+
+    public String getNamespaceCode() { return namespaceCode; }
+    public void setNamespaceCode(String namespaceCode) { this.namespaceCode = namespaceCode; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

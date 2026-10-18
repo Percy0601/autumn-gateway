@@ -203,7 +203,7 @@ public class BasicUserService {
         return (List<BasicRole>) roleRepository.findAllById(roleIds);
     }
 
-    /** 全量覆盖用户的角色关联；app_id 自动跟随角色所属应用，无需前端传 */
+    /** 全量覆盖用户的角色关联；角色已跨应用，用户-角色关联的 app_id 统一置 0（命名空间级） */
     public void setRoles(Long userId, List<Long> roleIds) {
         if (!repository.existsById(userId)) {
             throw new IllegalArgumentException("用户不存在: " + userId);
@@ -216,12 +216,11 @@ public class BasicUserService {
         Long opUser = RequestContext.currentUserId();
         for (Long roleId : roleIds) {
             if (roleId == null) continue;
-            Long appId = roleRepository.findById(roleId).map(BasicRole::getAppId).orElse(0L);
             BasicUserRole ur = new BasicUserRole();
             ur.setId(null);
             ur.setUserId(userId);
             ur.setRoleId(roleId);
-            ur.setAppId(appId);
+            ur.setAppId(0L);
             ur.setDelFlag(0);
             ur.setCreateUser(opUser);
             ur.setUpdateUser(opUser);

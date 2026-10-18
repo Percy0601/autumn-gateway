@@ -13,8 +13,10 @@ import java.time.LocalDateTime;
 public class BasicRole {
     @Id
     private Long id;
-    @Column("app_id")
-    private Long appId; // 应用ID：1-运营后台 2-POP后台 3-B2B后台 4-互联网医院后台 5-数据中台 6-销售助手 10-数据洞察 100-商家后台
+    @Column("namespace_id")
+    private Long namespaceId; // 命名空间ID，关联 basic_namespace.id；角色可跨应用，归属命名空间
+    @Column("namespace_code")
+    private String namespaceCode; // 命名空间编码（冗余存储，便于查询）
     private String code; // 角色编码
     private String name; // 角色名
     private Integer type; // 角色类型：1-系统角色 2-自定义角色
@@ -35,8 +37,11 @@ public class BasicRole {
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
-    public Long getAppId() { return appId; }
-    public void setAppId(Long appId) { this.appId = appId; }
+    public Long getNamespaceId() { return namespaceId; }
+    public void setNamespaceId(Long namespaceId) { this.namespaceId = namespaceId; }
+
+    public String getNamespaceCode() { return namespaceCode; }
+    public void setNamespaceCode(String namespaceCode) { this.namespaceCode = namespaceCode; }
 
     public String getCode() { return code; }
     public void setCode(String code) { this.code = code; }

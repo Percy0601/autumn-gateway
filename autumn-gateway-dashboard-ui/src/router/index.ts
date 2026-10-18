@@ -58,11 +58,11 @@ export const autumnMenu = [
 		openStyle: 0,
 		icon: 'setting',
 		children: [
+			{ id: 25, name: '命名空间', url: 'system/namespace/index', openStyle: 0, icon: 'apartment' },
 			{ id: 21, name: '应用管理', url: 'system/app/index', openStyle: 0, icon: 'appstore' },
 			{ id: 22, name: '用户管理', url: 'system/user/index', openStyle: 0, icon: 'user' },
 			{ id: 23, name: '角色管理', url: 'system/role/index', openStyle: 0, icon: 'key' },
 			{ id: 24, name: '菜单管理', url: 'system/menu/index', openStyle: 0, icon: 'menu' },
-			{ id: 25, name: '权限管理', url: 'system/permission/index', openStyle: 0, icon: 'lock' },
 			{ id: 26, name: '资源管理', url: 'system/resource/index', openStyle: 0, icon: 'file' },
 			{ id: 27, name: '用户组管理', url: 'system/group/index', openStyle: 0, icon: 'group' },
 			{ id: 28, name: '用户组-角色', url: 'system/group-role/index', openStyle: 0, icon: 'link' },
@@ -71,7 +71,7 @@ export const autumnMenu = [
 			{ id: 31, name: '用户组-用户组', url: 'system/group-group/index', openStyle: 0, icon: 'link' },
 			{ id: 32, name: '角色-菜单', url: 'system/role-menu/index', openStyle: 0, icon: 'menu' },
 			{ id: 33, name: '角色-资源', url: 'system/role-resource/index', openStyle: 0, icon: 'file' },
-			{ id: 34, name: '日志管理', url: 'system/oper-log/index', openStyle: 0, icon: 'log' }
+			{ id: 34, name: '日志管理', url: 'system/oper-log/index', openStyle: 0, icon: 'file-text' }
 		]
 	}
 ]

@@ -40,10 +40,10 @@
             </exclusions>
         </dependency>
 
-        <!-- 新版 OAuth2 授权服务器 -->
+        <!-- OAuth2 授权服务器（Boot 4 起的新 starter 名，旧 spring-boot-starter-oauth2-authorization-server 已废弃） -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-oauth2-authorization-server</artifactId>
+            <artifactId>spring-boot-starter-security-oauth2-authorization-server</artifactId>
         </dependency>
 
         <!-- 数据库：客户端、授权记录、用户账号均从库读取（与 dashboard 同一套库） -->

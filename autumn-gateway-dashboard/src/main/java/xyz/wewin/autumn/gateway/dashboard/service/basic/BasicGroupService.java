@@ -8,6 +8,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicGroup;
+import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicNamespace;
 import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicRole;
 import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicGroupGroup;
 import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicRoleGroup;
@@ -15,6 +16,7 @@ import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicUser;
 import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicUserGroup;
 import xyz.wewin.autumn.gateway.dashboard.repo.BasicGroupGroupRepository;
 import xyz.wewin.autumn.gateway.dashboard.repo.BasicGroupRepository;
+import xyz.wewin.autumn.gateway.dashboard.repo.BasicNamespaceRepository;
 import xyz.wewin.autumn.gateway.dashboard.repo.BasicRoleGroupRepository;
 import xyz.wewin.autumn.gateway.dashboard.repo.BasicRoleRepository;
 import xyz.wewin.autumn.gateway.dashboard.repo.BasicUserGroupRepository;
@@ -28,6 +30,8 @@ import java.util.Optional;
 
 /**
  * 用户组服务，基于 basic_group，并维护 basic_role_group（用户组-角色关联）。
+ *
+ * <p>岗位归属命名空间（basic_namespace），同一命名空间下岗位名称不可重复。
  */
 @Service
 @Transactional
@@ -35,6 +39,9 @@ public class BasicGroupService {
 
     @Autowired
     private BasicGroupRepository repository;
+
+    @Autowired
+    private BasicNamespaceRepository namespaceRepository;
 
     @Autowired
     private BasicRoleGroupRepository roleGroupRepository;
@@ -55,11 +62,11 @@ public class BasicGroupService {
         return v == null ? "" : v.trim();
     }
 
-    public Page<BasicGroup> list(String name, String code, int current, int size) {
+    public Page<BasicGroup> list(Long namespaceId, String name, String code, int current, int size) {
         Pageable pageable = PageRequest.of(Math.max(current - 1, 0), size);
         long offset = (long) Math.max(current - 1, 0) * size;
-        List<BasicGroup> content = repository.findWithPage(nvl(name), nvl(code), offset, (long) size);
-        long total = repository.countWithFilter(nvl(name), nvl(code));
+        List<BasicGroup> content = repository.findWithPage(namespaceId, nvl(name), nvl(code), offset, (long) size);
+        long total = repository.countWithFilter(namespaceId, nvl(name), nvl(code));
         return new PageImpl<>(content, pageable, total);
     }
 
@@ -71,11 +78,23 @@ public class BasicGroupService {
         if (group.getName() == null || group.getName().isBlank()) {
             throw new IllegalArgumentException("岗位名称不能为空");
         }
+        if (group.getNamespaceId() == null) {
+            throw new IllegalArgumentException("所属命名空间不能为空");
+        }
+        BasicNamespace ns = namespaceRepository.findById(group.getNamespaceId())
+                .orElseThrow(() -> new IllegalArgumentException("命名空间不存在: " + group.getNamespaceId()));
+        // 同一命名空间下岗位名称不允许重复
+        if (repository.countByNamespaceIdAndName(group.getNamespaceId(), group.getName()) > 0) {
+            throw new IllegalArgumentException("岗位名称已存在（命名空间 " + group.getNamespaceId() + "）: " + group.getName());
+        }
         group.setId(null);
+        group.setNamespaceCode(ns.getCode());
         if (group.getDeleted() == null) group.setDeleted(0);
         if (group.getCode() == null) group.setCode("");
         if (group.getOrgId() == null) group.setOrgId(0L);
         if (group.getJobId() == null) group.setJobId(0L);
+        // status 在 basic_group 为 NOT NULL，调用方未传时默认启用（1=正常 0=停用）
+        if (group.getStatus() == null) group.setStatus(1);
         group.setCreateTime(LocalDateTime.now());
         group.setUpdateTime(LocalDateTime.now());
         return repository.save(group);
@@ -84,10 +103,25 @@ public class BasicGroupService {
     public BasicGroup update(Long id, BasicGroup req) {
         BasicGroup existing = repository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("用户组不存在: " + id));
-        if (req.getName() != null) existing.setName(req.getName());
+        // 命名空间可能随更新改变，唯一性判定统一基于“生效后的命名空间 ID”
+        Long effectiveNsId = req.getNamespaceId() != null ? req.getNamespaceId() : existing.getNamespaceId();
+        if (req.getNamespaceId() != null) {
+            BasicNamespace ns = namespaceRepository.findById(req.getNamespaceId())
+                    .orElseThrow(() -> new IllegalArgumentException("命名空间不存在: " + req.getNamespaceId()));
+            existing.setNamespaceId(req.getNamespaceId());
+            existing.setNamespaceCode(ns.getCode());
+        }
+        if (req.getName() != null) {
+            if (!req.getName().equals(existing.getName())
+                    && repository.countByIdNotAndNamespaceIdAndName(id, effectiveNsId, req.getName()) > 0) {
+                throw new IllegalArgumentException("岗位名称已存在（命名空间 " + effectiveNsId + "）: " + req.getName());
+            }
+            existing.setName(req.getName());
+        }
         if (req.getCode() != null) existing.setCode(req.getCode());
         if (req.getOrgId() != null) existing.setOrgId(req.getOrgId());
         if (req.getJobId() != null) existing.setJobId(req.getJobId());
+        if (req.getStatus() != null) existing.setStatus(req.getStatus());
         existing.setUpdateTime(LocalDateTime.now());
         return repository.save(existing);
     }

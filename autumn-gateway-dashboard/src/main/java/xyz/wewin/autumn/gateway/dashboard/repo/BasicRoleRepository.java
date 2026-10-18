@@ -12,21 +12,35 @@ import java.util.Optional;
 @Repository
 public interface BasicRoleRepository extends CrudRepository<BasicRole, Long> {
 
-    List<BasicRole> findByAppId(Long appId);
+    List<BasicRole> findByNamespaceId(Long namespaceId);
 
-    List<BasicRole> findByCode(String code);
+    Optional<BasicRole> findByNamespaceIdAndCode(Long namespaceId, String code);
 
-    Optional<BasicRole> findByAppIdAndCode(Long appId, String code);
+    /** 同一命名空间下，角色编码是否重复 */
+    @Query("SELECT COUNT(1) FROM basic_role WHERE namespace_id = :namespaceId AND code = :code")
+    long countByNamespaceIdAndCode(@Param("namespaceId") Long namespaceId, @Param("code") String code);
+
+    /** 同一命名空间下，角色名称是否重复 */
+    @Query("SELECT COUNT(1) FROM basic_role WHERE namespace_id = :namespaceId AND name = :name")
+    long countByNamespaceIdAndName(@Param("namespaceId") Long namespaceId, @Param("name") String name);
+
+    /** 更新场景：排除自身后，同一命名空间下是否已有相同 code */
+    @Query("SELECT COUNT(1) FROM basic_role WHERE id <> :id AND namespace_id = :namespaceId AND code = :code")
+    long countByIdNotAndNamespaceIdAndCode(@Param("id") Long id, @Param("namespaceId") Long namespaceId, @Param("code") String code);
+
+    /** 更新场景：排除自身后，同一命名空间下是否已有相同 name */
+    @Query("SELECT COUNT(1) FROM basic_role WHERE id <> :id AND namespace_id = :namespaceId AND name = :name")
+    long countByIdNotAndNamespaceIdAndName(@Param("id") Long id, @Param("namespaceId") Long namespaceId, @Param("name") String name);
 
     @Query("""
         SELECT r.* FROM basic_role r
-        WHERE (:appId IS NULL OR r.app_id = :appId)
+        WHERE (:namespaceId IS NULL OR r.namespace_id = :namespaceId)
           AND (:code IS NULL OR :code = '' OR r.code LIKE CONCAT('%', :code, '%'))
           AND (:name IS NULL OR :name = '' OR r.name LIKE CONCAT('%', :name, '%'))
         ORDER BY r.id DESC
         LIMIT :offset OFFSET :limit
         """)
-    List<BasicRole> findWithPage(@Param("appId") Long appId,
+    List<BasicRole> findWithPage(@Param("namespaceId") Long namespaceId,
                                  @Param("code") String code,
                                  @Param("name") String name,
                                  @Param("limit") long limit,
@@ -34,9 +48,9 @@ public interface BasicRoleRepository extends CrudRepository<BasicRole, Long> {
 
     @Query("""
         SELECT COUNT(1) FROM basic_role
-        WHERE (:appId IS NULL OR app_id = :appId)
+        WHERE (:namespaceId IS NULL OR namespace_id = :namespaceId)
           AND (:code IS NULL OR :code = '' OR code LIKE CONCAT('%', :code, '%'))
           AND (:name IS NULL OR :name = '' OR name LIKE CONCAT('%', :name, '%'))
         """)
-    long countWithFilter(Long appId, String code, String name);
+    long countWithFilter(Long namespaceId, String code, String name);
 }

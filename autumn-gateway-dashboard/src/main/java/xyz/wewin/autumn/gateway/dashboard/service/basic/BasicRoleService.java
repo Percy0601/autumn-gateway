@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicGroup;
 import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicMenu;
+import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicNamespace;
 import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicResource;
 import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicRole;
 import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicRoleGroup;
@@ -17,6 +18,7 @@ import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicUser;
 import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicUserRole;
 import xyz.wewin.autumn.gateway.dashboard.repo.BasicGroupRepository;
 import xyz.wewin.autumn.gateway.dashboard.repo.BasicMenuRepository;
+import xyz.wewin.autumn.gateway.dashboard.repo.BasicNamespaceRepository;
 import xyz.wewin.autumn.gateway.dashboard.repo.BasicResourceRepository;
 import xyz.wewin.autumn.gateway.dashboard.repo.BasicRoleGroupRepository;
 import xyz.wewin.autumn.gateway.dashboard.repo.BasicRolePermissionRepository;
@@ -32,6 +34,8 @@ import java.util.Optional;
 
 /**
  * 角色服务，基于 basic_role。
+ *
+ * <p>角色可跨应用，归属命名空间（basic_namespace）。同一命名空间内，角色编码与角色名称均不可重复。
  *
  * <p>basic_role 的 create_user / update_user 为 NOT NULL，
  * 这里统一从 {@link RequestContext}（由 JWT 解析得到）取当前操作人。
@@ -64,6 +68,9 @@ public class BasicRoleService {
     @Autowired
     private BasicResourceRepository resourceRepository;
 
+    @Autowired
+    private BasicNamespaceRepository namespaceRepository;
+
     /** basic_role_permission.type：1-菜单 2-资源 3-数据权限 */
     private static final int PERM_TYPE_MENU = 1;
     private static final int PERM_TYPE_RESOURCE = 2;
@@ -72,11 +79,11 @@ public class BasicRoleService {
         return v == null ? "" : v.trim();
     }
 
-    public Page<BasicRole> list(Long appId, String code, String name, int current, int size) {
+    public Page<BasicRole> list(Long namespaceId, String code, String name, int current, int size) {
         Pageable pageable = PageRequest.of(Math.max(current - 1, 0), size);
         long offset = (long) Math.max(current - 1, 0) * size;
-        List<BasicRole> content = repository.findWithPage(appId, nvl(code), nvl(name), offset, (long) size);
-        long total = repository.countWithFilter(appId, nvl(code), nvl(name));
+        List<BasicRole> content = repository.findWithPage(namespaceId, nvl(code), nvl(name), offset, (long) size);
+        long total = repository.countWithFilter(namespaceId, nvl(code), nvl(name));
         return new PageImpl<>(content, pageable, total);
     }
 
@@ -88,13 +95,25 @@ public class BasicRoleService {
         if (role.getCode() == null || role.getCode().isBlank()) {
             throw new IllegalArgumentException("角色编码不能为空");
         }
-        if (role.getAppId() == null) {
-            throw new IllegalArgumentException("所属应用不能为空");
+        if (role.getNamespaceId() == null) {
+            throw new IllegalArgumentException("所属命名空间不能为空");
+        }
+        if (role.getName() == null || role.getName().isBlank()) {
+            throw new IllegalArgumentException("角色名称不能为空");
+        }
+        BasicNamespace ns = namespaceRepository.findById(role.getNamespaceId())
+                .orElseThrow(() -> new IllegalArgumentException("命名空间不存在: " + role.getNamespaceId()));
+        // 同一命名空间下，角色编码与角色名称均不允许重复
+        if (repository.countByNamespaceIdAndCode(role.getNamespaceId(), role.getCode()) > 0) {
+            throw new IllegalArgumentException("角色编码已存在（命名空间 " + role.getNamespaceId() + "）: " + role.getCode());
+        }
+        if (repository.countByNamespaceIdAndName(role.getNamespaceId(), role.getName()) > 0) {
+            throw new IllegalArgumentException("角色名称已存在（命名空间 " + role.getNamespaceId() + "）: " + role.getName());
         }
         role.setId(null);
+        role.setNamespaceCode(ns.getCode());
         // name / remark 在库里是 NOT NULL DEFAULT ''；前端用 `|| undefined` 省略空字段时
         // 这里是 null，Spring Data JDBC 会插入显式 NULL 触发约束冲突，必须兜底
-        if (role.getName() == null) role.setName("");
         if (role.getRemark() == null) role.setRemark("");
         if (role.getStatus() == null) role.setStatus(1);
         if (role.getType() == null) role.setType(2);
@@ -110,9 +129,28 @@ public class BasicRoleService {
     public BasicRole update(Long id, BasicRole req) {
         BasicRole existing = repository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("角色不存在: " + id));
-        if (req.getAppId() != null) existing.setAppId(req.getAppId());
-        if (req.getCode() != null) existing.setCode(req.getCode());
-        if (req.getName() != null) existing.setName(req.getName());
+        // 命名空间可能随更新改变，唯一性判定统一基于“生效后的命名空间 ID”
+        Long effectiveNsId = req.getNamespaceId() != null ? req.getNamespaceId() : existing.getNamespaceId();
+        if (req.getNamespaceId() != null) {
+            BasicNamespace ns = namespaceRepository.findById(req.getNamespaceId())
+                    .orElseThrow(() -> new IllegalArgumentException("命名空间不存在: " + req.getNamespaceId()));
+            existing.setNamespaceId(req.getNamespaceId());
+            existing.setNamespaceCode(ns.getCode());
+        }
+        if (req.getCode() != null) {
+            if (!req.getCode().equals(existing.getCode())
+                    && repository.countByIdNotAndNamespaceIdAndCode(id, effectiveNsId, req.getCode()) > 0) {
+                throw new IllegalArgumentException("角色编码已存在（命名空间 " + effectiveNsId + "）: " + req.getCode());
+            }
+            existing.setCode(req.getCode());
+        }
+        if (req.getName() != null) {
+            if (!req.getName().equals(existing.getName())
+                    && repository.countByIdNotAndNamespaceIdAndName(id, effectiveNsId, req.getName()) > 0) {
+                throw new IllegalArgumentException("角色名称已存在（命名空间 " + effectiveNsId + "）: " + req.getName());
+            }
+            existing.setName(req.getName());
+        }
         if (req.getType() != null) existing.setType(req.getType());
         if (req.getStatus() != null) existing.setStatus(req.getStatus());
         if (req.getMaster() != null) existing.setMaster(req.getMaster());
@@ -160,7 +198,6 @@ public class BasicRoleService {
         if (userIds == null || userIds.isEmpty()) {
             return;
         }
-        Long appId = repository.findById(roleId).map(BasicRole::getAppId).orElse(0L);
         LocalDateTime now = LocalDateTime.now();
         Long opUser = RequestContext.currentUserId();
         for (Long userId : userIds) {
@@ -169,7 +206,8 @@ public class BasicRoleService {
             ur.setId(null);
             ur.setUserId(userId);
             ur.setRoleId(roleId);
-            ur.setAppId(appId);
+            // 角色已跨应用，用户-角色关联不再绑定单一应用，统一置 0（命名空间级）
+            ur.setAppId(0L);
             ur.setDelFlag(0);
             ur.setCreateUser(opUser);
             ur.setUpdateUser(opUser);

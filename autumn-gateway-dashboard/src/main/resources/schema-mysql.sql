@@ -1,6 +1,7 @@
 -- ============================================================
 -- Autumn Gateway Dashboard — 优化后的数据库表结构
 -- 基于 Wolf RBAC 模型，修剪了 category / role_relation / role_constraint
+-- 权限管理（permission / role_permission）已下线，统一走 basic_* 菜单/资源授权
 -- ============================================================
 
 -- ============================================================
@@ -84,38 +85,7 @@ CREATE TABLE IF NOT EXISTS user_auth_account (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='认证账户：一个用户可挂多种登录方式，登录查找入口=(identity_type, identifier)';
 
 -- ============================================================
--- 5. 权限/资源（合并 RBAC Permission + Wolf Resource）
---     一个权限定义 = 一个业务动作 + 它保护的 URL 模式
--- ============================================================
-CREATE TABLE IF NOT EXISTS permission (
-  id            BIGINT PRIMARY KEY AUTO_INCREMENT,
-  app_id        BIGINT NOT NULL,
-  category      VARCHAR(64) COMMENT '分类标签，如"订单管理"',
-  code          VARCHAR(128) NOT NULL COMMENT '权限编码，如 order:create',
-  name          VARCHAR(64) COMMENT '权限名称，如"创建订单"',
-  perm_type     VARCHAR(16) DEFAULT 'API' COMMENT 'MENU / API / BUTTON / DATA',
-  -- 以下为原 resource 表字段，合并到 permission 中
-  resource_path VARCHAR(255) COMMENT 'URL 模式，如 /api/order/:id；MENU 时为路由路径',
-  http_method   VARCHAR(16) DEFAULT 'ALL' COMMENT 'ALL / GET / POST / PUT / DELETE / PATCH',
-  match_type    VARCHAR(16) DEFAULT 'exact' COMMENT 'exact / prefix / suffix',
-  parent_id     BIGINT DEFAULT 0 COMMENT 'MENU 树形结构用，0=顶级',
-  icon          VARCHAR(64) COMMENT '菜单图标',
-  sort          INT DEFAULT 0 COMMENT '排序',
-  hidden        TINYINT DEFAULT 0 COMMENT '1=菜单隐藏',
-  -- 通用字段
-  description   VARCHAR(255),
-  status        TINYINT DEFAULT 1 COMMENT '1=正常 0=禁用',
-  created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updated_at    DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  UNIQUE KEY uk_app_code (app_id, code),
-  INDEX idx_perm_type (perm_type),
-  INDEX idx_status (status),
-  INDEX idx_parent (parent_id),
-  FOREIGN KEY (app_id) REFERENCES application(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='权限原子项（合并了 Resource 的 URL 四元组）';
-
--- ============================================================
--- 6. 角色（RBAC 的 R）
+-- 5. 角色（RBAC 的 R）
 -- ============================================================
 CREATE TABLE IF NOT EXISTS `role` (
   id          BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -132,7 +102,7 @@ CREATE TABLE IF NOT EXISTS `role` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='角色';
 
 -- ============================================================
--- 7. 用户授角色（含应用上下文）
+-- 6. 用户授角色（含应用上下文）
 -- ============================================================
 CREATE TABLE IF NOT EXISTS user_role (
   id         BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -151,21 +121,7 @@ CREATE TABLE IF NOT EXISTS user_role (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户-角色-应用关联';
 
 -- ============================================================
--- 8. 角色赋权
--- ============================================================
-CREATE TABLE IF NOT EXISTS role_permission (
-  id            BIGINT PRIMARY KEY AUTO_INCREMENT,
-  role_id       BIGINT NOT NULL,
-  permission_id BIGINT NOT NULL,
-  created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY uk_role_perm (role_id, permission_id),
-  INDEX idx_perm (permission_id),
-  FOREIGN KEY (role_id) REFERENCES `role`(id) ON DELETE CASCADE,
-  FOREIGN KEY (permission_id) REFERENCES permission(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='角色拥有哪些权限';
-
--- ============================================================
--- 9. 审计日志（所有经过网关的访问均记录）
+-- 7. 审计日志（所有经过网关的访问均记录）
 -- ============================================================
 CREATE TABLE IF NOT EXISTS audit_log (
   id         BIGINT PRIMARY KEY AUTO_INCREMENT,

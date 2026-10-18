@@ -53,7 +53,7 @@ export const useUserStore = defineStore('userStore', {
         // 退出登录
         async logoutAction() {
             try {
-                await http.post('/api/login/outLogout');
+                await http.post('/api/login/outLogin');
             }
             catch {
                 /* 忽略退出接口异常 */

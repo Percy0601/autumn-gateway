@@ -20,7 +20,7 @@ public class BasicResource {
     private String name; // 权限名称，如"创建订单"
     private String path; // URL 模式，如 /api/order/:id；MENU 时为路由路径
     @Column("http_method")
-    private String httpMethod; // ALL / GET / POST / PUT / DELETE / PATCH
+    private String httpMethod; // 支持多选，逗号分隔，如 GET,POST；ALL 表示全部方法
     @Column("match_type")
     private String matchType; // exact / prefix / suffix
     private String description;

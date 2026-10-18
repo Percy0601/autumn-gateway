@@ -19,8 +19,7 @@
 				:row-key="rowKey"
 				@row-dblclick="handleRowClick"
 				@selection-change="selectionChangeHandle"
-				@current-change="currentChange"
-			>
+				@current-change="currentChange" stripe>
 				<el-table-column v-if="multiple" type="selection" header-align="center" align="center" width="50"></el-table-column>
 				<el-table-column v-for="(column, index) in columns" :key="index" :prop="column.field" :label="column.label"></el-table-column>
 			</el-table>

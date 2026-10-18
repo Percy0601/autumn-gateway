@@ -26,13 +26,14 @@ public class BasicAppController {
     @Autowired
     private BasicAppService service;
 
-    /** 分页列表：?current=1&pageSize=10&appCode=&name= */
+    /** 分页列表：?current=1&pageSize=10&appCode=&name=&namespaceId= */
     @GetMapping
     public Result<List<BasicApp>> list(@RequestParam(defaultValue = "1") int current,
                                        @RequestParam(defaultValue = "10") int pageSize,
                                        @RequestParam(required = false) String appCode,
-                                       @RequestParam(required = false) String name) {
-        Page<BasicApp> page = service.list(appCode, name, current, pageSize);
+                                       @RequestParam(required = false) String name,
+                                       @RequestParam(required = false) Long namespaceId) {
+        Page<BasicApp> page = service.list(appCode, name, namespaceId, current, pageSize);
         return Result.success(page.getContent(), page.getTotalElements());
     }
 

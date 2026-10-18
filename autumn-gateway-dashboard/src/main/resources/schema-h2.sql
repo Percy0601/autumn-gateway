@@ -1,6 +1,7 @@
 -- ============================================================
 -- Autumn Gateway Dashboard — 优化后的数据库表结构
 -- 基于 Wolf RBAC 模型，修剪了 category / role_relation / role_constraint
+-- 权限管理（permission / role_permission）已下线，统一走 basic_* 菜单/资源授权
 -- ============================================================
 
 -- ============================================================
@@ -84,37 +85,7 @@ CREATE TABLE IF NOT EXISTS "user_auth_account" (
 );
 
 -- ============================================================
--- 5. 权限/资源（合并 RBAC Permission + Wolf Resource）
---     一个权限定义 = 一个业务动作 + 它保护的 URL 模式
--- ============================================================
-CREATE TABLE IF NOT EXISTS "permission" (
-  "ID"            BIGINT PRIMARY KEY AUTO_INCREMENT,
-  "app_id"        BIGINT NOT NULL,
-  "CATEGORY"      VARCHAR(64),
-  "CODE"          VARCHAR(128) NOT NULL,
-  "NAME"          VARCHAR(64),
-  "perm_type"     VARCHAR(16) DEFAULT 'API',
-  -- 以下为原 resource 表字段，合并到 permission 中
-  "resource_path" VARCHAR(255),
-  "http_method"   VARCHAR(16) DEFAULT 'ALL',
-  "match_type"    VARCHAR(16) DEFAULT 'exact',
-  "parent_id"     BIGINT DEFAULT 0,
-  "ICON"          VARCHAR(64),
-  "SORT"          INT DEFAULT 0,
-  "HIDDEN"        TINYINT DEFAULT 0,
-  -- 通用字段
-  "DESCRIPTION"   VARCHAR(255),
-  "STATUS"        TINYINT DEFAULT 1,
-  "created_at"    DATETIME DEFAULT CURRENT_TIMESTAMP,
-  "updated_at"    DATETIME DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE ("app_id", "CODE"),
-  INDEX ("perm_type"),
-  INDEX ("STATUS"),
-  INDEX ("parent_id")
-);
-
--- ============================================================
--- 6. 角色（RBAC 的 R）
+-- 5. 角色（RBAC 的 R）
 -- ============================================================
 CREATE TABLE IF NOT EXISTS "role" (
   id          BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -130,7 +101,7 @@ CREATE TABLE IF NOT EXISTS "role" (
 );
 
 -- ============================================================
--- 7. 用户授角色（含应用上下文）
+-- 6. 用户授角色（含应用上下文）
 -- ============================================================
 CREATE TABLE IF NOT EXISTS user_role (
   id         BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -146,19 +117,7 @@ CREATE TABLE IF NOT EXISTS user_role (
 );
 
 -- ============================================================
--- 8. 角色赋权
--- ============================================================
-CREATE TABLE IF NOT EXISTS role_permission (
-  id            BIGINT PRIMARY KEY AUTO_INCREMENT,
-  role_id       BIGINT NOT NULL,
-  permission_id BIGINT NOT NULL,
-  created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY (role_id, permission_id),
-  INDEX (permission_id)
-);
-
--- ============================================================
--- 9. 审计日志（所有经过网关的访问均记录）
+-- 7. 审计日志（所有经过网关的访问均记录）
 -- ============================================================
 CREATE TABLE IF NOT EXISTS audit_log (
   id         BIGINT PRIMARY KEY AUTO_INCREMENT,

@@ -22,25 +22,45 @@
 -- ============================================================
 
 
--- basic_app 应用（多应用隔离）
-CREATE TABLE IF NOT EXISTS `basic_app` (
+-- basic_namespace 命名空间（租户，相当于一个公司/企业）
+CREATE TABLE IF NOT EXISTS `basic_namespace` (
     `id`          BIGINT NOT NULL AUTO_INCREMENT,
-    `app_code`    VARCHAR(64) NOT NULL,
+    `code`        VARCHAR(64) NOT NULL,
     `name`        VARCHAR(64) NOT NULL,
-    `base_path`   VARCHAR(128) DEFAULT NULL,
     `description` VARCHAR(255) DEFAULT NULL,
     `status`      TINYINT DEFAULT 1,
     `created_at`  DATETIME DEFAULT CURRENT_TIMESTAMP,
     `updated_at`  DATETIME DEFAULT CURRENT_TIMESTAMP ,
     PRIMARY KEY (`id`),
-    UNIQUE KEY (`app_code`),
+    UNIQUE KEY (`code`),
     KEY (`status`)
 );
 
 
--- basic_group 用户岗位/职位/Title
+-- basic_app 应用（多应用隔离）
+CREATE TABLE IF NOT EXISTS `basic_app` (
+    `id`            BIGINT NOT NULL AUTO_INCREMENT,
+    `app_code`      VARCHAR(64) NOT NULL,
+    `name`          VARCHAR(64) NOT NULL,
+    `base_path`     VARCHAR(128) DEFAULT NULL,
+    `description`   VARCHAR(255) DEFAULT NULL,
+    `status`        TINYINT DEFAULT 1,
+    `namespace_id`  BIGINT DEFAULT NULL,
+    `namespace_code` VARCHAR(64) DEFAULT NULL,
+    `created_at`    DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`    DATETIME DEFAULT CURRENT_TIMESTAMP ,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY (`app_code`),
+    KEY (`status`),
+    KEY (`namespace_id`)
+);
+
+
+-- basic_group 用户岗位/职位/Title（岗位归属命名空间 basic_namespace，按公司/企业隔离）
 CREATE TABLE IF NOT EXISTS `basic_group` (
     `id`          BIGINT NOT NULL AUTO_INCREMENT,
+    `namespace_id`  BIGINT DEFAULT NULL,
+    `namespace_code` VARCHAR(64) DEFAULT NULL,
     `name`        VARCHAR(100) NOT NULL,
     `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ,
@@ -51,7 +71,8 @@ CREATE TABLE IF NOT EXISTS `basic_group` (
     `status`      INT NOT NULL DEFAULT 1,
     PRIMARY KEY (`id`),
     KEY (`name`),
-    KEY (`org_id`)
+    KEY (`org_id`),
+    KEY (`namespace_id`)
 );
 
 
@@ -142,7 +163,7 @@ CREATE TABLE IF NOT EXISTS `basic_resource` (
     `app_code`    VARCHAR(64) NOT NULL,
     `name`        VARCHAR(64) DEFAULT NULL,
     `path`        VARCHAR(255) DEFAULT NULL,
-    `http_method` VARCHAR(16) DEFAULT 'ALL',
+    `http_method` VARCHAR(64) DEFAULT 'ALL',
     `match_type`  VARCHAR(16) DEFAULT 'exact',
     `description` VARCHAR(255) DEFAULT NULL,
     `status`      TINYINT DEFAULT 1,
@@ -153,23 +174,24 @@ CREATE TABLE IF NOT EXISTS `basic_resource` (
 );
 
 
--- basic_role 角色表
+-- basic_role 角色表（角色可跨应用，归属命名空间 basic_namespace）
 CREATE TABLE IF NOT EXISTS `basic_role` (
-    `id`          BIGINT NOT NULL AUTO_INCREMENT,
-    `app_id`      BIGINT NOT NULL DEFAULT 0,
-    `code`        VARCHAR(50) NOT NULL DEFAULT '',
-    `name`        VARCHAR(50) NOT NULL DEFAULT '',
-    `type`        TINYINT NOT NULL DEFAULT 0,
-    `status`      TINYINT NOT NULL DEFAULT 1,
-    `del_flag`    TINYINT NOT NULL DEFAULT 0,
-    `create_user` BIGINT NOT NULL DEFAULT 0,
-    `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    `update_user` BIGINT NOT NULL DEFAULT 0,
-    `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ,
-    `remark`      VARCHAR(50) NOT NULL DEFAULT '',
-    `master`      INT NOT NULL DEFAULT 2,
+    `id`              BIGINT NOT NULL AUTO_INCREMENT,
+    `namespace_id`    BIGINT NOT NULL DEFAULT 0,
+    `namespace_code`  VARCHAR(64) NOT NULL DEFAULT '',
+    `code`            VARCHAR(50) NOT NULL DEFAULT '',
+    `name`            VARCHAR(50) NOT NULL DEFAULT '',
+    `type`            TINYINT NOT NULL DEFAULT 0,
+    `status`          TINYINT NOT NULL DEFAULT 1,
+    `del_flag`        TINYINT NOT NULL DEFAULT 0,
+    `create_user`     BIGINT NOT NULL DEFAULT 0,
+    `create_time`     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `update_user`     BIGINT NOT NULL DEFAULT 0,
+    `update_time`     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ,
+    `remark`          VARCHAR(50) NOT NULL DEFAULT '',
+    `master`          INT NOT NULL DEFAULT 2,
     PRIMARY KEY (`id`),
-    KEY (`app_id`)
+    KEY (`namespace_id`)
 );
 
 

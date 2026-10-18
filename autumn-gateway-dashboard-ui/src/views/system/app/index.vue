@@ -2,19 +2,32 @@
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Plus, Refresh, Search } from '@element-plus/icons-vue'
-import { basicAppApi } from '../../../api/basic'
+import { basicAppApi, basicNamespaceApi } from '../../../api/basic'
 import { copyText, fmtDateTime, REGEX } from '../../../utils/format'
+import { isConfirmed } from '../../../utils/confirm'
 
 const loading = ref(false)
 const rows = ref([])
 const total = ref(0)
+
+const namespaces = ref([])
+const nsMap = ref({})
 
 const query = reactive({
   current: 1,
   pageSize: 10,
   appCode: '',
   name: '',
+  namespaceId: null,
 })
+
+async function loadNamespaces() {
+  const body = await basicNamespaceApi.listAll()
+  namespaces.value = body.data || []
+  const map = {}
+  namespaces.value.forEach((n) => { map[n.id] = n })
+  nsMap.value = map
+}
 
 async function loadData() {
   loading.value = true
@@ -35,11 +48,14 @@ function handleSearch() {
 function handleReset() {
   query.appCode = ''
   query.name = ''
+  query.namespaceId = null
   handleSearch()
 }
 
 async function changeStatus(row) {
   const disable = row.status === 1
+  const ok = await isConfirmed(`此操作将${disable ? '禁用' : '启用'}应用「${row.name}」，是否继续？`)
+  if (!ok) return
   if (disable) await basicAppApi.disable(row.id)
   else await basicAppApi.enable(row.id)
   ElMessage.success(disable ? '已禁用' : '已启用')
@@ -52,6 +68,7 @@ const saving = ref(false)
 const currentRow = ref(null)
 const formRef = ref()
 const form = reactive({
+  namespaceId: null,
   appCode: '',
   name: '',
   basePath: '',
@@ -60,6 +77,7 @@ const form = reactive({
 })
 
 const rules = {
+  namespaceId: [{ required: true, message: '请选择所属命名空间', trigger: 'change' }],
   appCode: [
     { required: true, message: '请输入应用标识', trigger: 'blur' },
     { pattern: REGEX.appid, message: '以小写字母开头，3-32位', trigger: 'blur' },
@@ -77,6 +95,7 @@ const rules = {
 function openCreate() {
   currentRow.value = null
   Object.assign(form, {
+    namespaceId: namespaces.value.length ? namespaces.value[0].id : null,
     appCode: '',
     name: '',
     basePath: '',
@@ -89,6 +108,7 @@ function openCreate() {
 function openEdit(row) {
   currentRow.value = row
   Object.assign(form, {
+    namespaceId: row.namespaceId ?? null,
     appCode: row.appCode,
     name: row.name,
     basePath: row.basePath || '',
@@ -124,7 +144,9 @@ function handleSubmit() {
   })
 }
 
-onMounted(loadData)
+onMounted(() => {
+  loadNamespaces().then(loadData)
+})
 </script>
 
 <template>
@@ -132,6 +154,22 @@ onMounted(loadData)
     <div class="pro-card">
       <!-- 搜索 -->
       <el-form inline class="pro-search" @submit.prevent>
+        <el-form-item label="所属命名空间">
+          <el-select
+            v-model="query.namespaceId"
+            placeholder="全部"
+            clearable
+            style="width: 200px"
+            @change="handleSearch"
+          >
+            <el-option
+              v-for="n in namespaces"
+              :key="n.id"
+              :label="n.name + '（' + n.code + '）'"
+              :value="n.id"
+            />
+          </el-select>
+        </el-form-item>
         <el-form-item label="应用标识">
           <el-input
             v-model="query.appCode"
@@ -164,6 +202,12 @@ onMounted(loadData)
       <!-- 表格 -->
       <div class="pro-table-wrap">
         <el-table v-loading="loading" :data="rows" row-key="id" stripe border>
+          <el-table-column label="所属命名空间" min-width="160" align="center" show-overflow-tooltip>
+            <template #default="{ row }">
+              <span v-if="nsMap[row.namespaceId]">{{ nsMap[row.namespaceId].name }}（{{ row.namespaceCode }}）</span>
+              <span v-else>{{ row.namespaceCode || '-' }}</span>
+            </template>
+          </el-table-column>
           <el-table-column label="应用标识" min-width="120" align="center">
             <template #default="{ row }">
               <el-tooltip content="点击复制" placement="top">
@@ -207,17 +251,9 @@ onMounted(loadData)
           <el-table-column label="操作" width="340" fixed="right" align="center" class-name="col-center">
             <template #default="{ row }">
               <el-link type="primary" class="link-op" @click="openEdit(row)">编辑</el-link>
-              <el-popconfirm
-                :title="row.status === 1 ? '确定禁用？' : '确定启用？'"
-                width="160"
-                @confirm="changeStatus(row)"
-              >
-                <template #reference>
-                  <el-link type="primary" class="link-op">
-                    {{ row.status === 1 ? '禁用' : '启用' }}
-                  </el-link>
-                </template>
-              </el-popconfirm>
+              <el-link type="primary" class="link-op" @click="changeStatus(row)">
+                {{ row.status === 1 ? '禁用' : '启用' }}
+              </el-link>
             </template>
           </el-table-column>
         </el-table>
@@ -246,6 +282,16 @@ onMounted(loadData)
       :close-on-click-modal="false"
     >
       <el-form ref="formRef" :model="form" :rules="rules" label-width="90px">
+        <el-form-item label="命名空间" prop="namespaceId">
+          <el-select v-model="form.namespaceId" placeholder="请选择" style="width: 100%">
+            <el-option
+              v-for="n in namespaces"
+              :key="n.id"
+              :label="n.name + '（' + n.code + '）'"
+              :value="n.id"
+            />
+          </el-select>
+        </el-form-item>
         <el-form-item label="应用标识" prop="appCode">
           <el-input
             v-model="form.appCode"

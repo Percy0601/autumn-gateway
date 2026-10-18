@@ -66,17 +66,17 @@
 
 				<el-form ref="formRef" :model="form" :rules="rules" class="login-form" @keyup.enter="handleSubmit">
 					<el-form-item prop="username">
-						<el-input v-model="form.username" placeholder="用户名: admin" :prefix-icon="User" clearable size="large" />
-					</el-form-item>
-					<el-form-item prop="password">
-						<el-input
-							v-model="form.password"
-							type="password"
-							placeholder="密码: 123456"
-							:prefix-icon="Lock"
-							show-password
-							size="large"
-						/>
+          <el-input v-model="form.username" placeholder="请输入用户名" :prefix-icon="User" clearable size="large" />
+        </el-form-item>
+        <el-form-item prop="password">
+          <el-input
+            v-model="form.password"
+            type="password"
+            placeholder="请输入密码"
+            :prefix-icon="Lock"
+            show-password
+            size="large"
+          />
 					</el-form-item>
 					<el-form-item>
 						<div class="login-options">
@@ -112,8 +112,8 @@ const loading = ref(false)
 const autoLogin = ref(true)
 
 const form = reactive({
-	username: 'admin',
-	password: '123456'
+	username: '',
+	password: ''
 })
 
 const rules = {

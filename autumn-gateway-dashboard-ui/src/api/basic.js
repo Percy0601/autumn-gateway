@@ -17,6 +17,17 @@ export const basicAppApi = {
   disable: (id) => http.put(`${base}/app/${id}/disable`),
 }
 
+// ---------------- 命名空间（租户） basic_namespace ----------------
+export const basicNamespaceApi = {
+  list: (params) => http.get(`${base}/namespace`, { params }),
+  listAll: () => http.get(`${base}/namespace/list`),
+  get: (id) => http.get(`${base}/namespace/${id}`),
+  create: (data) => http.post(`${base}/namespace`, data),
+  update: (id, data) => http.put(`${base}/namespace/${id}`, data),
+  enable: (id) => http.put(`${base}/namespace/${id}/enable`),
+  disable: (id) => http.put(`${base}/namespace/${id}/disable`),
+}
+
 // ---------------- 角色 basic_role ----------------
 export const basicRoleApi = {
   list: (params) => http.get(`${base}/role`, { params }),

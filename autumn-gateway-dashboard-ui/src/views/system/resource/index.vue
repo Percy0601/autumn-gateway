@@ -3,7 +3,8 @@ import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Plus, Refresh, Search } from '@element-plus/icons-vue'
 import { basicAppApi, basicMenuApi, basicResourceApi } from '../../../api/basic'
-import { copyText, fmtDateTime, HTTP_METHODS, MATCH_TYPES } from '../../../utils/format'
+import { copyText, fmtDateTime, HTTP_METHODS } from '../../../utils/format'
+import { isConfirmed } from '../../../utils/confirm'
 import RelationDetailDialog from '../../../components/RelationDetailDialog.vue'
 
 const loading = ref(false)
@@ -60,6 +61,8 @@ function handleReset() {
 
 async function changeStatus(row) {
   const disable = row.status === 1
+  const ok = await isConfirmed(`此操作将${disable ? '禁用' : '启用'}资源「${row.name}」，是否继续？`)
+  if (!ok) return
   if (disable) await basicResourceApi.disable(row.id)
   else await basicResourceApi.enable(row.id)
   ElMessage.success(disable ? '已禁用' : '已启用')
@@ -76,7 +79,6 @@ const detailFields = [
   { label: '所属应用', prop: 'appId', formatter: (v) => appMap.value[v] || `应用#${v}` },
   { label: 'URL 模式', prop: 'path' },
   { label: 'HTTP方法', prop: 'httpMethod' },
-  { label: '匹配方式', prop: 'matchType' },
   { label: '状态', prop: 'status', formatter: (v) => (v === 1 ? '正常' : '禁用') },
   { label: '描述', prop: 'description' },
   { label: '创建时间', prop: 'createdAt', formatter: fmtDateTime },
@@ -114,11 +116,28 @@ const form = reactive({
   appId: undefined,
   name: '',
   path: '',
-  httpMethod: 'ALL',
-  matchType: 'exact',
+  httpMethod: ['ALL'],
   description: '',
   status: true,
 })
+
+/** 后端存储为逗号分隔字符串（如 GET,POST），回显时拆成数组 */
+function parseHttpMethods(value) {
+  if (!value) return ['ALL']
+  const arr = String(value)
+    .split(',')
+    .map((m) => m.trim())
+    .filter(Boolean)
+  return arr.length ? arr : ['ALL']
+}
+
+/** ALL 与具体方法互斥：选 ALL 清空其他；选具体方法则去掉 ALL */
+function onHttpMethodChange(value) {
+  const arr = value || []
+  if (arr.length > 1 && arr.includes('ALL')) {
+    form.httpMethod = arr[arr.length - 1] === 'ALL' ? ['ALL'] : arr.filter((m) => m !== 'ALL')
+  }
+}
 
 const rules = {
   appId: [{ required: true, message: '请选择所属应用', trigger: 'change' }],
@@ -132,8 +151,7 @@ function openCreate() {
     appId: undefined,
     name: '',
     path: '',
-    httpMethod: 'ALL',
-    matchType: 'exact',
+    httpMethod: ['ALL'],
     description: '',
     status: true,
   })
@@ -146,8 +164,7 @@ function openEdit(row) {
     appId: row.appId,
     name: row.name,
     path: row.path || '',
-    httpMethod: row.httpMethod || 'ALL',
-    matchType: row.matchType || 'exact',
+    httpMethod: parseHttpMethods(row.httpMethod),
     description: row.description || '',
     status: row.status === 1,
   })
@@ -163,8 +180,7 @@ function handleSubmit() {
         appId: Number(form.appId),
         name: form.name,
         path: form.path,
-        httpMethod: form.httpMethod,
-        matchType: form.matchType,
+        httpMethod: form.httpMethod.join(','),
         description: form.description || undefined,
         status: form.status ? 1 : 0,
       }
@@ -259,16 +275,19 @@ onMounted(() => {
               <span v-else>-</span>
             </template>
           </el-table-column>
-          <el-table-column label="HTTP" width="90" align="center">
+          <el-table-column label="HTTP方法" min-width="190" align="center">
             <template #default="{ row }">
-              <el-tag v-if="row.httpMethod && row.httpMethod !== 'ALL'" size="small" type="success">
-                {{ row.httpMethod }}
-              </el-tag>
+              <template v-if="row.httpMethod">
+                <el-tag
+                  v-for="m in String(row.httpMethod).split(',')"
+                  :key="m"
+                  size="small"
+                  type="success"
+                  class="group-tag"
+                >{{ m }}</el-tag>
+              </template>
               <span v-else>-</span>
             </template>
-          </el-table-column>
-          <el-table-column prop="matchType" label="匹配" width="90" align="center">
-            <template #default="{ row }">{{ row.matchType || '-' }}</template>
           </el-table-column>
           <el-table-column prop="description" label="描述" min-width="160" show-overflow-tooltip>
             <template #default="{ row }">{{ row.description || '-' }}</template>
@@ -287,17 +306,9 @@ onMounted(() => {
             <template #default="{ row }">
               <el-link type="primary" class="link-op" @click="openDetail(row)">详情</el-link>
               <el-link type="primary" class="link-op" @click="openEdit(row)">编辑</el-link>
-              <el-popconfirm
-                :title="row.status === 1 ? '确定禁用？' : '确定启用？'"
-                width="160"
-                @confirm="changeStatus(row)"
-              >
-                <template #reference>
-                  <el-link type="primary" class="link-op">
-                    {{ row.status === 1 ? '禁用' : '启用' }}
-                  </el-link>
-                </template>
-              </el-popconfirm>
+              <el-link type="primary" class="link-op" @click="changeStatus(row)">
+                {{ row.status === 1 ? '禁用' : '启用' }}
+              </el-link>
             </template>
           </el-table-column>
         </el-table>
@@ -343,13 +354,16 @@ onMounted(() => {
           <el-input v-model="form.path" placeholder="例如：/api/order/:id" />
         </el-form-item>
         <el-form-item label="HTTP方法">
-          <el-select v-model="form.httpMethod" style="width: 100%">
+          <el-select
+            v-model="form.httpMethod"
+            multiple
+            collapse-tags
+            collapse-tags-tooltip
+            placeholder="请选择，可多选"
+            style="width: 100%"
+            @change="onHttpMethodChange"
+          >
             <el-option v-for="m in HTTP_METHODS" :key="m" :label="m" :value="m" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="匹配方式">
-          <el-select v-model="form.matchType" style="width: 100%">
-            <el-option v-for="m in MATCH_TYPES" :key="m" :label="m" :value="m" />
           </el-select>
         </el-form-item>
         <el-form-item label="描述">

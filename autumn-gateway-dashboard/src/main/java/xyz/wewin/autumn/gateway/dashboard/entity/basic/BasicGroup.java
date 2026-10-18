@@ -7,12 +7,17 @@ import org.springframework.data.relational.core.mapping.Table;
 import java.time.LocalDateTime;
 
 /**
- * 用户岗位/职位/Title，对应表 basic_group
+ * 用户岗位/职位/Title，对应表 basic_group。
+ * 岗位归属命名空间（basic_namespace），按公司/企业隔离。
  */
 @Table("basic_group")
 public class BasicGroup {
     @Id
     private Long id;
+    @Column("namespace_id")
+    private Long namespaceId; // 所属命名空间ID，关联 basic_namespace.id
+    @Column("namespace_code")
+    private String namespaceCode; // 所属命名空间编码（冗余存储，便于查询）
     private String name; // 岗位名称，职位名称，title
     @Column("create_time")
     private LocalDateTime createTime; // 创建时间
@@ -28,6 +33,12 @@ public class BasicGroup {
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
+
+    public Long getNamespaceId() { return namespaceId; }
+    public void setNamespaceId(Long namespaceId) { this.namespaceId = namespaceId; }
+
+    public String getNamespaceCode() { return namespaceCode; }
+    public void setNamespaceCode(String namespaceCode) { this.namespaceCode = namespaceCode; }
 
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }

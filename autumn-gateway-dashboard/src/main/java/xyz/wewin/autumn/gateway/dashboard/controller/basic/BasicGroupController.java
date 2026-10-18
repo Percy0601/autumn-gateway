@@ -29,13 +29,14 @@ public class BasicGroupController {
     @Autowired
     private BasicGroupService service;
 
-    /** 分页列表：?current=1&pageSize=10&name=&code= */
+    /** 分页列表：?current=1&pageSize=10&namespaceId=&name=&code= */
     @GetMapping
     public Result<List<BasicGroup>> list(@RequestParam(defaultValue = "1") int current,
                                          @RequestParam(defaultValue = "10") int pageSize,
+                                         @RequestParam(required = false) Long namespaceId,
                                          @RequestParam(required = false) String name,
                                          @RequestParam(required = false) String code) {
-        Page<BasicGroup> page = service.list(name, code, current, pageSize);
+        Page<BasicGroup> page = service.list(namespaceId, name, code, current, pageSize);
         return Result.success(page.getContent(), page.getTotalElements());
     }
 

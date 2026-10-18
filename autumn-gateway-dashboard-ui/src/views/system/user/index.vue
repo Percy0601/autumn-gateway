@@ -1,9 +1,10 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { Delete, Plus, Refresh, Search } from '@element-plus/icons-vue'
 import { basicGroupApi, basicRoleApi, basicUserApi } from '../../../api/basic'
-import { appIdLabel, copyText, fmtDateTime, REGEX, roleTypeLabel } from '../../../utils/format'
+import { copyText, fmtDateTime, REGEX, roleTypeLabel } from '../../../utils/format'
+import { isConfirmed } from '../../../utils/confirm'
 import RelationDetailDialog from '../../../components/RelationDetailDialog.vue'
 
 /** 状态：1-正常 0-禁用 */
@@ -78,15 +79,10 @@ function handleSelectionChange(val) {
 async function handleBatchRemove() {
   if (!selectedRows.value.length) return
   const names = selectedRows.value.map((r) => r.username || r.empNo).join('、')
-  try {
-    await ElMessageBox.confirm(
-      `确定批量删除选中的 ${selectedRows.value.length} 个用户吗？\n${names}`,
-      '提示',
-      { type: 'warning', confirmButtonText: '确定', cancelButtonText: '取消' },
-    )
-  } catch {
-    return
-  }
+  const ok = await isConfirmed(
+    `此操作将删除选中的 ${selectedRows.value.length} 个用户（${names}），是否继续？`,
+  )
+  if (!ok) return
   loading.value = true
   try {
     await Promise.all(selectedRows.value.map((r) => basicUserApi.remove(r.id)))
@@ -101,6 +97,10 @@ async function handleBatchRemove() {
 
 async function changeStatus(row) {
   const disable = row.status !== 0
+  const ok = await isConfirmed(
+    `此操作将${disable ? '停用' : '启用'}用户「${row.username}」，是否继续？`,
+  )
+  if (!ok) return
   if (disable) await basicUserApi.disable(row.id)
   else await basicUserApi.enable(row.id)
   ElMessage.success(disable ? '已停用' : '已启用')
@@ -133,6 +133,7 @@ const detailTabs = [
     keywordLabel: '角色名称',
     boundList: (id) => basicUserApi.roles(id),
     boundSet: (id, ids) => basicUserApi.setRoles(id, ids),
+    // 用户不归属命名空间：可跨命名空间 / 跨应用关联角色（未来做独立授权）
     sourceList: ({ keyword, boundIds, current, pageSize }) =>
       basicRoleApi.list({ current, pageSize, name: keyword, boundIds }),
   },
@@ -384,17 +385,9 @@ onMounted(loadData)
             <template #default="{ row }">
               <el-link type="primary" class="link-op" @click="openDetail(row)">详情</el-link>
               <el-link type="primary" class="link-op" @click="openEdit(row)">编辑</el-link>
-              <el-popconfirm
-                :title="row.status === 0 ? '确定启用该用户？' : '确定停用该用户？'"
-                width="170"
-                @confirm="changeStatus(row)"
-              >
-                <template #reference>
-                  <el-link type="primary" class="link-op">
-                    {{ row.status === 0 ? '启用' : '停用' }}
-                  </el-link>
-                </template>
-              </el-popconfirm>
+              <el-link type="primary" class="link-op" @click="changeStatus(row)">
+                {{ row.status === 0 ? '启用' : '停用' }}
+              </el-link>
             </template>
           </el-table-column>
         </el-table>
@@ -455,9 +448,6 @@ onMounted(loadData)
         <el-form-item label="状态">
           <el-switch v-model="form.status" active-text="正常" inactive-text="禁用" />
         </el-form-item>
-        <el-form-item v-if="currentRow" label="UUID">
-          <el-input :model-value="currentRow.uuid || '-'" disabled />
-        </el-form-item>
       </el-form>
       <template #footer>
         <div class="pro-drawer-footer">
@@ -478,9 +468,6 @@ onMounted(loadData)
       <template #roles-columns>
         <el-table-column prop="code" label="角色编码" min-width="130" show-overflow-tooltip />
         <el-table-column prop="name" label="角色名称" min-width="120" show-overflow-tooltip />
-        <el-table-column label="应用" min-width="140">
-          <template #default="{ row }">{{ appIdLabel(row.appId) }}</template>
-        </el-table-column>
         <el-table-column label="类型" width="100">
           <template #default="{ row }">
             <el-tag size="small" :type="row.type === 1 ? 'warning' : 'info'">

@@ -35,7 +35,7 @@
         <bucket4j-core.version>8.0.1</bucket4j-core.version>
         <caffeine.version>3.2.4</caffeine.version>
 		<mybatis-spring-boot-starter.version>4.1.0</mybatis-spring-boot-starter.version>
-		<spring-boot-starter-oauth2-authorization-server.version>4.1.1</spring-boot-starter-oauth2-authorization-server.version>
+		<spring-boot-starter-security-oauth2-authorization-server.version>4.1.1</spring-boot-starter-security-oauth2-authorization-server.version>
         <spring-cloud-starter-gateway-server-webflux.version>5.0.3</spring-cloud-starter-gateway-server-webflux.version>
 	</properties>
 
@@ -109,11 +109,12 @@
 				</exclusions>
 			</dependency>
 
-            <!-- 新版 OAuth2 授权服务器（Boot 父 POM 未托管其版本，需显式指定，与 Boot 版本保持一致） -->
+            <!-- OAuth2 授权服务器：Boot 4 起 starter 更名为 spring-boot-starter-security-oauth2-authorization-server
+                 （旧名 spring-boot-starter-oauth2-authorization-server 已废弃）；此处显式锁版本与 Boot 对齐 -->
             <dependency>
                 <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-starter-oauth2-authorization-server</artifactId>
-                <version>${spring-boot-starter-oauth2-authorization-server.version}</version>
+                <artifactId>spring-boot-starter-security-oauth2-authorization-server</artifactId>
+                <version>${spring-boot-starter-security-oauth2-authorization-server.version}</version>
             </dependency>
 		</dependencies>
 	</dependencyManagement>

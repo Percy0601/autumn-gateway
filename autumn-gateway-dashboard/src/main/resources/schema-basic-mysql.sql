@@ -22,25 +22,45 @@
 -- ============================================================
 
 
--- basic_app 应用（多应用隔离）
-CREATE TABLE IF NOT EXISTS `basic_app` (
+-- basic_namespace 命名空间（租户，相当于一个公司/企业）
+CREATE TABLE IF NOT EXISTS `basic_namespace` (
     `id`          BIGINT NOT NULL AUTO_INCREMENT,
-    `app_code`    VARCHAR(64) NOT NULL COMMENT '短标识，如 order、crm、admin',
-    `name`        VARCHAR(64) NOT NULL,
-    `base_path`   VARCHAR(128) DEFAULT NULL COMMENT '该应用 API 统一前缀，如 /api/order',
+    `code`        VARCHAR(64) NOT NULL COMMENT '命名空间编码，如 default',
+    `name`        VARCHAR(64) NOT NULL COMMENT '命名空间名称',
     `description` VARCHAR(255) DEFAULT NULL,
     `status`      TINYINT DEFAULT 1 COMMENT '1=正常 0=禁用',
     `created_at`  DATETIME DEFAULT CURRENT_TIMESTAMP,
     `updated_at`  DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_namespace_code` (`code`),
+    KEY `idx_namespace_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='命名空间（租户）';
+
+
+-- basic_app 应用（多应用隔离）
+CREATE TABLE IF NOT EXISTS `basic_app` (
+    `id`            BIGINT NOT NULL AUTO_INCREMENT,
+    `app_code`      VARCHAR(64) NOT NULL COMMENT '短标识，如 order、crm、admin',
+    `name`          VARCHAR(64) NOT NULL,
+    `base_path`     VARCHAR(128) DEFAULT NULL COMMENT '该应用 API 统一前缀，如 /api/order',
+    `description`   VARCHAR(255) DEFAULT NULL,
+    `status`        TINYINT DEFAULT 1 COMMENT '1=正常 0=禁用',
+    `namespace_id`  BIGINT DEFAULT NULL COMMENT '所属命名空间ID，关联 basic_namespace.id',
+    `namespace_code` VARCHAR(64) DEFAULT NULL COMMENT '所属命名空间编码',
+    `created_at`    DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`    DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
     UNIQUE KEY `uk_appid` (`app_code`),
-    KEY `idx_status` (`status`)
+    KEY `idx_status` (`status`),
+    KEY `idx_app_namespace` (`namespace_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='应用（多应用隔离）';
 
 
--- basic_group 用户岗位/职位/Title
+-- basic_group 用户岗位/职位/Title（岗位归属命名空间 basic_namespace，按公司/企业隔离）
 CREATE TABLE IF NOT EXISTS `basic_group` (
     `id`          BIGINT NOT NULL AUTO_INCREMENT COMMENT 'ID',
+    `namespace_id`  BIGINT DEFAULT NULL COMMENT '所属命名空间ID，关联 basic_namespace.id',
+    `namespace_code` VARCHAR(64) DEFAULT NULL COMMENT '所属命名空间编码（冗余存储）',
     `name`        VARCHAR(100) NOT NULL COMMENT '岗位名称，职位名称，title',
     `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
@@ -51,7 +71,8 @@ CREATE TABLE IF NOT EXISTS `basic_group` (
     `status`      INT NOT NULL DEFAULT 1 COMMENT '状态：1-正常 0-停用',
     PRIMARY KEY (`id`),
     KEY `basic_user_group_name_IDX` (`name`),
-    KEY `basic_group_org_id_IDX` (`org_id`)
+    KEY `basic_group_org_id_IDX` (`org_id`),
+    KEY `basic_group_namespace_id_IDX` (`namespace_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户岗位/职位/Title';
 
 
@@ -142,7 +163,7 @@ CREATE TABLE IF NOT EXISTS `basic_resource` (
     `app_code`    VARCHAR(64) NOT NULL,
     `name`        VARCHAR(64) DEFAULT NULL COMMENT '权限名称，如"创建订单"',
     `path`        VARCHAR(255) DEFAULT NULL COMMENT 'URL 模式，如 /api/order/:id；MENU 时为路由路径',
-    `http_method` VARCHAR(16) DEFAULT 'ALL' COMMENT 'ALL / GET / POST / PUT / DELETE / PATCH',
+    `http_method` VARCHAR(64) DEFAULT 'ALL' COMMENT 'HTTP 方法，支持多选逗号分隔，如 GET,POST；ALL 表示全部',
     `match_type`  VARCHAR(16) DEFAULT 'exact' COMMENT 'exact / prefix / suffix',
     `description` VARCHAR(255) DEFAULT NULL,
     `status`      TINYINT DEFAULT 1 COMMENT '1=正常 0=禁用',
@@ -153,23 +174,24 @@ CREATE TABLE IF NOT EXISTS `basic_resource` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='权限原子项（合并了 Resource 的 URL 四元组）';
 
 
--- basic_role 角色表
+-- basic_role 角色表（角色可跨应用，归属命名空间 basic_namespace）
 CREATE TABLE IF NOT EXISTS `basic_role` (
-    `id`          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'ID',
-    `app_id`      BIGINT NOT NULL DEFAULT 0 COMMENT '应用ID，关联 basic_app.id',
-    `code`        VARCHAR(50) NOT NULL DEFAULT '' COMMENT '角色编码',
-    `name`        VARCHAR(50) NOT NULL DEFAULT '' COMMENT '角色名',
-    `type`        TINYINT NOT NULL DEFAULT 0 COMMENT '角色类型：1-系统角色 2-自定义角色',
-    `status`      TINYINT NOT NULL DEFAULT 1 COMMENT '状态：1-启用 2-停用',
-    `del_flag`    TINYINT NOT NULL DEFAULT 0 COMMENT '是否删除：0-否 1-是',
-    `create_user` BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '创建人id',
-    `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    `update_user` BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '更新人id',
-    `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    `remark`      VARCHAR(50) NOT NULL DEFAULT '' COMMENT '备注',
-    `master`      INT NOT NULL DEFAULT 2 COMMENT '是否是管理员: 1-管理员；2-普通',
+    `id`              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'ID',
+    `namespace_id`    BIGINT NOT NULL DEFAULT 0 COMMENT '命名空间ID，关联 basic_namespace.id',
+    `namespace_code`  VARCHAR(64) NOT NULL DEFAULT '' COMMENT '命名空间编码',
+    `code`            VARCHAR(50) NOT NULL DEFAULT '' COMMENT '角色编码',
+    `name`            VARCHAR(50) NOT NULL DEFAULT '' COMMENT '角色名',
+    `type`            TINYINT NOT NULL DEFAULT 0 COMMENT '角色类型：1-系统角色 2-自定义角色',
+    `status`          TINYINT NOT NULL DEFAULT 1 COMMENT '状态：1-启用 2-停用',
+    `del_flag`        TINYINT NOT NULL DEFAULT 0 COMMENT '是否删除：0-否 1-是',
+    `create_user`     BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '创建人id',
+    `create_time`     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_user`     BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '更新人id',
+    `update_time`     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `remark`          VARCHAR(50) NOT NULL DEFAULT '' COMMENT '备注',
+    `master`          INT NOT NULL DEFAULT 2 COMMENT '是否是管理员: 1-管理员；2-普通',
     PRIMARY KEY (`id`),
-    KEY `idx_role_app_id` (`app_id`)
+    KEY `idx_role_namespace_id` (`namespace_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='角色表';
 
 

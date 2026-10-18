@@ -17,15 +17,28 @@ public interface BasicAppRepository extends CrudRepository<BasicApp, Long> {
     @Query("SELECT COUNT(1) FROM basic_app WHERE app_code = :appCode")
     int countByAppCode(String appCode);
 
+    @Query("SELECT COUNT(1) FROM basic_app WHERE name = :name")
+    long countByName(String name);
+
+    /** 更新场景：排除自身后，是否已有相同 app_code */
+    @Query("SELECT COUNT(1) FROM basic_app WHERE id <> :id AND app_code = :appCode")
+    long countByIdNotAndAppCode(@Param("id") Long id, @Param("appCode") String appCode);
+
+    /** 更新场景：排除自身后，是否已有相同 name */
+    @Query("SELECT COUNT(1) FROM basic_app WHERE id <> :id AND name = :name")
+    long countByIdNotAndName(@Param("id") Long id, @Param("name") String name);
+
     @Query("""
         SELECT a.* FROM basic_app a
         WHERE (:appCode IS NULL OR :appCode = '' OR a.app_code = :appCode)
           AND (:name IS NULL OR :name = '' OR a.name LIKE CONCAT('%', :name, '%'))
+          AND (:namespaceId IS NULL OR a.namespace_id = :namespaceId)
         ORDER BY a.id DESC
         LIMIT :offset OFFSET :limit
         """)
     List<BasicApp> findWithPage(@Param("appCode") String appCode,
                                 @Param("name") String name,
+                                @Param("namespaceId") Long namespaceId,
                                 @Param("limit") long limit,
                                 @Param("offset") long offset);
 
@@ -33,6 +46,7 @@ public interface BasicAppRepository extends CrudRepository<BasicApp, Long> {
         SELECT COUNT(1) FROM basic_app
         WHERE (:appCode IS NULL OR :appCode = '' OR app_code = :appCode)
           AND (:name IS NULL OR :name = '' OR name LIKE CONCAT('%', :name, '%'))
+          AND (:namespaceId IS NULL OR namespace_id = :namespaceId)
         """)
-    long countWithFilter(String appCode, String name);
+    long countWithFilter(String appCode, String name, Long namespaceId);
 }

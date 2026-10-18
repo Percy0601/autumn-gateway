@@ -23,7 +23,8 @@ public interface BasicResourceRepository extends CrudRepository<BasicResource, L
         SELECT r.* FROM basic_resource r
         WHERE ( ( :appId IS NULL OR r.app_id = :appId )
             AND ( :name IS NULL OR :name = '' OR r.name LIKE CONCAT('%', :name, '%') )
-            AND ( :httpMethod IS NULL OR :httpMethod = '' OR r.http_method = :httpMethod ) )
+            AND ( :httpMethod IS NULL OR :httpMethod = ''
+                  OR r.http_method LIKE CONCAT('%', :httpMethod, '%') ) )
            OR r.id IN (:boundIds)
         ORDER BY CASE WHEN r.id IN (:boundIds) THEN 0 ELSE 1 END, r.id DESC
         LIMIT :offset OFFSET :limit
@@ -39,7 +40,8 @@ public interface BasicResourceRepository extends CrudRepository<BasicResource, L
         SELECT COUNT(1) FROM basic_resource
         WHERE ( ( :appId IS NULL OR app_id = :appId )
             AND ( :name IS NULL OR :name = '' OR name LIKE CONCAT('%', :name, '%') )
-            AND ( :httpMethod IS NULL OR :httpMethod = '' OR http_method = :httpMethod ) )
+            AND ( :httpMethod IS NULL OR :httpMethod = ''
+                  OR http_method LIKE CONCAT('%', :httpMethod, '%') ) )
            OR id IN (:boundIds)
         """)
     long countWithFilter(@Param("appId") Long appId,

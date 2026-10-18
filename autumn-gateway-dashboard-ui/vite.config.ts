@@ -37,5 +37,17 @@ export default defineConfig({
 				changeOrigin: true
 			}
 		}
+	},
+	build: {
+		// 拆分大依赖，避免单 chunk 过大（element-plus / vue 生态单独成块，利于缓存）
+		rollupOptions: {
+			output: {
+				manualChunks: {
+					vue: ['vue', 'vue-router', 'pinia'],
+					element: ['element-plus', '@element-plus/icons-vue']
+				}
+			}
+		},
+		chunkSizeWarningLimit: 1600
 	}
 })

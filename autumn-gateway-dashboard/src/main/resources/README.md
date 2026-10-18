@@ -43,7 +43,7 @@ curl -X POST http://localhost:8080/api/auth/login \
 
 ### 虚拟机-Postgres
 
-- 主机 Host: 192.168.0.115
+- 主机 Host: 192.168.0.102
 - 端口 Port: 5432
 - 用户名 User: postgres
 - 密码 Password: 5e0db08e654ac86f236e2dce

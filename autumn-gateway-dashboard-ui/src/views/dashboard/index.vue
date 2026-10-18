@@ -56,14 +56,14 @@
 	<el-card>
 		<el-tabs v-model="active">
 			<el-tab-pane label="项目列表" name="first">
-				<el-table :data="tableData" show-overflow-tooltip style="width: 100%" border>
+				<el-table :data="tableData" show-overflow-tooltip style="width: 100%" border stripe>
 					<el-table-column prop="name" label="项目名称" width="150" />
 					<el-table-column prop="url" label="项目地址" width="310" />
 					<el-table-column prop="intro" label="项目介绍" />
 				</el-table>
 			</el-tab-pane>
 			<el-tab-pane label="我的项目" name="second">
-				<el-table :data="tableData" show-overflow-tooltip style="width: 100%" border>
+				<el-table :data="tableData" show-overflow-tooltip style="width: 100%" border stripe>
 					<el-table-column prop="name" label="项目名称" width="150" />
 					<el-table-column prop="url" label="项目地址" width="310" />
 					<el-table-column prop="intro" label="项目介绍" />

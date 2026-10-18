@@ -23,8 +23,10 @@ import xyz.wewin.autumn.gateway.dashboard.security.RequestContext;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * 资源（权限原子项）服务，基于 basic_resource。
@@ -53,6 +55,34 @@ public class BasicResourceService {
 
     /** basic_role_permission.type：1-菜单 2-资源 */
     private static final int PERM_TYPE_RESOURCE = 2;
+
+    /** 合法的 HTTP 方法（含 ALL 通配） */
+    private static final Set<String> ALLOWED_HTTP_METHODS =
+            Set.of("ALL", "GET", "POST", "PUT", "DELETE", "PATCH");
+
+    /**
+     * HTTP 方法多选归一化：接受逗号分隔字符串或数组序列化值，如 "GET,POST" / "get, post"。
+     * 过去重、保序；含 ALL 时统一收敛为 ALL；空值默认 ALL。
+     */
+    private String normalizeHttpMethods(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return "ALL";
+        }
+        LinkedHashSet<String> methods = new LinkedHashSet<>();
+        for (String part : raw.split(",")) {
+            String m = part.trim().toUpperCase();
+            if (m.isEmpty()) continue;
+            if (!ALLOWED_HTTP_METHODS.contains(m)) {
+                throw new IllegalArgumentException("不支持的 HTTP 方法: " + m
+                        + "，可选值：ALL / GET / POST / PUT / DELETE / PATCH");
+            }
+            methods.add(m);
+        }
+        if (methods.isEmpty() || methods.contains("ALL")) {
+            return "ALL";
+        }
+        return String.join(",", methods);
+    }
 
     private static String nvl(String v) {
         return v == null ? "" : v.trim();
@@ -91,6 +121,7 @@ public class BasicResourceService {
             res.setAppCode(appRepository.findById(res.getAppId()).map(BasicApp::getAppCode).orElse(""));
         }
         if (res.getHttpMethod() == null) res.setHttpMethod("ALL");
+        else res.setHttpMethod(normalizeHttpMethods(res.getHttpMethod()));
         if (res.getMatchType() == null) res.setMatchType("exact");
         if (res.getStatus() == null) res.setStatus(1);
         res.setCreatedAt(LocalDateTime.now());
@@ -104,7 +135,7 @@ public class BasicResourceService {
         if (req.getAppId() != null) existing.setAppId(req.getAppId());
         if (req.getName() != null) existing.setName(req.getName());
         if (req.getPath() != null) existing.setPath(req.getPath());
-        if (req.getHttpMethod() != null) existing.setHttpMethod(req.getHttpMethod());
+        if (req.getHttpMethod() != null) existing.setHttpMethod(normalizeHttpMethods(req.getHttpMethod()));
         if (req.getMatchType() != null) existing.setMatchType(req.getMatchType());
         if (req.getDescription() != null) existing.setDescription(req.getDescription());
         if (req.getStatus() != null) existing.setStatus(req.getStatus());

@@ -1,18 +1,39 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { Delete, Plus, Refresh, Search } from '@element-plus/icons-vue'
-import { basicGroupApi, basicRoleApi, basicUserApi } from '../../../api/basic'
+import { basicGroupApi, basicNamespaceApi, basicRoleApi, basicUserApi } from '../../../api/basic'
 import { fmtDateTime } from '../../../utils/format'
+import { isConfirmed } from '../../../utils/confirm'
 import RelationDetailDialog from '../../../components/RelationDetailDialog.vue'
 
 const loading = ref(false)
 const rows = ref([])
 const total = ref(0)
 
+// 所属命名空间下拉：从命名空间列表（basic_namespace）查询
+const namespaceOptions = ref([])
+
+async function loadNamespaces() {
+  try {
+    const body = await basicNamespaceApi.listAll()
+    namespaceOptions.value = body.data || []
+  } catch {
+    namespaceOptions.value = []
+  }
+}
+
+/** 表格展示：优先用命名空间名称，查不到时回退到 code / id */
+const nsLabel = (row) => {
+  const ns = namespaceOptions.value.find((n) => n.id === row.namespaceId)
+  if (ns) return `${ns.name}（${ns.code}）`
+  return row.namespaceCode || (row.namespaceId != null ? String(row.namespaceId) : '-')
+}
+
 const query = reactive({
   current: 1,
   pageSize: 10,
+  namespaceId: undefined,
   name: '',
   code: '',
 })
@@ -34,6 +55,7 @@ function handleSearch() {
 }
 
 function handleReset() {
+  query.namespaceId = undefined
   query.name = ''
   query.code = ''
   handleSearch()
@@ -50,15 +72,10 @@ function handleSelectionChange(val) {
 async function handleBatchRemove() {
   if (!selectedRows.value.length) return
   const names = selectedRows.value.map((r) => r.name || r.code).join('、')
-  try {
-    await ElMessageBox.confirm(
-      `确定批量删除选中的 ${selectedRows.value.length} 个用户组吗？\n${names}`,
-      '提示',
-      { type: 'warning', confirmButtonText: '确定', cancelButtonText: '取消' },
-    )
-  } catch {
-    return
-  }
+  const ok = await isConfirmed(
+    `此操作将删除选中的 ${selectedRows.value.length} 个用户组（${names}），是否继续？`,
+  )
+  if (!ok) return
   loading.value = true
   try {
     await Promise.all(selectedRows.value.map((r) => basicGroupApi.remove(r.id)))
@@ -73,6 +90,10 @@ async function handleBatchRemove() {
 
 async function changeStatus(row) {
   const disable = row.status !== 0
+  const ok = await isConfirmed(
+    `此操作将${disable ? '停用' : '启用'}用户组「${row.name}」，是否继续？`,
+  )
+  if (!ok) return
   if (disable) await basicGroupApi.disable(row.id)
   else await basicGroupApi.enable(row.id)
   ElMessage.success(disable ? '已停用' : '已启用')
@@ -85,6 +106,7 @@ const detailRow = ref(null)
 
 const detailFields = [
   { label: 'ID', prop: 'id' },
+  { label: '命名空间', prop: 'namespaceId', formatter: (v, row) => nsLabel(row) },
   { label: '岗位名称', prop: 'name' },
   { label: '岗位编码', prop: 'code' },
   { label: '部门ID', prop: 'orgId' },
@@ -145,31 +167,46 @@ const saving = ref(false)
 const currentRow = ref(null)
 const formRef = ref()
 const form = reactive({
+  namespaceId: undefined,
   name: '',
   code: '',
   orgId: '',
   jobId: '',
+  status: true,
 })
 
 const rules = {
+  namespaceId: [{ required: true, message: '请选择所属命名空间', trigger: 'change' }],
   name: [{ required: true, message: '请输入岗位名称', trigger: 'blur' }],
   code: [{ required: true, message: '请输入岗位编码', trigger: 'blur' }],
 }
 
 function openCreate() {
   currentRow.value = null
-  Object.assign(form, { name: '', code: '', orgId: '', jobId: '' })
+  Object.assign(form, {
+    namespaceId: namespaceOptions.value.length ? namespaceOptions.value[0].id : undefined,
+    name: '',
+    code: '',
+    orgId: '',
+    jobId: '',
+    status: true,
+  })
+  // 命名空间列表还没加载出来时先补一次，避免下拉为空
+  if (!namespaceOptions.value.length) loadNamespaces()
   drawerOpen.value = true
 }
 
 function openEdit(row) {
   currentRow.value = row
   Object.assign(form, {
+    namespaceId: row.namespaceId ?? undefined,
     name: row.name,
     code: row.code,
     orgId: row.orgId ?? '',
     jobId: row.jobId ?? '',
+    status: row.status !== 0,
   })
+  if (!namespaceOptions.value.length) loadNamespaces()
   drawerOpen.value = true
 }
 
@@ -179,10 +216,12 @@ function handleSubmit() {
     saving.value = true
     try {
       const payload = {
+        namespaceId: form.namespaceId,
         name: form.name,
         code: form.code,
         orgId: Number(form.orgId) || 0,
         jobId: Number(form.jobId) || 0,
+        status: form.status ? 1 : 0,
       }
       if (currentRow.value) {
         await basicGroupApi.update(currentRow.value.id, payload)
@@ -199,7 +238,10 @@ function handleSubmit() {
   })
 }
 
-onMounted(loadData)
+onMounted(() => {
+  loadNamespaces()
+  loadData()
+})
 </script>
 
 <template>
@@ -207,6 +249,22 @@ onMounted(loadData)
     <div class="pro-card">
       <!-- 搜索 -->
       <el-form inline class="pro-search" @submit.prevent>
+        <el-form-item label="所属命名空间">
+          <el-select
+            v-model="query.namespaceId"
+            placeholder="全部"
+            clearable
+            style="width: 200px"
+            @change="handleSearch"
+          >
+            <el-option
+              v-for="ns in namespaceOptions"
+              :key="ns.id"
+              :label="`${ns.name}（${ns.code}）`"
+              :value="ns.id"
+            />
+          </el-select>
+        </el-form-item>
         <el-form-item label="岗位名称">
           <el-input
             v-model="query.name"
@@ -257,6 +315,9 @@ onMounted(loadData)
           border
         >
           <el-table-column type="selection" width="50" align="center" />
+          <el-table-column label="所属命名空间" min-width="180" align="center">
+            <template #default="{ row }">{{ nsLabel(row) }}</template>
+          </el-table-column>
           <el-table-column
             prop="name"
             label="岗位名称"
@@ -271,12 +332,6 @@ onMounted(loadData)
             align="center"
             show-overflow-tooltip
           />
-          <el-table-column label="部门ID" width="100" align="center">
-            <template #default="{ row }">{{ row.orgId || '-' }}</template>
-          </el-table-column>
-          <el-table-column label="岗位ID" width="100" align="center">
-            <template #default="{ row }">{{ row.jobId || '-' }}</template>
-          </el-table-column>
           <el-table-column label="状态" width="80" align="center" class-name="col-center">
             <template #default="{ row }">
               <el-tag :type="row.status === 0 ? 'danger' : 'primary'" size="small" effect="light">
@@ -294,17 +349,9 @@ onMounted(loadData)
             <template #default="{ row }">
               <el-link type="primary" class="link-op" @click="openDetail(row)">详情</el-link>
               <el-link type="primary" class="link-op" @click="openEdit(row)">编辑</el-link>
-              <el-popconfirm
-                :title="row.status === 0 ? '确定启用该用户组？' : '确定停用该用户组？'"
-                width="170"
-                @confirm="changeStatus(row)"
-              >
-                <template #reference>
-                  <el-link type="primary" class="link-op">
-                    {{ row.status === 0 ? '启用' : '停用' }}
-                  </el-link>
-                </template>
-              </el-popconfirm>
+              <el-link type="primary" class="link-op" @click="changeStatus(row)">
+                {{ row.status === 0 ? '启用' : '停用' }}
+              </el-link>
             </template>
           </el-table-column>
         </el-table>
@@ -333,6 +380,16 @@ onMounted(loadData)
       :close-on-click-modal="false"
     >
       <el-form ref="formRef" :model="form" :rules="rules" label-width="90px">
+        <el-form-item label="命名空间" prop="namespaceId">
+          <el-select v-model="form.namespaceId" placeholder="请选择" style="width: 100%">
+            <el-option
+              v-for="ns in namespaceOptions"
+              :key="ns.id"
+              :label="`${ns.name}（${ns.code}）`"
+              :value="ns.id"
+            />
+          </el-select>
+        </el-form-item>
         <el-form-item label="岗位名称" prop="name">
           <el-input v-model="form.name" placeholder="例如：研发工程师" />
         </el-form-item>
@@ -344,6 +401,9 @@ onMounted(loadData)
         </el-form-item>
         <el-form-item label="岗位ID">
           <el-input-number v-model="form.jobId" :min="0" :precision="0" style="width: 100%" />
+        </el-form-item>
+        <el-form-item label="状态">
+          <el-switch v-model="form.status" active-text="正常" inactive-text="停用" />
         </el-form-item>
       </el-form>
       <template #footer>

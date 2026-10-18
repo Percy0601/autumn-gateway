@@ -30,14 +30,14 @@ public class BasicRoleController {
     @Autowired
     private BasicRoleService service;
 
-    /** 分页列表：?current=1&pageSize=10&appId=&code=&name= */
+    /** 分页列表：?current=1&pageSize=10&namespaceId=&code=&name= */
     @GetMapping
     public Result<List<BasicRole>> list(@RequestParam(defaultValue = "1") int current,
                                         @RequestParam(defaultValue = "10") int pageSize,
-                                        @RequestParam(required = false) Long appId,
+                                        @RequestParam(required = false) Long namespaceId,
                                         @RequestParam(required = false) String code,
                                         @RequestParam(required = false) String name) {
-        Page<BasicRole> page = service.list(appId, code, name, current, pageSize);
+        Page<BasicRole> page = service.list(namespaceId, code, name, current, pageSize);
         return Result.success(page.getContent(), page.getTotalElements());
     }
 

@@ -11,6 +11,7 @@ import {
   MENU_TYPE_OPTIONS,
   menuTypeLabel,
 } from '../../../utils/format'
+import { isConfirmed } from '../../../utils/confirm'
 
 const loading = ref(false)
 const flatRows = ref([])
@@ -252,6 +253,10 @@ function handleSubmit() {
 
 async function changeStatus(row) {
   const disable = row.menuStatus === 1
+  const ok = await isConfirmed(
+    `此操作将${disable ? '停用' : '启用'}菜单「${row.menuName}」，是否继续？`,
+  )
+  if (!ok) return
   if (disable) await basicMenuApi.disable(row.id)
   else await basicMenuApi.enable(row.id)
   ElMessage.success(disable ? '已停用' : '已启用')
@@ -355,17 +360,9 @@ onMounted(() => {
             <template #default="{ row }">
               <el-link type="info" class="link-op" @click="openDetail(row)">详情</el-link>
               <el-link type="primary" class="link-op" @click="openEdit(row)">编辑</el-link>
-              <el-popconfirm
-                :title="row.menuStatus === 1 ? '确定停用该菜单？' : '确定启用该菜单？'"
-                width="160"
-                @confirm="changeStatus(row)"
-              >
-                <template #reference>
-                  <el-link :class="row.menuStatus === 1 ? 'link-op disabled-link' : 'link-op enabled-link'">
-                    {{ row.menuStatus === 1 ? '停用' : '启用' }}
-                  </el-link>
-                </template>
-              </el-popconfirm>
+              <el-link type="primary" class="link-op" @click="changeStatus(row)">
+                {{ row.menuStatus === 1 ? '停用' : '启用' }}
+              </el-link>
             </template>
           </el-table-column>
         </el-table>
