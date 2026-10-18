@@ -65,13 +65,16 @@ export const autumnMenu = [
 			{ id: 24, name: '菜单管理', url: 'system/menu/index', openStyle: 0, icon: 'menu' },
 			{ id: 26, name: '资源管理', url: 'system/resource/index', openStyle: 0, icon: 'file' },
 			{ id: 27, name: '用户组管理', url: 'system/group/index', openStyle: 0, icon: 'group' },
-			{ id: 28, name: '用户组-角色', url: 'system/group-role/index', openStyle: 0, icon: 'link' },
-			{ id: 29, name: '用户-用户组', url: 'system/user-group/index', openStyle: 0, icon: 'link' },
-			{ id: 30, name: '用户-角色', url: 'system/user-role/index', openStyle: 0, icon: 'link' },
 			{ id: 31, name: '用户组-用户组', url: 'system/group-group/index', openStyle: 0, icon: 'link' },
-			{ id: 32, name: '角色-菜单', url: 'system/role-menu/index', openStyle: 0, icon: 'menu' },
-			{ id: 33, name: '角色-资源', url: 'system/role-resource/index', openStyle: 0, icon: 'file' },
-			{ id: 34, name: '日志管理', url: 'system/oper-log/index', openStyle: 0, icon: 'file-text' }
+			{ id: 34, name: '日志管理', url: 'system/operLog/index', openStyle: 0, icon: 'file-text' }
+			// 关联维护页（用户组-角色/用户-用户组/用户-角色/角色-菜单/角色-资源）已隐藏：
+			// 功能统一收敛到各实体详情弹窗的关联页签，侧边栏不再单列目录。
+			// 后续如按权限放开，取消下行注释即可：
+			// { id: 28, name: '用户组-角色', url: 'system/group-role/index', openStyle: 0, icon: 'link' },
+			// { id: 29, name: '用户-用户组', url: 'system/user-group/index', openStyle: 0, icon: 'link' },
+			// { id: 30, name: '用户-角色', url: 'system/user-role/index', openStyle: 0, icon: 'link' },
+			// { id: 32, name: '角色-菜单', url: 'system/role-menu/index', openStyle: 0, icon: 'menu' },
+			// { id: 33, name: '角色-资源', url: 'system/role-resource/index', openStyle: 0, icon: 'file' },
 		]
 	}
 ]
