@@ -48,6 +48,13 @@
 - 后端启动后需等 SQL 初始化完成才可请求（约 40s+），过早请求会挂起；用轮询 `/api/system/basic/app/list` 判断就绪。
 
 ## 构建约定（后端）
+- **GraalVM native 构建配方（2026-10-20 验证通过）**：
+  - 命令：`mvn -Pnative,native-image -pl autumn-gateway-dashboard package -DskipTests`，JAVA_HOME 指向 GraalVM。
+  - `native` profile 由 spring-boot-starter-parent 提供（process-aot + 原始类路径 + reachability metadata）；`native-image` 由本仓库根 pom 提供（`native:compile-no-fork` 绑 package 阶段，官方多模块定制模式）。
+  - **切勿用 `mvn native:compile`**：buildtools 1.1.x 的 CLI 目标 fork 到 package 但跳过 process-aot，产物启动即 `ClassNotFoundException: WebMvcWebApplicationTypeDeducer`（症状：64MB 小二进制一启动就挂）。
+  - 构建环境在 102 虚拟机：GraalVM 25.0.3+9.1 `/home/percy/opt/graalvm-jdk-25.0.3+9.1`（native-image 内置）、Maven 3.9.16 `/home/percy/opt/apache-maven-3.9.16`；SSH 非登录 shell 需手工 export PATH。产物 139MB、构建约 4.5 分钟、启动 ~0.3s、RSS ~155MB。
+  - VM 上构建目录 `~/work/project/autumn-gateway-native/`（mac 源码 tar 管道同步，勿覆盖 VM 上 feature/opentelemetry 的既有 checkout）。
+  - 后续模块 native 化照此配方；dashboard 已验证登录/JWT/RBAC/Spring Data JDBC/MySQL 全链路 native 正常。
 - OAuth2 授权服务器 starter 统一用 **`spring-boot-starter-security-oauth2-authorization-server`**（Boot 4 新名，旧名 `spring-boot-starter-oauth2-authorization-server` 已废弃）；版本 4.1.1 锁在根 pom 的 `spring-boot-starter-security-oauth2-authorization-server.version`，底层库 `spring-security-oauth2-authorization-server:7.1.1`。当前 Boot 4.1.1，Java 25。
 - 角色定位：`autumn-gateway-authorization` 是 SAS 授权服务器（IdP，发令牌、管登录/验证码/微信）；APISIX 只能当 RP 校验令牌、不能发令牌，二者互补不是替代。用户路线：暂不引入 APISIX。
 - 验证「依赖改名是否生效」必须 `clean compile` 或 `dependency:tree`；`mvn compile` 的「Nothing to compile - all classes are up to date」会跳过类路径解析，会误判通过。
