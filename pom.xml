@@ -119,4 +119,40 @@
 		</dependencies>
 	</dependencyManagement>
 
+	<profiles>
+		<!--
+			GraalVM Native Image 构建（配合 spring-boot-starter-parent 内置的 native profile 一起激活）：
+
+			  mvn -Pnative,native-image -pl autumn-gateway-dashboard package
+
+			- native（parent 提供）：process-aot 执行 + native-maven-plugin 原始类路径配置
+			  （classesDirectory=target/classes，绕过 repackage fat jar）+ reachability metadata 下载；
+			- native-image（本仓库提供）：把 native:compile-no-fork 绑到 package 阶段，
+			官方多模块项目定制 native profile 的标准做法（spring-boot-maven-plugin 文档 8.1.1）。
+			注意用不同 id：同 id 会与 parent 的 native profile 发生继承合并，行为不确定。
+			要求：JAVA_HOME 指向 GraalVM（native-image 25+），且模块已声明
+			  org.graalvm.buildtools:native-maven-plugin（imageName/mainClass）。
+		-->
+		<profile>
+			<id>native-image</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.graalvm.buildtools</groupId>
+						<artifactId>native-maven-plugin</artifactId>
+						<executions>
+							<execution>
+								<id>build-native</id>
+								<goals>
+									<goal>compile-no-fork</goal>
+								</goals>
+								<phase>package</phase>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+	</profiles>
+
 </project>
