@@ -2,7 +2,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Delete, Plus, Refresh, Search } from '@element-plus/icons-vue'
-import { basicGroupApi, basicRoleApi, basicUserApi } from '../../../api/basic'
+import { basicGroupApi, basicNamespaceApi, basicRoleApi, basicUserApi } from '../../../api/basic'
 import { copyText, fmtDateTime, REGEX, roleTypeLabel } from '../../../utils/format'
 import { isConfirmed } from '../../../utils/confirm'
 import RelationDetailDialog from '../../../components/RelationDetailDialog.vue'
@@ -111,6 +111,27 @@ async function changeStatus(row) {
 const detailVisible = ref(false)
 const detailRow = ref(null)
 
+// 命名空间下拉（详情弹窗「重新绑定关联」按命名空间筛选 / 列表展示用）
+const namespaces = ref([])
+const namespaceMap = ref({})
+
+function nsLabel(id) {
+  if (id == null) return '-'
+  const n = namespaceMap.value[id]
+  return n ? `${n.name}（${n.code}）` : String(id)
+}
+
+async function loadNamespaces() {
+  try {
+    const body = await basicNamespaceApi.listAll()
+    namespaces.value = body?.data || []
+    namespaceMap.value = Object.fromEntries(namespaces.value.map((n) => [n.id, n]))
+  } catch {
+    namespaces.value = []
+    namespaceMap.value = {}
+  }
+}
+
 const detailFields = [
   { label: 'ID', prop: 'id' },
   { label: '登录名', prop: 'username' },
@@ -131,20 +152,22 @@ const detailTabs = [
     key: 'roles',
     title: '关联角色',
     keywordLabel: '角色名称',
+    namespaceFilter: true,
     boundList: (id) => basicUserApi.roles(id),
     boundSet: (id, ids) => basicUserApi.setRoles(id, ids),
-    // 用户不归属命名空间：可跨命名空间 / 跨应用关联角色（未来做独立授权）
-    sourceList: ({ keyword, boundIds, current, pageSize }) =>
-      basicRoleApi.list({ current, pageSize, name: keyword, boundIds }),
+    // 用户不归属命名空间：可跨命名空间 / 跨应用关联角色；这里按命名空间筛选候选
+    sourceList: ({ keyword, boundIds, namespaceId, current, pageSize }) =>
+      basicRoleApi.list({ current, pageSize, name: keyword, boundIds, namespaceId }),
   },
   {
     key: 'groups',
     title: '关联用户组（岗位）',
     keywordLabel: '岗位名称',
+    namespaceFilter: true,
     boundList: (id) => basicUserApi.groups(id),
     boundSet: (id, ids) => basicUserApi.setGroups(id, ids),
-    sourceList: ({ keyword, boundIds, current, pageSize }) =>
-      basicGroupApi.list({ current, pageSize, name: keyword, boundIds }),
+    sourceList: ({ keyword, boundIds, namespaceId, current, pageSize }) =>
+      basicGroupApi.list({ current, pageSize, name: keyword, boundIds, namespaceId }),
   },
 ]
 
@@ -254,7 +277,10 @@ function handleSubmit() {
   })
 }
 
-onMounted(loadData)
+onMounted(() => {
+  loadData()
+  loadNamespaces()
+})
 </script>
 
 <template>
@@ -468,6 +494,9 @@ onMounted(loadData)
       <template #roles-columns>
         <el-table-column prop="code" label="角色编码" min-width="130" show-overflow-tooltip />
         <el-table-column prop="name" label="角色名称" min-width="120" show-overflow-tooltip />
+        <el-table-column label="命名空间" min-width="150" show-overflow-tooltip>
+          <template #default="{ row }">{{ nsLabel(row.namespaceId) }}</template>
+        </el-table-column>
         <el-table-column label="类型" width="100">
           <template #default="{ row }">
             <el-tag size="small" :type="row.type === 1 ? 'warning' : 'info'">
@@ -479,6 +508,9 @@ onMounted(loadData)
       <template #groups-columns>
         <el-table-column prop="name" label="岗位名称" min-width="150" show-overflow-tooltip />
         <el-table-column prop="code" label="岗位编码" min-width="130" show-overflow-tooltip />
+        <el-table-column label="命名空间" min-width="150" show-overflow-tooltip>
+          <template #default="{ row }">{{ nsLabel(row.namespaceId) }}</template>
+        </el-table-column>
       </template>
     </RelationDetailDialog>
   </div>

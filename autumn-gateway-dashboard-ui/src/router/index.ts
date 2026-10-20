@@ -41,43 +41,9 @@ const asyncRoutes: RouteRecordRaw = {
 	children: []
 }
 
-// 本项目静态菜单（对接 autumn-gateway-dashboard 后端，不依赖后端动态菜单下发）
-export const autumnMenu = [
-	{
-		id: 1,
-		name: '首页',
-		url: 'dashboard/index',
-		openStyle: 0,
-		icon: 'home',
-		affix: true
-	},
-	{
-		id: 2,
-		name: '系统管理',
-		url: null,
-		openStyle: 0,
-		icon: 'setting',
-		children: [
-			{ id: 25, name: '命名空间', url: 'system/namespace/index', openStyle: 0, icon: 'apartment' },
-			{ id: 21, name: '应用管理', url: 'system/app/index', openStyle: 0, icon: 'appstore' },
-			{ id: 22, name: '用户管理', url: 'system/user/index', openStyle: 0, icon: 'user' },
-			{ id: 23, name: '角色管理', url: 'system/role/index', openStyle: 0, icon: 'key' },
-			{ id: 24, name: '菜单管理', url: 'system/menu/index', openStyle: 0, icon: 'menu' },
-			{ id: 26, name: '资源管理', url: 'system/resource/index', openStyle: 0, icon: 'file' },
-			{ id: 27, name: '用户组管理', url: 'system/group/index', openStyle: 0, icon: 'group' },
-			{ id: 31, name: '用户组-用户组', url: 'system/group-group/index', openStyle: 0, icon: 'link' },
-			{ id: 34, name: '日志管理', url: 'system/operLog/index', openStyle: 0, icon: 'file-text' }
-			// 关联维护页（用户组-角色/用户-用户组/用户-角色/角色-菜单/角色-资源）已隐藏：
-			// 功能统一收敛到各实体详情弹窗的关联页签，侧边栏不再单列目录。
-			// 后续如按权限放开，取消下行注释即可：
-			// { id: 28, name: '用户组-角色', url: 'system/group-role/index', openStyle: 0, icon: 'link' },
-			// { id: 29, name: '用户-用户组', url: 'system/user-group/index', openStyle: 0, icon: 'link' },
-			// { id: 30, name: '用户-角色', url: 'system/user-role/index', openStyle: 0, icon: 'link' },
-			// { id: 32, name: '角色-菜单', url: 'system/role-menu/index', openStyle: 0, icon: 'menu' },
-			// { id: 33, name: '角色-资源', url: 'system/role-resource/index', openStyle: 0, icon: 'file' },
-		]
-	}
-]
+// 菜单不再硬编码：统一由后端 basic_menu 表维护（初始化器播种），前端启动时从
+// /api/system/basic/menu/list 拉取并动态生成路由（见 store/modules/router）。
+// generateRoutes 作为「扁平/树形菜单 → vue-router 路由」的通用转换器保留在下方。
 
 export const errorRoute: RouteRecordRaw = {
 	path: '/:pathMatch(.*)',

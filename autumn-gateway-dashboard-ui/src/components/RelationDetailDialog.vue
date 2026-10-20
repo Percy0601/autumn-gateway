@@ -2,6 +2,7 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Link, Search } from '@element-plus/icons-vue'
+import { basicNamespaceApi } from '../api/basic'
 
 /**
  * 通用「实体详情 + 关联分录」弹窗（ERP 单据头 + 分录 风格）。
@@ -65,8 +66,25 @@ const pick = ref({
   loading: false,
   saving: false,
   selection: [],
+  namespaceId: undefined,
 })
 const pickTableRef = ref()
+
+/** 命名空间下拉（仅当 tab 声明 namespaceFilter 时启用） */
+const namespaceOptions = ref([])
+const namespaceMap = ref({})
+
+async function ensureNamespaces() {
+  if (namespaceOptions.value.length) return
+  try {
+    const body = await basicNamespaceApi.listAll()
+    namespaceOptions.value = body?.data || []
+    namespaceMap.value = Object.fromEntries(namespaceOptions.value.map((n) => [n.id, n]))
+  } catch {
+    namespaceOptions.value = []
+    namespaceMap.value = {}
+  }
+}
 
 watch(visible, (v) => {
   if (!v) {
@@ -104,10 +122,12 @@ async function loadBound(tab) {
 function openPicker(tab) {
   pick.value.tab = tab
   pick.value.keyword = ''
+  pick.value.namespaceId = undefined
   pick.value.current = 1
   pick.value.selection = []
   pick.value.rows = []
   pick.value.open = true
+  if (tab.namespaceFilter) ensureNamespaces()
   loadCandidates()
 }
 
@@ -119,6 +139,7 @@ async function loadCandidates() {
     const body = await tab.sourceList({
       keyword: pick.value.keyword,
       boundIds: boundIds(tab.key).join(','),
+      namespaceId: pick.value.namespaceId || undefined,
       current: pick.value.current,
       pageSize: pick.value.pageSize,
     })
@@ -142,6 +163,7 @@ function pickSearch() {
 
 function pickReset() {
   pick.value.keyword = ''
+  pick.value.namespaceId = undefined
   pickSearch()
 }
 
@@ -231,6 +253,22 @@ async function confirmPick() {
       append-to-body
     >
       <el-form inline class="pick-search" @submit.prevent>
+        <el-form-item v-if="pick.tab?.namespaceFilter" label="命名空间">
+          <el-select
+            v-model="pick.namespaceId"
+            placeholder="全部"
+            clearable
+            style="width: 180px"
+            @change="pickSearch"
+          >
+            <el-option
+              v-for="n in namespaceOptions"
+              :key="n.id"
+              :label="n.name"
+              :value="n.id"
+            />
+          </el-select>
+        </el-form-item>
         <el-form-item :label="pick.tab?.keywordLabel || '关键字'">
           <el-input
             v-model="pick.keyword"

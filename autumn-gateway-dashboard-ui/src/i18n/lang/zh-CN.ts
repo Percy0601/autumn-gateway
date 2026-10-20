@@ -16,11 +16,11 @@ export default {
 	updateTime: '更新时间',
 	required: '必填项不能为空',
 	app: {
-		title: 'MAKU 低代码开发平台',
+		title: 'Autumn Dashboard',
 		description:
 			'强大的代码生成器，一键生成前后端代码，帮助Java项目解决70%的重复工作，让开发者有更多时间去开发业务，提升开发效率。还有众多零代码能力：Online表单开发、Online报表开发、Online接口开发、表单设计、流程设计等等。',
-		logoText: 'MAKU 低代码平台',
-		miniLogoText: 'MAKU',
+		logoText: 'Autumn Dashboard',
+		miniLogoText: 'Autumn',
 		username: '用户名',
 		password: '密码',
 		captcha: '验证码',

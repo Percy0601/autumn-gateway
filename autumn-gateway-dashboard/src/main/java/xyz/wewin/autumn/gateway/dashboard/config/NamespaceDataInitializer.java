@@ -269,17 +269,26 @@ public class NamespaceDataInitializer implements ApplicationRunner {
 
     private Long ensureBasicUser() {
         Long id = queryForLongOrNull("SELECT id FROM basic_user WHERE username = ?", ADMIN_USERNAME);
-        if (id != null) {
-            return id;
+        if (id == null) {
+            // 新库：直接写入带 BCrypt 密码的 admin 账号
+            LocalDateTime now = LocalDateTime.now();
+            jdbcTemplate.update(
+                    "INSERT INTO basic_user (uuid, username, nickname, avatar, email, phone, emp_no, admin, status,"
+                            + " password, login_error_count, latest_role_id, password_updated_at, last_login_at,"
+                            + " create_time, update_time)"
+                            + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    "u-admin-0001", ADMIN_USERNAME, "管理员", "", "admin@autumn.local", "", "E0001", 1, 1,
+                    passwordEncoder.encode(defaultPassword), 0, 0L, null, null, now, now);
+            id = queryForLongOrNull("SELECT id FROM basic_user WHERE username = ?", ADMIN_USERNAME);
+        } else {
+            // 存量库（v5 之前）：admin 可能还没有 password，补填默认密码
+            int hasPwd = count("SELECT COUNT(1) FROM basic_user WHERE id = ? AND password IS NOT NULL AND password <> ''", id);
+            if (hasPwd == 0) {
+                jdbcTemplate.update("UPDATE basic_user SET password = ? WHERE id = ?",
+                        passwordEncoder.encode(defaultPassword), id);
+            }
         }
-        LocalDateTime now = LocalDateTime.now();
-        jdbcTemplate.update(
-                "INSERT INTO basic_user (uuid, username, nickname, avatar, email, phone, emp_no, admin, status,"
-                        + " latest_role_id, password_updated_at, last_login_at, create_time, update_time)"
-                        + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                "u-admin-0001", ADMIN_USERNAME, "管理员", "", "admin@autumn.local", "", "E0001", 1, 1,
-                0L, null, null, now, now);
-        return queryForLongOrNull("SELECT id FROM basic_user WHERE username = ?", ADMIN_USERNAME);
+        return id;
     }
 
     private Long ensureBasicRole(Long nsId, String nsCode, String code, String name,
@@ -301,28 +310,45 @@ public class NamespaceDataInitializer implements ApplicationRunner {
         if (appId == null) {
             return;
         }
-        seedMenu(appId, "sys", "系统管理", "/system", 1, 0, "Setting", "系统管理目录");
-        seedMenu(appId, "app", "应用管理", "/system/app", 2, 1, "Appstore", "");
-        seedMenu(appId, "user", "用户管理", "/system/user", 2, 1, "User", "");
-        seedMenu(appId, "role", "角色管理", "/system/role", 2, 1, "Key", "");
-        seedMenu(appId, "menu", "菜单管理", "/system/menu", 2, 1, "Menu", "");
-        seedMenu(appId, "resource", "资源管理", "/system/resource", 2, 1, "Safety", "");
-        seedMenu(appId, "group", "用户组管理", "/system/group", 2, 1, "Group", "");
+        // 系统管理目录（捕获其自增 id，供子菜单挂接）
+        Long sysId = ensureMenu(appId, "sys", "系统管理", "", 1, 0L, "setting", "系统管理目录");
+        // 首页（顶级菜单，dashboard/index 为看板页）
+        ensureMenu(appId, "dashboard", "首页", "dashboard/index", 2, 0L, "home", "");
+        // 系统管理下的子菜单（与前端实际页面一致；icon 统一为 iconfont 小写符号名）
+        ensureMenu(appId, "namespace", "命名空间", "system/namespace/index", 2, sysId, "apartment", "");
+        ensureMenu(appId, "app", "应用管理", "system/app/index", 2, sysId, "appstore", "");
+        ensureMenu(appId, "user", "用户管理", "system/user/index", 2, sysId, "user", "");
+        ensureMenu(appId, "role", "角色管理", "system/role/index", 2, sysId, "key", "");
+        ensureMenu(appId, "menu", "菜单管理", "system/menu/index", 2, sysId, "menu", "");
+        ensureMenu(appId, "resource", "资源管理", "system/resource/index", 2, sysId, "file", "");
+        ensureMenu(appId, "group", "用户组管理", "system/group/index", 2, sysId, "group", "");
+        ensureMenu(appId, "operLog", "日志管理", "system/operLog/index", 2, sysId, "file-text", "");
     }
 
-    private void seedMenu(Long appId, String identification, String name, String url,
-                          int menuType, long parentId, String icon, String remark) {
-        if (count("SELECT COUNT(1) FROM basic_menu WHERE app_id = ? AND menu_identification = ?",
-                appId, identification) > 0) {
-            return;
-        }
+    /**
+     * 幂等写入一条菜单：不存在则插入并返回新 id；已存在则按规范更新名称/跳转/图标等（例如历史数据
+     * 图标大小写不统一），并返回其 id。parentId 用捕获到的目录 id 挂接，避免硬编码 1 的脆弱写法。
+     */
+    private Long ensureMenu(Long appId, String identification, String name, String url,
+                            int menuType, long parentId, String icon, String remark) {
+        Long id = queryForLongOrNull(
+                "SELECT id FROM basic_menu WHERE app_id = ? AND menu_identification = ?", appId, identification);
         LocalDateTime now = LocalDateTime.now();
+        if (id == null) {
+            jdbcTemplate.update(
+                    "INSERT INTO basic_menu (app_id, parent_id, menu_type, menu_name, menu_url, menu_identification,"
+                            + " menu_icon, sort_num, menu_status, del_flag, create_user, create_time, update_user,"
+                            + " update_time, remark)"
+                            + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    appId, parentId, menuType, name, url, identification, icon, 0, 1, 0, 0L, now, 0L, now, remark);
+            return queryForLongOrNull(
+                    "SELECT id FROM basic_menu WHERE app_id = ? AND menu_identification = ?", appId, identification);
+        }
         jdbcTemplate.update(
-                "INSERT INTO basic_menu (app_id, parent_id, menu_type, menu_name, menu_url, menu_identification,"
-                        + " menu_icon, sort_num, menu_status, del_flag, create_user, create_time, update_user,"
-                        + " update_time, remark)"
-                        + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                appId, parentId, menuType, name, url, identification, icon, 0, 1, 0, 0L, now, 0L, now, remark);
+                "UPDATE basic_menu SET menu_name = ?, menu_url = ?, menu_icon = ?, menu_type = ?, parent_id = ?,"
+                        + " update_time = ? WHERE id = ?",
+                name, url, icon, menuType, parentId, now, id);
+        return id;
     }
 
     private void ensureBasicResources(Long appId) {

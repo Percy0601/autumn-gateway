@@ -19,7 +19,12 @@
 ## 数据库与 schema 变更（重要）
 - **用户的真实开发库是 MySQL**：`192.168.0.102:3306/autumn-security`（2026-10-18 由 192.168.0.115 切换），账号 `admin/123456`。
   该账号权限只有 `SELECT, INSERT, UPDATE, DELETE, CREATE, REFERENCES, INDEX, CREATE VIEW, SHOW VIEW`——**没有 ALTER/DROP**。
-- 因此**任何列宽/类型变更都不能靠应用启动时改表**：`spring.sql.init.mode=always` 只跑 `CREATE TABLE IF NOT EXISTS`，不会 ALTER 已存在的表。
+- **MySQL 跑在 102 虚拟机的 Docker 容器里**（容器名 `mysql`，端口 `0.0.0.0:3306->3306`；root 有密码，应用账号是 `admin/123456`）。
+  虚拟机没启动容器时 Spring Boot 报 `Cannot resolve reference to bean 'org.springframework.data.jdbc.core.JdbcAggregateOperations'` 连环错——
+  真实原因只是连不上库（`jdbcDialect` 要连库读 DatabaseMetaData，`namedParameterJdbcTemplate` 又绑了 `dataSourceScriptDatabaseInitializer`，
+  连接被拒 → dialect 建不出 → 所有 Spring Data JDBC 仓库挂）。看到这个错先 `nc -z 192.168.0.102 3306`，别改代码。
+- **远程启动/运维 102 虚拟机**：`ssh percy@192.168.0.102`，密码 `1`（2026-10-19 用户明确要求记住）。常用命令 `docker start mysql` / `docker ps`。
+  本机 macOS 无 `sshpass`、无 `setsid`；免交互登录用 `/usr/bin/expect` 脚本（密码走 `send`，OpenSSH 9.9 + `-o StrictHostKeyChecking=no`）。- 因此**任何列宽/类型变更都不能靠应用启动时改表**：`spring.sql.init.mode=always` 只跑 `CREATE TABLE IF NOT EXISTS`，不会 ALTER 已存在的表。
   正确做法：在 `src/main/resources/db/` 下按既有模式写 `migration-vX-to-vY.sql`（幂等、information_schema 存在性判断），
   并提醒用户用有 ALTER 权限的账号执行（或 `GRANT ALTER ON autumn-security.* TO 'admin'@'%'`）。
   当前最新迁移是 `db/migration-v3-to-v4.sql`（basic_app/basic_role/basic_group 加 namespace 列；basic_role 删 app_id）。
@@ -47,6 +52,7 @@
   h2 依赖已补进 pom（runtime）；`application-h2.properties` 需带 `CASE_INSENSITIVE_IDENTIFIERS=TRUE`，
   否则 Spring Data JDBC 生成的 `"ID"/"NAME"` 大写列名匹配不上 schema 里的小写列，basic_* 派生查询全报 Column not found。
 - `BasicResourceRepository.findWithPage` 的 `LIMIT :offset OFFSET :limit` 看似参数写反，实为与 Service 传参顺序相互抵消的既有约定，**不要"修复"**。
+- **Spring Boot 4 / Spring Web 7.0.9 的 API 迁移**：`ContentCachingRequestWrapper` 已从 `org.springframework.web.filter` **移到 `org.springframework.web.util`**；且其构造器从单参 `(HttpServletRequest)` 改为**必须传 `int maxContentLength`**（如 `new ContentCachingRequestWrapper(request, 1024*1024)`）。写可重复读请求体的过滤器/拦截器要注意这两点。
 
 ## 命名空间（租户）模型（2026-10-18 定型）
 - `basic_namespace`（default 默认租户）→ `basic_app`、`basic_role`、`basic_group` 都有 `namespace_id/namespace_code`，按公司/企业隔离。

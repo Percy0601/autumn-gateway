@@ -116,9 +116,6 @@ const detailFields = [
   { label: '更新时间', prop: 'updateTime', formatter: fmtDateTime },
 ]
 
-const groupSource = ({ keyword, boundIds, current, pageSize }) =>
-  basicGroupApi.list({ current, pageSize, name: keyword, boundIds })
-
 const detailTabs = [
   {
     key: 'users',
@@ -137,22 +134,6 @@ const detailTabs = [
     boundSet: (id, ids) => basicGroupApi.setRoles(id, ids),
     sourceList: ({ keyword, boundIds, current, pageSize }) =>
       basicRoleApi.list({ current, pageSize, name: keyword, boundIds }),
-  },
-  {
-    key: 'subGroups',
-    title: '下级用户组',
-    keywordLabel: '岗位名称',
-    boundList: (id) => basicGroupApi.subGroups(id),
-    boundSet: (id, ids) => basicGroupApi.setSubGroups(id, ids),
-    sourceList: groupSource,
-  },
-  {
-    key: 'parentGroups',
-    title: '上级用户组',
-    keywordLabel: '岗位名称',
-    boundList: (id) => basicGroupApi.parentGroups(id),
-    boundSet: (id, ids) => basicGroupApi.setParentGroups(id, ids),
-    sourceList: groupSource,
   },
 ]
 
@@ -438,14 +419,6 @@ onMounted(() => {
             </el-tag>
           </template>
         </el-table-column>
-      </template>
-      <template #subGroups-columns>
-        <el-table-column prop="name" label="岗位名称" min-width="150" show-overflow-tooltip />
-        <el-table-column prop="code" label="岗位编码" min-width="140" show-overflow-tooltip />
-      </template>
-      <template #parentGroups-columns>
-        <el-table-column prop="name" label="岗位名称" min-width="150" show-overflow-tooltip />
-        <el-table-column prop="code" label="岗位编码" min-width="140" show-overflow-tooltip />
       </template>
     </RelationDetailDialog>
   </div>

@@ -16,11 +16,11 @@ export default {
 	updateTime: 'Update Time',
 	required: 'Required items cannot be empty',
 	app: {
-		title: 'MAKU Low Code',
+		title: 'Autumn Dashboard',
 		description:
 			'A powerful code generator that can generate both front-end and back-end code with a single click, helping Java projects solve 70% of repetitive work, allowing developers to spend more time developing business and improving development efficiency. There are many zero-code capabilities: Online form development, Online report development, Online interface development, form design, process design, etc.',
-		logoText: 'MAKU Low Code',
-		miniLogoText: 'MAKU',
+		logoText: 'Autumn Dashboard',
+		miniLogoText: 'Autumn',
 		username: 'Username',
 		password: 'Password',
 		captcha: 'Captcha',

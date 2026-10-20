@@ -240,6 +240,8 @@ CREATE TABLE IF NOT EXISTS `basic_user` (
     `emp_no`              VARCHAR(50) NOT NULL DEFAULT '',
     `admin`               INT NOT NULL DEFAULT 0,
     `status`              TINYINT NOT NULL DEFAULT 1,
+    `password`            VARCHAR(100) NOT NULL DEFAULT '',
+    `login_error_count`   INT NOT NULL DEFAULT 0,
     `latest_role_id`      BIGINT NOT NULL DEFAULT 0,
     `password_updated_at` DATETIME DEFAULT NULL,
     `last_login_at`       DATETIME DEFAULT NULL,

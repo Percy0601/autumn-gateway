@@ -50,6 +50,12 @@ public class BasicUser {
     @Column("latest_role_id")
     private Long latestRoleId; // 最近登录使用的角色Id
 
+    @Column("password")
+    private String password; // 登录密码（BCrypt 哈希），参考 sys_user 方式存储
+
+    @Column("login_error_count")
+    private Integer loginErrorCount; // 连续登录失败次数（成功登录清零；用于后续锁定策略）
+
     @Column("password_updated_at")
     private LocalDateTime passwordUpdatedAt; // 密码最后修改时间，用于密码有效期/强制改密
 
@@ -94,6 +100,12 @@ public class BasicUser {
 
     public Long getLatestRoleId() { return latestRoleId; }
     public void setLatestRoleId(Long latestRoleId) { this.latestRoleId = latestRoleId; }
+
+    public String getPassword() { return password; }
+    public void setPassword(String password) { this.password = password; }
+
+    public Integer getLoginErrorCount() { return loginErrorCount; }
+    public void setLoginErrorCount(Integer loginErrorCount) { this.loginErrorCount = loginErrorCount; }
 
     public LocalDateTime getPasswordUpdatedAt() { return passwordUpdatedAt; }
     public void setPasswordUpdatedAt(LocalDateTime passwordUpdatedAt) { this.passwordUpdatedAt = passwordUpdatedAt; }
