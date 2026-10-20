@@ -81,9 +81,20 @@
 				<el-form-item prop="captcha">
 					<div class="captcha-row">
 						<el-input v-model="form.captcha" placeholder="请输入验证码" size="large" clearable />
-						<img v-if="captchaImg" :src="captchaImg" class="captcha-img" alt="验证码" title="点击刷新验证码" @click="fetchCaptcha" />
-						<el-button v-else class="captcha-img" size="large" @click="fetchCaptcha">获取验证码</el-button>
+						<img
+							v-if="captchaImg"
+							:src="captchaImg"
+							class="captcha-img"
+							alt="验证码"
+							title="点击刷新验证码"
+							@click="fetchCaptcha"
+							@error="onCaptchaImgError"
+						/>
+						<el-button v-else class="captcha-img" size="large" :type="captchaError ? 'danger' : 'default'" :loading="captchaLoading" @click="fetchCaptcha">
+							{{ captchaLoading ? '' : captchaError ? '重试' : '获取验证码' }}
+						</el-button>
 					</div>
+					<p v-if="captchaError" class="captcha-error">验证码加载失败，请点击右侧按钮重试</p>
 				</el-form-item>
 					<el-form-item>
 						<div class="login-options">
@@ -125,20 +136,41 @@ const form = reactive({
 	captcha: ''
 })
 
-// 验证码：captchaId 提交时带回服务端校验，captchaImg 是后端返回的 SVG dataURI，点击图片即刷新
+// 验证码：captchaId 提交时带回服务端校验，captchaImg 是后端返回的 SVG dataURI，点击图片即刷新。
+// 加载中/失败都有明确视觉状态——静默失败是「验证码不显示」类问题最难排查的原因。
 const captchaId = ref('')
 const captchaImg = ref('')
+const captchaLoading = ref(false)
+const captchaError = ref(false)
 
 const fetchCaptcha = async () => {
+	captchaLoading.value = true
+	captchaError.value = false
 	try {
 		const body: any = await http.get('/api/captcha')
-		captchaId.value = body?.captchaId || ''
-		captchaImg.value = body?.img || ''
-		form.captcha = ''
+		if (body?.img) {
+			captchaId.value = body.captchaId || ''
+			captchaImg.value = body.img
+			form.captcha = ''
+		} else {
+			// 接口通但没给图：按失败处理，让用户看到可点击的重试而不是静默空白
+			captchaId.value = ''
+			captchaImg.value = ''
+			captchaError.value = true
+		}
 	} catch {
 		captchaId.value = ''
 		captchaImg.value = ''
+		captchaError.value = true
+	} finally {
+		captchaLoading.value = false
 	}
+}
+
+// dataURI 渲染失败（极小概率）：退回按钮态，允许手动重试
+const onCaptchaImgError = () => {
+	captchaImg.value = ''
+	captchaError.value = true
 }
 
 onMounted(fetchCaptcha)
@@ -394,6 +426,13 @@ const handleSubmit = () => {
 	&:hover {
 		border-color: #409eff;
 	}
+}
+
+.captcha-error {
+	margin: 4px 0 0;
+	font-size: 12px;
+	line-height: 1.4;
+	color: #f56c6c;
 }
 
 .login-tip {
