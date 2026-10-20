@@ -2,6 +2,7 @@ package xyz.wewin.autumn.gateway.dashboard.controller.basic;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -22,6 +23,12 @@ import java.util.List;
 
 /**
  * 角色管理（basic_role），替代旧的 /api/system/role。
+ *
+ * <h3>管控策略</h3>
+ * <ul>
+ *   <li>查询、新增、编辑——<b>认证即可</b>；</li>
+ *   <li>启停、以及「角色 → 用户 / 菜单 / 资源 / 用户组」四类<b>授权</b>操作——权限码管控。</li>
+ * </ul>
  */
 @RestController
 @RequestMapping("/api/system/basic/role")
@@ -66,7 +73,8 @@ public class BasicRoleController {
         }
     }
 
-    /** 启用：status = 1 */
+    /** 启用：status = 1；需 {@code system:role:enable} */
+    @PreAuthorize("hasAuthority('system:role:enable')")
     @PutMapping("/{id}/enable")
     public Result<BasicRole> enable(@PathVariable Long id) {
         try {
@@ -76,7 +84,8 @@ public class BasicRoleController {
         }
     }
 
-    /** 停用：status = 2 */
+    /** 停用：status = 2；需 {@code system:role:disable} */
+    @PreAuthorize("hasAuthority('system:role:disable')")
     @PutMapping("/{id}/disable")
     public Result<BasicRole> disable(@PathVariable Long id) {
         try {
@@ -99,7 +108,8 @@ public class BasicRoleController {
         return Result.success(service.getUsers(id));
     }
 
-    /** 全量覆盖关联：body 为用户 id 数组 */
+    /** 给角色分配用户：授权类操作，需 {@code system:role:assign-user} */
+    @PreAuthorize("hasAuthority('system:role:assign-user')")
     @PutMapping("/{id}/users")
     public Result<Void> setUsers(@PathVariable Long id, @RequestBody List<Long> userIds) {
         try {
@@ -116,7 +126,8 @@ public class BasicRoleController {
         return Result.success(service.getMenus(id));
     }
 
-    /** 全量覆盖菜单授权：body 为菜单 id 数组 */
+    /** 给角色分配菜单：授权类操作，需 {@code system:role:assign-menu} */
+    @PreAuthorize("hasAuthority('system:role:assign-menu')")
     @PutMapping("/{id}/menus")
     public Result<Void> setMenus(@PathVariable Long id, @RequestBody List<Long> menuIds) {
         try {
@@ -133,7 +144,8 @@ public class BasicRoleController {
         return Result.success(service.getResources(id));
     }
 
-    /** 全量覆盖资源授权：body 为资源 id 数组 */
+    /** 给角色分配资源：授权类操作，需 {@code system:role:assign-resource} */
+    @PreAuthorize("hasAuthority('system:role:assign-resource')")
     @PutMapping("/{id}/resources")
     public Result<Void> setResources(@PathVariable Long id, @RequestBody List<Long> resourceIds) {
         try {
@@ -150,7 +162,8 @@ public class BasicRoleController {
         return Result.success(service.getGroups(id));
     }
 
-    /** 全量覆盖关联：body 为用户组 id 数组 */
+    /** 给角色分配用户组：授权类操作，需 {@code system:role:assign-group} */
+    @PreAuthorize("hasAuthority('system:role:assign-group')")
     @PutMapping("/{id}/groups")
     public Result<Void> setGroups(@PathVariable Long id, @RequestBody List<Long> groupIds) {
         try {

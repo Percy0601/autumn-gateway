@@ -5,6 +5,10 @@ public class LoginRequest {
     private String password;
     private boolean autoLogin;
     private String type;
+    /** 验证码标识：GET /api/captcha 返回，提交登录时原样带回 */
+    private String captchaId;
+    /** 用户输入的验证码（大小写不敏感） */
+    private String captcha;
 
     public String getUsername() {
         return username;
@@ -36,5 +40,21 @@ public class LoginRequest {
 
     public void setType(String type) {
         this.type = type;
+    }
+
+    public String getCaptchaId() {
+        return captchaId;
+    }
+
+    public void setCaptchaId(String captchaId) {
+        this.captchaId = captchaId;
+    }
+
+    public String getCaptcha() {
+        return captcha;
+    }
+
+    public void setCaptcha(String captcha) {
+        this.captcha = captcha;
     }
 }

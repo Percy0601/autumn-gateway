@@ -306,8 +306,23 @@ public class NamespaceDataInitializer implements ApplicationRunner {
         return queryForLongOrNull("SELECT id FROM basic_role WHERE namespace_id = ? AND code = ?", nsId, code);
     }
 
+    /**
+     * 播种最小可用菜单集。
+     *
+     * <p><b>只在 basic_menu 为空时播种</b>：完整的菜单树（含按钮权限点）由
+     * {@code db/rbac/V2__rbac_init_data_mysql.sql} 提供，权限标识是
+     * {@code system:user:create} 这种「模块:资源:动作」格式。
+     * 而这里播种的是 {@code user} / {@code role} 这种短标识的最小集。
+     * 两套并存会让前端拿到两组同名的页面路由（用户管理出现两次），
+     * 也会让 {@code @PreAuthorize} 比对不到正确的权限码。
+     * 因此一旦发现库里已有标准格式的权限点，就完全不插手。</p>
+     */
     private void ensureBasicMenus(Long appId) {
         if (appId == null) {
+            return;
+        }
+        if (count("SELECT COUNT(1) FROM basic_menu WHERE del_flag = 0") > 0) {
+            log.debug("basic_menu 已有数据（V2 初始化脚本或人工维护），跳过最小菜单集播种");
             return;
         }
         // 系统管理目录（捕获其自增 id，供子菜单挂接）

@@ -48,6 +48,26 @@ public record UserGrant(boolean superAdmin,
         return new UserGrant(true, Collections.emptySet(), Collections.emptyList());
     }
 
+    /**
+     * 超级管理员：全权限，同时把库里全部权限标识也装进来。
+     *
+     * <p>为什么超管也要显式带上权限清单：
+     * Spring Security 标准的 {@code @PreAuthorize("hasAuthority('x')")} 走的是
+     * {@code Authentication#getAuthorities()} 的字符串精确比对，
+     * 看不懂我们自定义的 {@code "*"} 通配。如果超管的 authorities 里只有一个 {@code "*"}，
+     * 那么所有用 {@code hasAuthority} 写的接口都会把超管拒之门外——
+     * 「管理员反而不能用」是最难排查的一类权限 bug。</p>
+     *
+     * <p>因此这里把 {@code basic_menu.menu_identification} 全量装配给超管，
+     * 让标准表达式与 {@link #has} 两条判定路径结论一致。
+     * URL 层仍然由 {@link UrlAuthorizationManager} 按 {@code superAdmin} 标记短路放行，
+     * 不受本集合影响。</p>
+     */
+    public static UserGrant fullAccess(Collection<String> allAuthorities) {
+        return new UserGrant(true, allAuthorities == null ? Set.of() : new LinkedHashSet<>(allAuthorities),
+                Collections.emptyList());
+    }
+
     public static UserGrant of(Collection<String> authorities, List<UrlResource> resources) {
         return new UserGrant(false, new LinkedHashSet<>(authorities), resources);
     }

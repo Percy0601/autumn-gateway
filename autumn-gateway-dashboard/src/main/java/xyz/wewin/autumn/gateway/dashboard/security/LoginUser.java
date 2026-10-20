@@ -24,6 +24,9 @@ import java.util.List;
  */
 public class LoginUser implements UserDetails {
 
+    /** 超管通配权限标识；仅作为「全放行」的显式信号，判定请以 {@link UserGrant#has} 为准 */
+    public static final String WILDCARD_AUTHORITY = "*";
+
     private final Long userId;
     private final String username;
     private final String token;
@@ -35,14 +38,28 @@ public class LoginUser implements UserDetails {
         this.username = username;
         this.token = token;
         this.grant = grant == null ? UserGrant.empty() : grant;
-        // 超管给一个通配 authority，兼容 hasAuthority 的常规写法；
-        // 真正的判定仍以 UserGrant#has 为准（见 UrlAuthorizationManager 与 Permissions）
-        this.authorities = this.grant.isSuperAdmin()
-                ? List.of(new SimpleGrantedAuthority("*"))
-                : this.grant.authorities().stream()
-                        .map(SimpleGrantedAuthority::new)
-                        .map(GrantedAuthority.class::cast)
-                        .toList();
+        // 超管：库里全部权限标识 + 一个 "*" 通配标记。
+        //
+        // 带全部标识的原因：@PreAuthorize("hasAuthority('x')") 是字符串精确比对，
+        // 只认 authorities，不认我们自定义的 "*"。只给 "*" 的话超管会被自己的系统拒之门外。
+        // 保留 "*" 是为了给前端 v-auth 与自定义表达式留一个「全放行」的显式信号。
+        //
+        // 普通用户：authorities 即 basic_menu.menu_identification 集合。
+        // 两条路径最终都以 UserGrant#has 为准（见 UrlAuthorizationManager 与 Permissions）。
+        this.authorities = buildAuthorities(this.grant);
+    }
+
+    private static List<GrantedAuthority> buildAuthorities(UserGrant grant) {
+        if (grant.isSuperAdmin()) {
+            List<GrantedAuthority> list = new java.util.ArrayList<>(grant.authorities().size() + 1);
+            grant.authorities().forEach(a -> list.add(new SimpleGrantedAuthority(a)));
+            list.add(new SimpleGrantedAuthority(WILDCARD_AUTHORITY));
+            return List.copyOf(list);
+        }
+        return grant.authorities().stream()
+                .map(SimpleGrantedAuthority::new)
+                .map(GrantedAuthority.class::cast)
+                .toList();
     }
 
     public Long getUserId() {

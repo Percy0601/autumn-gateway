@@ -2,6 +2,7 @@ package xyz.wewin.autumn.gateway.dashboard.controller.basic;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -32,6 +33,12 @@ import java.util.Set;
 /**
  * 菜单管理（basic_menu）。
  * 前端按 parentId 自行构建树，这里返回扁平列表。
+ *
+ * <h3>管控策略</h3>
+ * <ul>
+ *   <li>查询、新增、编辑——<b>认证即可</b>；</li>
+ *   <li>启停、以及「菜单 ↔ 资源」的<b>授权关联</b>——权限码管控。</li>
+ * </ul>
  */
 @RestController
 @RequestMapping("/api/system/basic/menu")
@@ -136,7 +143,8 @@ public class BasicMenuController {
         }
     }
 
-    /** 启用：menu_status = 1 */
+    /** 启用：menu_status = 1；需 {@code system:menu:enable} */
+    @PreAuthorize("hasAuthority('system:menu:enable')")
     @PutMapping("/{id}/enable")
     public Result<BasicMenu> enable(@PathVariable Long id) {
         try {
@@ -146,7 +154,8 @@ public class BasicMenuController {
         }
     }
 
-    /** 停用：menu_status = 2 */
+    /** 停用：menu_status = 2；需 {@code system:menu:disable} */
+    @PreAuthorize("hasAuthority('system:menu:disable')")
     @PutMapping("/{id}/disable")
     public Result<BasicMenu> disable(@PathVariable Long id) {
         try {
@@ -164,7 +173,8 @@ public class BasicMenuController {
         return Result.success(service.getResources(id));
     }
 
-    /** 全量覆盖菜单的资源关联：body 为资源 id 数组 */
+    /** 菜单关联资源：授权类操作，需 {@code system:menu:assign-resource} */
+    @PreAuthorize("hasAuthority('system:menu:assign-resource')")
     @PutMapping("/{id}/resources")
     public Result<Void> setResources(@PathVariable Long id, @RequestBody List<Long> resourceIds) {
         try {

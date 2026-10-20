@@ -1,10 +1,12 @@
 package xyz.wewin.autumn.gateway.dashboard.service.basic;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicGroup;
@@ -53,6 +55,19 @@ public class BasicUserService {
 
     @Autowired
     private BasicUserRoleRepository userRoleRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    /** 管理员重置密码时，新密码的最短长度 */
+    private static final int MIN_PASSWORD_LENGTH = 8;
+
+    /** 管理员重置密码时未指定新密码，则回落到系统默认密码 */
+    private final String defaultPassword;
+
+    public BasicUserService(@Value("${autumn.user.default-password:Autumn@123456}") String defaultPassword) {
+        this.defaultPassword = defaultPassword;
+    }
 
     private static String nvl(String v) {
         return v == null ? "" : v.trim();
@@ -236,11 +251,69 @@ public class BasicUserService {
         }
     }
 
+    /**
+     * 管理员重置用户密码（高危操作，需 {@code system:user:reset-pwd} 权限）。
+     *
+     * <p>语义：</p>
+     * <ul>
+     *   <li>{@code newPassword} 为空 → 回落到系统默认密码 {@code autumn.user.default-password}；</li>
+     *   <li>无论哪种情况都会刷新 {@code password_updated_at}，便于审计「上次改密时间」；</li>
+     *   <li>清零 {@code login_error_count}：账号常常是因为连续输错被自动禁用才来找管理员的，
+     *       改了密码却仍被锁着会让用户以为重置失败；</li>
+     *   <li>{@code unlock=true} 时顺带把 {@code status} 置回 1（启用）。</li>
+     * </ul>
+     *
+     * <p><b>返回值为什么带明文：</b>管理员要把临时密码转告用户，返回明文是这个场景的刚需。
+     * 只在本次响应里出现一次，不落库、不打日志（调用方请勿记录）。</p>
+     *
+     * <p><b>说明：</b>本模块的两个登录入口（{@code /api/login/account} 与 {@code /auth/login}）
+     * 都走 {@code basic_user}，因此只需改这一张表。授权服务器模块
+     * （autumn-gateway-authorization）用的是自己的 {@code user_auth_account}，
+     * 与本表无关，不在本次范围内。</p>
+     *
+     * <p><b>已知限制：</b>JWT 无状态，重置密码无法让旧 token 立即失效，
+     * 旧 token 最长 {@code jwt.expiration-ms} 后自然过期。若要求「改密即踢下线」，
+     * 需要引入 token 版本号或黑名单，本期不做。</p>
+     *
+     * @param id          用户 id
+     * @param newPassword 新密码明文；null/空白时回落默认密码
+     * @param unlock      是否同时解除禁用状态
+     * @return 实际生效的明文密码
+     */
+    public String resetPassword(Long id, String newPassword, boolean unlock) {
+        BasicUser existing = repository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("用户不存在: " + id));
+
+        String plain = (newPassword == null || newPassword.isBlank())
+                ? defaultPassword
+                : newPassword.trim();
+        if (plain.length() < MIN_PASSWORD_LENGTH) {
+            throw new IllegalArgumentException("密码长度不能少于 " + MIN_PASSWORD_LENGTH + " 位");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        existing.setPassword(passwordEncoder.encode(plain));
+        existing.setPasswordUpdatedAt(now);
+        // 改密必然伴随解锁诉求：被自动锁定的账号重置后应能立刻登录
+        existing.setLoginErrorCount(0);
+        if (unlock) {
+            existing.setStatus(1);
+        }
+        existing.setUpdateTime(now);
+        repository.save(existing);
+        return plain;
+    }
+
     /** status: 1=正常 0=停用 */
     public BasicUser updateStatus(Long id, Integer status) {
         BasicUser existing = repository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("用户不存在: " + id));
         existing.setStatus(status);
+        // 重新启用时清零登录失败计数：账号可能因连续失败被自动锁定（login_error_count 已达上限），
+        // 不清零的话启用后一次错误又会立刻锁定
+        if (Integer.valueOf(1).equals(status)) {
+            existing.setLoginErrorCount(0);
+        }
         existing.setUpdateTime(LocalDateTime.now());
         return repository.save(existing);
     }

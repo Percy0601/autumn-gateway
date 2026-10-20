@@ -277,6 +277,51 @@ function handleSubmit() {
   })
 }
 
+// ---------- 重置密码（高危，需 system:user:reset-pwd） ----------
+const resetVisible = ref(false)
+const resetting = ref(false)
+const resetRow = ref(null)
+const resetForm = reactive({
+  password: '',
+  unlock: true,
+})
+// 重置成功后展示的一次性明文密码（不落库、不缓存）
+const resetResult = ref('')
+
+function openResetPassword(row) {
+  resetRow.value = row
+  resetForm.password = ''
+  resetForm.unlock = true
+  resetResult.value = ''
+  resetVisible.value = true
+}
+
+async function handleResetPassword() {
+  if (!resetRow.value) return
+  const pwd = resetForm.password.trim()
+  if (pwd && pwd.length < 8) {
+    ElMessage.warning('密码长度不能少于 8 位')
+    return
+  }
+  resetting.value = true
+  try {
+    const body = await basicUserApi.resetPassword(resetRow.value.id, {
+      password: pwd || undefined,
+      unlock: resetForm.unlock,
+    })
+    resetResult.value = body?.data?.password || ''
+    ElMessage.success('密码已重置')
+    loadData()
+  } finally {
+    resetting.value = false
+  }
+}
+
+function closeResetDialog() {
+  resetVisible.value = false
+  resetResult.value = ''
+}
+
 onMounted(() => {
   loadData()
   loadNamespaces()
@@ -340,6 +385,7 @@ onMounted(() => {
       <div class="pro-toolbar">
         <el-button type="primary" :icon="Plus" @click="openCreate">新增</el-button>
         <el-button
+          v-auth="'system:user:delete'"
           type="danger"
           plain
           :icon="Delete"
@@ -414,6 +460,14 @@ onMounted(() => {
               <el-link type="primary" class="link-op" @click="changeStatus(row)">
                 {{ row.status === 0 ? '启用' : '停用' }}
               </el-link>
+              <el-link
+                v-auth="'system:user:reset-pwd'"
+                type="primary"
+                class="link-op"
+                @click="openResetPassword(row)"
+              >
+                重置密码
+              </el-link>
             </template>
           </el-table-column>
         </el-table>
@@ -482,6 +536,51 @@ onMounted(() => {
         </div>
       </template>
     </el-drawer>
+
+    <!-- 重置密码 -->
+    <el-dialog
+      v-model="resetVisible"
+      title="重置密码"
+      width="480px"
+      :close-on-click-modal="false"
+      @closed="closeResetDialog"
+    >
+      <el-form label-width="110px">
+        <el-form-item label="用户">
+          <span>{{ resetRow?.username || '-' }}</span>
+        </el-form-item>
+        <el-form-item label="新密码">
+          <el-input
+            v-model="resetForm.password"
+            type="password"
+            show-password
+            placeholder="留空则使用系统默认密码"
+          />
+        </el-form-item>
+        <el-form-item label="同时启用账号">
+          <el-switch v-model="resetForm.unlock" active-text="是" inactive-text="否" />
+        </el-form-item>
+        <el-alert
+          type="warning"
+          :closable="false"
+          show-icon
+          title="重置后会清零该用户的连续登录失败次数；旧 token 在过期前仍可使用。"
+          style="margin-bottom: 12px"
+        />
+        <el-form-item v-if="resetResult" label="新密码明文">
+          <el-space>
+            <el-tag type="success" effect="light">{{ resetResult }}</el-tag>
+            <el-button size="small" @click="copyText(resetResult)">复制</el-button>
+          </el-space>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="closeResetDialog">关闭</el-button>
+        <el-button type="primary" :loading="resetting" @click="handleResetPassword">
+          确定重置
+        </el-button>
+      </template>
+    </el-dialog>
 
     <!-- 详情弹窗：上基本信息 + 下关联分录页签 -->
     <RelationDetailDialog

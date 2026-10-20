@@ -79,8 +79,12 @@ public class Permissions {
             return List.of();
         }
         if (user.isSuperAdmin()) {
-            // 超管不逐条列举，前端见 "*" 即视为全放行
-            return List.of("*");
+            // 超管现在是「库里全部权限标识」，逐条下发即可；
+            // 额外补一个 "*" 作为前端「全放行」的兼容信号
+            // （老前端可能只认 "*"，认全量清单的也照样命中）。
+            List<String> all = new java.util.ArrayList<>(user.permissions());
+            all.add(LoginUser.WILDCARD_AUTHORITY);
+            return List.copyOf(all);
         }
         return List.copyOf(user.permissions());
     }

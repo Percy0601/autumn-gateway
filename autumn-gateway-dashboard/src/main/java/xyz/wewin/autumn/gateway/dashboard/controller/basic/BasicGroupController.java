@@ -2,6 +2,7 @@ package xyz.wewin.autumn.gateway.dashboard.controller.basic;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -21,6 +22,12 @@ import java.util.List;
 
 /**
  * 用户组管理（basic_group），并维护用户组与角色的关联（basic_role_group）。
+ *
+ * <h3>管控策略</h3>
+ * <ul>
+ *   <li>查询、新增、编辑——<b>认证即可</b>；</li>
+ *   <li>删除、启停、以及「用户组 → 角色 / 用户 / 上下级层级」三类<b>授权</b>操作——权限码管控。</li>
+ * </ul>
  */
 @RestController
 @RequestMapping("/api/system/basic/group")
@@ -65,7 +72,8 @@ public class BasicGroupController {
         }
     }
 
-    /** 软删除 */
+    /** 软删除：需 {@code system:group:delete} */
+    @PreAuthorize("hasAuthority('system:group:delete')")
     @DeleteMapping("/{id}")
     public Result<Void> remove(@PathVariable Long id) {
         try {
@@ -87,7 +95,8 @@ public class BasicGroupController {
         return Result.success(service.getRoles(id));
     }
 
-    /** 全量覆盖关联：body 为角色 id 数组 */
+    /** 给用户组分配角色：授权类操作，需 {@code system:group:assign-role} */
+    @PreAuthorize("hasAuthority('system:group:assign-role')")
     @PutMapping("/{id}/roles")
     public Result<Void> setRoles(@PathVariable Long id, @RequestBody List<Long> roleIds) {
         try {
@@ -104,7 +113,8 @@ public class BasicGroupController {
         return Result.success(service.getUsers(id));
     }
 
-    /** 全量覆盖关联：body 为用户 id 数组 */
+    /** 给用户组分配用户：授权类操作，需 {@code system:group:assign-user} */
+    @PreAuthorize("hasAuthority('system:group:assign-user')")
     @PutMapping("/{id}/users")
     public Result<Void> setUsers(@PathVariable Long id, @RequestBody List<Long> userIds) {
         try {
@@ -121,7 +131,8 @@ public class BasicGroupController {
         return Result.success(service.getSubGroups(id));
     }
 
-    /** 全量覆盖下级组：body 为用户组 id 数组 */
+    /** 维护下级用户组：授权类操作，需 {@code system:group:assign-sub} */
+    @PreAuthorize("hasAuthority('system:group:assign-sub')")
     @PutMapping("/{id}/sub-groups")
     public Result<Void> setSubGroups(@PathVariable Long id, @RequestBody List<Long> subIds) {
         try {
@@ -138,7 +149,8 @@ public class BasicGroupController {
         return Result.success(service.getParentGroups(id));
     }
 
-    /** 全量覆盖上级组：body 为用户组 id 数组 */
+    /** 维护上级用户组：授权类操作，需 {@code system:group:assign-sub} */
+    @PreAuthorize("hasAuthority('system:group:assign-sub')")
     @PutMapping("/{id}/parent-groups")
     public Result<Void> setParentGroups(@PathVariable Long id, @RequestBody List<Long> parentIds) {
         try {
@@ -149,7 +161,8 @@ public class BasicGroupController {
         }
     }
 
-    /** 启用：status = 1 */
+    /** 启用：status = 1；需 {@code system:group:enable} */
+    @PreAuthorize("hasAuthority('system:group:enable')")
     @PutMapping("/{id}/enable")
     public Result<BasicGroup> enable(@PathVariable Long id) {
         try {
@@ -159,7 +172,8 @@ public class BasicGroupController {
         }
     }
 
-    /** 停用：status = 0 */
+    /** 停用：status = 0；需 {@code system:group:disable} */
+    @PreAuthorize("hasAuthority('system:group:disable')")
     @PutMapping("/{id}/disable")
     public Result<BasicGroup> disable(@PathVariable Long id) {
         try {

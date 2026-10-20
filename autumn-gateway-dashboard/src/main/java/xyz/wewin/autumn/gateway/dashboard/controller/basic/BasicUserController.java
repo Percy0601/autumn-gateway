@@ -2,6 +2,7 @@ package xyz.wewin.autumn.gateway.dashboard.controller.basic;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -18,10 +19,17 @@ import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicUser;
 import xyz.wewin.autumn.gateway.dashboard.service.basic.BasicUserService;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 用户管理（basic_user），替代旧的 /api/system/user。
  * 同时维护用户与用户组的关联（basic_user_group）。
+ *
+ * <h3>管控策略</h3>
+ * <ul>
+ *   <li>查询（GET）、新增（POST）、编辑（PUT）——<b>认证即可</b>，不加权限码；</li>
+ *   <li>删除、启停、<b>分配角色/用户组</b>、<b>重置密码</b>——{@code @PreAuthorize} 权限码管控。</li>
+ * </ul>
  */
 @RestController
 @RequestMapping("/api/system/basic/user")
@@ -68,6 +76,8 @@ public class BasicUserController {
         }
     }
 
+    /** 删除用户：高危操作，需 {@code system:user:delete} */
+    @PreAuthorize("hasAuthority('system:user:delete')")
     @DeleteMapping("/{id}")
     public Result<Void> remove(@PathVariable Long id) {
         try {
@@ -84,7 +94,8 @@ public class BasicUserController {
         return Result.success(service.getGroups(id));
     }
 
-    /** 全量覆盖关联：body 为用户组 id 数组 */
+    /** 给用户分配用户组：授权类操作，需 {@code system:user:assign-group} */
+    @PreAuthorize("hasAuthority('system:user:assign-group')")
     @PutMapping("/{id}/groups")
     public Result<Void> setGroups(@PathVariable Long id, @RequestBody List<Long> groupIds) {
         try {
@@ -101,7 +112,8 @@ public class BasicUserController {
         return Result.success(service.getRoles(id));
     }
 
-    /** 全量覆盖关联：body 为角色 id 数组 */
+    /** 给用户分配角色：授权类操作，需 {@code system:user:assign-role} */
+    @PreAuthorize("hasAuthority('system:user:assign-role')")
     @PutMapping("/{id}/roles")
     public Result<Void> setRoles(@PathVariable Long id, @RequestBody List<Long> roleIds) {
         try {
@@ -112,7 +124,34 @@ public class BasicUserController {
         }
     }
 
-    /** 启用：status = 1 */
+    /**
+     * 重置密码（高危操作，需 {@code system:user:reset-pwd} 权限）。
+     *
+     * <p>请求体：</p>
+     * <pre>{@code
+     * { "password": "NewPass@123", "unlock": true }
+     * }</pre>
+     * {@code password} 省略时回落到系统默认密码 {@code autumn.user.default-password}；
+     * {@code unlock} 默认 {@code true}（顺带解除禁用状态并清零登录失败计数）。
+     *
+     * <p>响应 {@code data} 为实际生效的<b>明文</b>密码，仅在本次返回，供管理员转告用户。</p>
+     */
+    @PreAuthorize("hasAuthority('system:user:reset-pwd')")
+    @PutMapping("/{id}/reset-password")
+    public Result<Map<String, Object>> resetPassword(@PathVariable Long id,
+                                                     @RequestBody(required = false) Map<String, Object> body) {
+        try {
+            String password = body == null ? null : (String) body.get("password");
+            boolean unlock = body == null || !Boolean.FALSE.equals(body.get("unlock"));
+            String plain = service.resetPassword(id, password, unlock);
+            return Result.success(Map.of("userId", id, "password", plain));
+        } catch (IllegalArgumentException e) {
+            return Result.error(400, e.getMessage());
+        }
+    }
+
+    /** 启用：status = 1；需 {@code system:user:enable} */
+    @PreAuthorize("hasAuthority('system:user:enable')")
     @PutMapping("/{id}/enable")
     public Result<BasicUser> enable(@PathVariable Long id) {
         try {
@@ -122,7 +161,8 @@ public class BasicUserController {
         }
     }
 
-    /** 停用：status = 0 */
+    /** 停用：status = 0；需 {@code system:user:disable} */
+    @PreAuthorize("hasAuthority('system:user:disable')")
     @PutMapping("/{id}/disable")
     public Result<BasicUser> disable(@PathVariable Long id) {
         try {

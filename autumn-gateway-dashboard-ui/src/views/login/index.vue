@@ -68,7 +68,7 @@
 					<el-form-item prop="username">
           <el-input v-model="form.username" placeholder="请输入用户名" :prefix-icon="User" clearable size="large" />
         </el-form-item>
-        <el-form-item prop="password">
+				<el-form-item prop="password">
           <el-input
             v-model="form.password"
             type="password"
@@ -77,7 +77,14 @@
             show-password
             size="large"
           />
-					</el-form-item>
+				</el-form-item>
+				<el-form-item prop="captcha">
+					<div class="captcha-row">
+						<el-input v-model="form.captcha" placeholder="请输入验证码" size="large" clearable />
+						<img v-if="captchaImg" :src="captchaImg" class="captcha-img" alt="验证码" title="点击刷新验证码" @click="fetchCaptcha" />
+						<el-button v-else class="captcha-img" size="large" @click="fetchCaptcha">获取验证码</el-button>
+					</div>
+				</el-form-item>
 					<el-form-item>
 						<div class="login-options">
 							<el-checkbox v-model="autoLogin">自动登录</el-checkbox>
@@ -97,11 +104,12 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Lock, User } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/modules/user'
+import http from '@/utils/request'
 
 const route = useRoute()
 const router = useRouter()
@@ -113,12 +121,32 @@ const autoLogin = ref(true)
 
 const form = reactive({
 	username: '',
-	password: ''
+	password: '',
+	captcha: ''
 })
+
+// 验证码：captchaId 提交时带回服务端校验，captchaImg 是后端返回的 SVG dataURI，点击图片即刷新
+const captchaId = ref('')
+const captchaImg = ref('')
+
+const fetchCaptcha = async () => {
+	try {
+		const body: any = await http.get('/api/captcha')
+		captchaId.value = body?.captchaId || ''
+		captchaImg.value = body?.img || ''
+		form.captcha = ''
+	} catch {
+		captchaId.value = ''
+		captchaImg.value = ''
+	}
+}
+
+onMounted(fetchCaptcha)
 
 const rules = {
 	username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
-	password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
+	password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
+	captcha: [{ required: true, message: '请输入验证码', trigger: 'blur' }]
 }
 
 const handleSubmit = () => {
@@ -126,22 +154,27 @@ const handleSubmit = () => {
 		if (!valid) return
 		loading.value = true
 		try {
-				const body = await userStore.accountLoginAction({ ...form })
-				if (body && body.status === 'ok') {
-					ElMessage.success('登录成功')
-					// 这里只是预热用户态：登录本身已经成功，即便 /api/currentUser 暂时取不到
-					// 也不能让异常冒泡到外层 catch —— 那会把流程误判成「登录失败」，
-					// 用户会看到「登录成功」和「登录失败」自相矛盾的提示。
-					// 真正的认证判定由路由守卫负责（守卫失败会清 token 并回登录页）。
-					await userStore.fetchUserInfo().catch(() => undefined)
-				const redirect = route.query.redirect
-				const target =
-					typeof redirect === 'string' && redirect.startsWith('/') ? redirect : '/dashboard/index'
-				router.replace(target)
-				return
-			}
-			ElMessageBox.alert('用户名或密码错误', '登录失败', { type: 'error' })
+			// 验证码一次性消费：无论成败都会刷新，避免复用与过期
+			const body = await userStore.accountLoginAction({ ...form, captchaId: captchaId.value })
+			if (body && body.status === 'ok') {
+				ElMessage.success('登录成功')
+				// 这里只是预热用户态：登录本身已经成功，即便 /api/currentUser 暂时取不到
+				// 也不能让异常冒泡到外层 catch —— 那会把流程误判成「登录失败」，
+				// 用户会看到「登录成功」和「登录失败」自相矛盾的提示。
+				// 真正的认证判定由路由守卫负责（守卫失败会清 token 并回登录页）。
+				await userStore.fetchUserInfo().catch(() => undefined)
+			const redirect = route.query.redirect
+			const target =
+				typeof redirect === 'string' && redirect.startsWith('/') ? redirect : '/dashboard/index'
+			router.replace(target)
+			return
+		}
+			// 失败：优先展示服务端返回的具体原因（验证码错误 / 账号或密码错误 / 账号已禁用），
+			// 连续失败达到上限账号会被锁定，此时必须由管理员重新启用
+			await fetchCaptcha()
+			ElMessageBox.alert(body?.message || '用户名或密码错误', '登录失败', { type: 'error' })
 		} catch {
+			await fetchCaptcha()
 			ElMessage.error('登录失败，请稍后重试')
 		} finally {
 			loading.value = false
@@ -334,6 +367,32 @@ const handleSubmit = () => {
 		width: 100%;
 		display: flex;
 		justify-content: space-between;
+	}
+
+	.captcha-row {
+		width: 100%;
+		display: flex;
+		align-items: center;
+		gap: 12px;
+
+		.el-input {
+			flex: 1;
+		}
+	}
+}
+
+.captcha-img {
+	width: 120px;
+	height: 40px;
+	flex-shrink: 0;
+	border-radius: 6px;
+	border: 1px solid #dcdfe6;
+	background: #fff;
+	cursor: pointer;
+	object-fit: cover;
+
+	&:hover {
+		border-color: #409eff;
 	}
 }
 

@@ -34,7 +34,9 @@ public class OperLogInterceptor implements HandlerInterceptor {
 
     private static final int MAX_TEXT = 2000;
     private static final String START_ATTR = "operLogStartTime";
-    private static final String AUTH_SKIP = "/login,/auth,/oauth,/token";
+    // 这些接口的请求体含明文凭证（密码 / token），落审计日志等于把凭据写进库里，必须跳过。
+    // reset-password 的响应里还带明文新密码，同样不能记录请求体。
+    private static final String AUTH_SKIP = "/login,/auth,/oauth,/token,/reset-password";
 
     private static final Map<String, String> MODULE_CN = Map.of(
             "user", "用户", "role", "角色", "group", "用户组",

@@ -23,30 +23,33 @@ import xyz.wewin.autumn.gateway.dashboard.security.UrlAuthorizationManager;
  * <h3>三层鉴权</h3>
  * <ol>
  *   <li><b>认证</b>：{@link JwtAuthenticationFilter} 解析 Bearer token → {@code LoginUser}；</li>
- *   <li><b>功能授权（页面/接口）</b>：{@code /api/**} 走 {@link UrlAuthorizationManager}，
- *       按数据库里配置的 {@code basic_resource} 动态判定；</li>
- *   <li><b>按钮授权</b>：{@code @PreAuthorize("hasAuthority('system:user:create')")}
- *       在 Service/Controller 方法上做细粒度控制，权限标识来自 {@code basic_menu}。</li>
+ *   <li><b>接口准入（粗粒度）</b>：{@code authorizeHttpRequests} 决定「匿名 / 登录即可 / 走资源鉴权」；</li>
+ *   <li><b>操作授权（细粒度）</b>：{@code @PreAuthorize("hasAuthority('system:user:assign-role')")}
+ *       在 Controller 方法上做权限码管控，权限标识来自 {@code basic_menu.menu_identification}。</li>
  * </ol>
  *
- * <h3>灰度开关（重要）</h3>
- * {@code basic.rbac.enabled}：
+ * <h3>管控策略（核心约定）</h3>
+ * <pre>
+ *   ┌── 匿名放行 ────────── 登录、验证码、静态资源、健康检查
+ *   ├── 认证即可 ────────── 全部查询 + 新增/编辑（需求：新增类操作不重要，登录就能加）
+ *   └── 权限管控 ────────── 授权类（assign-*）、删除、启停、重置密码
+ *                            → 由 @PreAuthorize + 权限码决定
+ * </pre>
+ * 详见 {@code docs/权限与授权设计.md}。
+ *
+ * <h3>两个开关</h3>
  * <ul>
- *   <li>{@code false}（默认）——保持现状，所有接口 permitAll。
- *       代码全部就位但不生效，可以先合入主干、部署验证不影响线上。</li>
- *   <li>{@code true}——启用完整鉴权。</li>
+ *   <li>{@code basic.rbac.enabled}（默认 {@code true}）——总开关。
+ *       {@code false} 时所有接口 permitAll，用于线上紧急回滚，改配置即可，不用改代码。</li>
+ *   <li>{@code basic.rbac.url-check}（默认 {@code false}）——是否叠加「数据驱动的 URL 资源鉴权」
+ *       （{@link UrlAuthorizationManager}，规则存 {@code basic_resource}，默认拒绝）。
+ *       默认关闭：因为需求要求「新增类操作认证即可」，而 URL 层是默认拒绝的，
+ *       两者冲突。等资源表维护完善、需要更严格的接口级收口时再打开。</li>
  * </ul>
  * 切换方式（无需改代码）：
  * <pre>
- *   # 启动参数
- *   java -jar app.jar --basic.rbac.enabled=true
- *   # 或 application.properties
- *   basic.rbac.enabled=true
+ *   java -jar app.jar --basic.rbac.enabled=true --basic.rbac.url-check=true
  * </pre>
- *
- * <p><b>为什么默认关：</b>项目接近尾声，直接全量收紧会让所有既有调用方（前端、
- * 网关、脚本）立刻 401/403。先关着合入、跑通初始化 SQL、用 auditor 账号验证，
- * 确认权限配置无误后再打开开关，出问题改一个配置项即可回滚，不用回滚代码。</p>
  */
 @Configuration
 @EnableWebSecurity
@@ -58,14 +61,18 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final UrlAuthorizationManager urlAuthorizationManager;
     private final boolean rbacEnabled;
+    private final boolean urlCheckEnabled;
 
     public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
                           UrlAuthorizationManager urlAuthorizationManager,
-                          @Value("${basic.rbac.enabled:false}") boolean rbacEnabled) {
+                          @Value("${basic.rbac.enabled:true}") boolean rbacEnabled,
+                          @Value("${basic.rbac.url-check:false}") boolean urlCheckEnabled) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
         this.urlAuthorizationManager = urlAuthorizationManager;
         this.rbacEnabled = rbacEnabled;
-        log.info("RBAC 鉴权开关 basic.rbac.enabled = {}", rbacEnabled);
+        this.urlCheckEnabled = urlCheckEnabled;
+        log.info("RBAC 鉴权开关 basic.rbac.enabled = {}，URL 资源鉴权 basic.rbac.url-check = {}",
+                rbacEnabled, urlCheckEnabled);
         if (!rbacEnabled) {
             log.warn("鉴权未启用：所有接口目前可匿名访问。上线前请置 basic.rbac.enabled=true");
         }
@@ -100,17 +107,26 @@ public class SecurityConfig {
                     // 具体规则必须排在 /api/** 之前，否则会被宽规则吞掉。
 
                     // 1) 静态资源与前端路由：放行（前端产物编译进 static）
+                    //    /login、/404、/dashboard/**、/system/**、/p/**、/redirect/**、/iframe/**
+                    //    是 vue-router 的 history 模式路由：浏览器深链/F5 刷新会真的发 GET，
+                    //    不带 Authorization 头，必须匿名放行，由 SpaFallbackConfig
+                    //    回落到 index.html 交给前端路由渲染。
                     auth.requestMatchers(
                             "/", "/index.html",
                             "/assets/**", "/static/**",
                             "/favicon.ico", "/favicon.svg",
+                            "/login", "/404",
+                            "/dashboard/**", "/system/**",
+                            "/p/**", "/redirect/**", "/iframe/**",
                             "/error"
                     ).permitAll();
 
                     // 2) 登录相关：登录接口必须匿名可访问，否则谁也登不进来
+                    //    /api/captcha 是登录页验证码，同样必须匿名可访问
                     auth.requestMatchers(
                             "/api/login/account",
                             "/api/login/outLogin",
+                            "/api/captcha",
                             "/auth/**"
                     ).permitAll();
 
@@ -118,9 +134,19 @@ public class SecurityConfig {
                     auth.requestMatchers("/actuator/health", "/actuator/health/**").permitAll();
 
                     if (rbacEnabled) {
-                        // 4) 启用鉴权：/api/** 全部要求已登录，且由动态授权管理器判定资源
-                        auth.requestMatchers("/api/**")
-                                .access(urlAuthorizationManager);
+                        if (urlCheckEnabled) {
+                            // 4a) 严格模式：/api/** 走数据驱动的 URL 资源鉴权
+                            //     （规则存 basic_resource，未登记的接口一律 403）
+                            auth.requestMatchers("/api/**")
+                                    .access(urlAuthorizationManager);
+                        } else {
+                            // 4b) 标准模式（默认）：/api/** 只要登录即可。
+                            //     细粒度管控全部下沉到方法级 @PreAuthorize ——
+                            //     这样「新增/编辑认证即可」与「授权类操作必须授权」
+                            //     两条需求可以同时成立，而不用把每一个只读接口
+                            //     都登记进 basic_resource 才能访问。
+                            auth.requestMatchers("/api/**").authenticated();
+                        }
                         // 5) 兜底：其余接口只要登录即可（static 已在上方放行）
                         auth.anyRequest().authenticated();
                     } else {

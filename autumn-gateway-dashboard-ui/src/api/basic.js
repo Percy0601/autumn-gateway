@@ -61,6 +61,9 @@ export const basicUserApi = {
   // 关联用户组 basic_user_group
   groups: (id) => http.get(`${base}/user/${id}/groups`),
   setGroups: (id, ids) => http.put(`${base}/user/${id}/groups`, ids),
+  // 重置密码（高危，需 system:user:reset-pwd）：
+  // 不传 password 时后端回落到系统默认密码；返回体带明文新密码，仅供管理员转告用户
+  resetPassword: (id, data) => http.put(`${base}/user/${id}/reset-password`, data || {}),
   // 关联角色 basic_user_role
   roles: (id) => http.get(`${base}/user/${id}/roles`),
   setRoles: (id, ids) => http.put(`${base}/user/${id}/roles`, ids),

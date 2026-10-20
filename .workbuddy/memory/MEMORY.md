@@ -1,5 +1,14 @@
 # 项目长期约定（autumn-gateway-dashboard-ui 前端）
 
+## 终极目标：autumn-cloud 全链路 GraalVM native 化（2026-10-20 用户明确提出）
+- 最终目标是把 **autumn-cloud 整体 native 化**；本地仓库 `autumn-gateway` 即其前身/一部分，后续沟通默认朝这个目标推进。
+- **autumn-cloud-dashboard 就是界面配置模块**（对应本地 `autumn-gateway-dashboard`），同样要 native 化。
+- 推进路径（用户确认的顺序）：
+  1. **第一步（进行中）**：dashboard-ui `vite build` 打包 → dist 复制到 `autumn-gateway-dashboard/src/main/resources/static`，由 Spring Boot 直接托管开放页面（不再依赖单独前端服务器）。
+  2. **第二步**：在 102 虚拟机（`ssh percy@192.168.0.102`，密码 `1`）配置 GraalVM + native-image 对 dashboard 做 native image 化；虚拟机已有 GraalVM、Maven，缺的软件直接装。
+  3. 后续：discovery / authorization 等其他模块逐步 native 化。
+- 沟通约定：讨论任何技术选型时先对照这个总目标（启动速度、内存占用、单二进制分发），别跑偏。
+
 ## UI 风格
 - 参照 **maku-admin 原生**风格：主色 `#409eff`（`src/store/theme/config.js`），尽量多用蓝色。
 - 列表页统一布局：**查询栏 → 操作栏（`.pro-toolbar`）→ 表格 → 分页**，卡片顶部不再放标题行和「新增」按钮。
@@ -19,7 +28,8 @@
 ## 数据库与 schema 变更（重要）
 - **用户的真实开发库是 MySQL**：`192.168.0.102:3306/autumn-security`（2026-10-18 由 192.168.0.115 切换），账号 `admin/123456`。
   该账号权限只有 `SELECT, INSERT, UPDATE, DELETE, CREATE, REFERENCES, INDEX, CREATE VIEW, SHOW VIEW`——**没有 ALTER/DROP**。
-- **MySQL 跑在 102 虚拟机的 Docker 容器里**（容器名 `mysql`，端口 `0.0.0.0:3306->3306`；root 有密码，应用账号是 `admin/123456`）。
+- **MySQL 跑在 102 虚拟机的 Docker 容器里**（容器名 `mysql`，端口 `0.0.0.0:3306->3306`；**root 密码 = 123456**，2026-10-20 从 `docker inspect mysql` 的 env `MYSQL_ROOT_PASSWORD` 确认，与应用账号同密码；
+  需要 ALTER 时直接在容器内 `docker exec -i mysql mysql -uroot -p123456 autumn-security < xxx.sql`，备份用 `mysqldump --single-transaction --no-tablespaces`）。
   虚拟机没启动容器时 Spring Boot 报 `Cannot resolve reference to bean 'org.springframework.data.jdbc.core.JdbcAggregateOperations'` 连环错——
   真实原因只是连不上库（`jdbcDialect` 要连库读 DatabaseMetaData，`namedParameterJdbcTemplate` 又绑了 `dataSourceScriptDatabaseInitializer`，
   连接被拒 → dialect 建不出 → 所有 Spring Data JDBC 仓库挂）。看到这个错先 `nc -z 192.168.0.102 3306`，别改代码。
@@ -27,7 +37,9 @@
   本机 macOS 无 `sshpass`、无 `setsid`；免交互登录用 `/usr/bin/expect` 脚本（密码走 `send`，OpenSSH 9.9 + `-o StrictHostKeyChecking=no`）。- 因此**任何列宽/类型变更都不能靠应用启动时改表**：`spring.sql.init.mode=always` 只跑 `CREATE TABLE IF NOT EXISTS`，不会 ALTER 已存在的表。
   正确做法：在 `src/main/resources/db/` 下按既有模式写 `migration-vX-to-vY.sql`（幂等、information_schema 存在性判断），
   并提醒用户用有 ALTER 权限的账号执行（或 `GRANT ALTER ON autumn-security.* TO 'admin'@'%'`）。
-  当前最新迁移是 `db/migration-v3-to-v4.sql`（basic_app/basic_role/basic_group 加 namespace 列；basic_role 删 app_id）。
+  **2026-10-20 已把 v1→v2 / v2→v3 / v4→v5 / v5→v6 四个迁移全部在 102 真实库执行完毕**（修复登录 500：basic_user 补 password/login_error_count）。
+  当前最新迁移是 `db/migration-v5-to-v6.sql`（basic_role_permission 时间列 TIMESTAMP→DATETIME、basic_menu 两列收紧 NOT NULL、补 4 表 7 个索引、删 basic_user_role.eid 僵尸列）。
+  改表前先 mysqldump 备份（102 上已有 `/home/percy/backup-autumn-security-20261020.sql.gz`）。
 - **种子数据全部由 `NamespaceDataInitializer`（Java, ApplicationRunner）幂等播种**，已无 `data-*.sql`：
   默认租户 default、登录账号 **admin / Autumn@123456**（密码取 `autumn.user.default-password`，运行时 BCrypt 编码）、
   basic_* 演示数据。缺 namespace 列的存量库上：回填/演示数据只 WARN 不崩，启动不再中断；但 basic 页面会 500，需先跑迁移。
@@ -48,6 +60,8 @@
   但 `store/modules/user`、`utils/request`、`utils/constant` 等仍是 `.js`/`.ts` 双份，**实际生效的是 `.js`**，改这些文件必须改 `.js`。
 - 唯一权威 auth store 是 `src/store/modules/user`（Pinia id=`userStore`），路由守卫读它；不要新建重复 store。
 - 后端 `/api/currentUser` 返回 `userid` 而非 `id`。
+- **沙箱环境变量 `SERVER__PORT=64884` 会覆盖 `server.port`**：不带 `env -u SERVER__PORT` 重启后端会监听 64884 而不是 8080，前端/dev 代理全连不上（表现为连接被拒但进程正常）。
+  起 MySQL profile 后端的正确命令：`env -u SERVER__PORT ./mvnw -pl autumn-gateway-dashboard spring-boot:run`（仓库根目录）。
 - 本地起后端用 H2 profile：`env -u SERVER__PORT SPRING_PROFILES_ACTIVE=h2 ./mvnw spring-boot:run`（`./mvnw` 在仓库根目录）。
   h2 依赖已补进 pom（runtime）；`application-h2.properties` 需带 `CASE_INSENSITIVE_IDENTIFIERS=TRUE`，
   否则 Spring Data JDBC 生成的 `"ID"/"NAME"` 大写列名匹配不上 schema 里的小写列，basic_* 派生查询全报 Column not found。
@@ -59,6 +73,17 @@
 - `basic_menu` / `basic_resource` **不加** namespace：它们已有 `app_id`/`app_code` 维度，而 app 归属 namespace，间接隔离，保持平台级语义。
 - 角色跨应用：`basic_user_role.app_id` 是僵尸列，统一写 0；`BasicRole` 已无 app_id。
 - 用户详情弹窗「关联角色」页签显示「所属命名空间」（namespaceCode），勿再改回「应用」列。
+
+## 授权（RBAC）约定（2026-10-20 落地，改动前先看 `docs/权限与授权设计.md`）
+- **三档管控**：匿名放行（登录/验证码/静态/health）→ 认证即可（全部 GET + 新增/编辑 POST·PUT）→ 权限管控（授权类 assign-*、删除、启停、重置密码，走 `@PreAuthorize("hasAuthority('...')")`）。
+- **新增类操作刻意不加权限码**（用户明确要求：用户/角色/用户组/菜单/资源的添加不重要，登录即可）。
+- 开关：`basic.rbac.enabled`（默认 **true**，false=全部 permitAll 紧急回滚）、`basic.rbac.url-check`（默认 **false**，true 才叠加 `UrlAuthorizationManager` 的 URL 资源表默认拒绝）。
+  `url-check=false` 是刻意的——需求要求「新增认证即可」，而 URL 层默认拒绝，两者冲突；细粒度一律下沉到方法级。
+- **超管的 authorities 必须包含库里全部权限码**（`UserGrant.fullAccess(Set)`）。只有 `"*"` 会让 `hasAuthority()` 把超管拒掉——「管理员反而不能用」是最难排查的一类 bug。
+- 权限码常量在 `security/PermCodes.java`，值必须与 `basic_menu.menu_identification` 一致（权威数据来自 `db/rbac/V2__rbac_init_data_mysql.sql`）。
+- 重置密码：`PUT /api/system/basic/user/{id}/reset-password`，权限码 `system:user:reset-pwd`；`OperLogInterceptor` 已跳过该路径（避免明文密码入审计日志）。
+- 自举/检查：`GET /api/system/rbac/status`、`/me`；一键脚本 `db/rbac/bootstrap-mysql.sh --docker mysql`；检查脚本 `db/rbac/verify-mysql.sql`。SQL 顺序：schema-basic → V1 → V2 → V3。
+- `NamespaceDataInitializer#ensureBasicMenus` 只在 **basic_menu 为空**时播种，避免与 V2 菜单树重复。
 
 ## 协作提醒
 - 用户对列表列的增删需求会反复（如「最近登录」先删后加），改动列前先确认当前期望。

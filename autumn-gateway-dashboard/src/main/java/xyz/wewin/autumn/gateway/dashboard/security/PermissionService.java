@@ -11,6 +11,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * 权限装配服务：把「用户」解析成「可判定的权限集合」。
@@ -116,6 +117,15 @@ public class PermissionService {
             ) t
             """;
 
+    /** 全部启用状态的权限标识，供超级管理员装配（见 {@link UserGrant#fullAccess}） */
+    private static final String SQL_ALL_MENU_IDENTIFICATIONS = """
+            SELECT DISTINCT m.menu_identification
+              FROM basic_menu m
+             WHERE m.del_flag = 0
+               AND m.menu_status = 1
+               AND m.menu_identification <> ''
+            """;
+
     /** 角色 → 权限标识（type=1 菜单权限，取 menu_identification） */
     private static final String SQL_MENU_IDENTIFICATIONS = """
             SELECT DISTINCT m.menu_identification
@@ -153,6 +163,8 @@ public class PermissionService {
     private final String appCode;
     private final long cacheTtlMillis;
     private final ConcurrentHashMap<Long, CachedGrant> cache = new ConcurrentHashMap<>();
+    /** 全局共享的「全部权限标识」缓存，仅超管装配时使用 */
+    private final AtomicReference<CachedAuthorities> allAuthoritiesCache = new AtomicReference<>();
 
     public PermissionService(JdbcTemplate jdbcTemplate,
                              @Value("${basic.rbac.group-inherit-enabled:true}") boolean groupInheritEnabled,
@@ -195,6 +207,7 @@ public class PermissionService {
     /** 全量清空，角色/菜单/资源发生结构性变更时用 */
     public void evictAll() {
         cache.clear();
+        allAuthoritiesCache.set(null);
     }
 
     /**
@@ -210,11 +223,33 @@ public class PermissionService {
         return count == null ? 0L : count;
     }
 
+    /**
+     * 库里全部启用状态的权限标识，用于给超级管理员装配 authorities。
+     *
+     * <p>全应用共享一份、按 TTL 缓存：超管是少数派，没必要每次请求都多一条 SQL。
+     * 菜单结构变更（新增按钮权限点）后最长 {@code cache-ttl-seconds} 秒生效，
+     * 也可以调用 {@link #evictAll()} 立刻失效。</p>
+     */
+    private Set<String> allMenuIdentifications() {
+        long now = System.currentTimeMillis();
+        CachedAuthorities cached = allAuthoritiesCache.get();
+        if (cached != null && !cached.expired(now)) {
+            return cached.value();
+        }
+        Set<String> all = new LinkedHashSet<>(
+                jdbcTemplate.queryForList(SQL_ALL_MENU_IDENTIFICATIONS, String.class));
+        allAuthoritiesCache.set(new CachedAuthorities(all, now + cacheTtlMillis));
+        return all;
+    }
+
     private UserGrant doLoad(Long userId) {
         Integer superAdmin = jdbcTemplate.queryForObject(SQL_IS_SUPER_ADMIN, Integer.class, userId);
         if (superAdmin != null && superAdmin > 0) {
-            // 超管：不查授权表，返回一个「全放行」标记
-            return UserGrant.fullAccess();
+            // 超管：不查授权表，返回一个「全放行」标记。
+            // 但 authorities 里要把库里全部权限标识带上——
+            // @PreAuthorize("hasAuthority('x')") 走的是字符串精确比对，
+            // 只看得见 authorities，看不懂 superAdmin 标记。
+            return UserGrant.fullAccess(allMenuIdentifications());
         }
 
         int inherit = groupInheritEnabled ? 1 : 0;
@@ -268,6 +303,12 @@ public class PermissionService {
     }
 
     private record CachedGrant(UserGrant grant, long expireAt) {
+        boolean expired(long now) {
+            return now > expireAt;
+        }
+    }
+
+    private record CachedAuthorities(Set<String> value, long expireAt) {
         boolean expired(long now) {
             return now > expireAt;
         }

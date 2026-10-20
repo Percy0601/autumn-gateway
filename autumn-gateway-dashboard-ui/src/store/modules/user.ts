@@ -14,7 +14,12 @@ export const useUserStore = defineStore('userStore', {
 		},
 		currentUser: null as any,
 		// 访问token
-		token: localStorage.getItem('token') || ''
+		token: localStorage.getItem('token') || '',
+		// 按钮级权限标识清单（后端 /api/currentUser 的 authorityList），供 v-auth 指令使用。
+		// 超管的清单里带一个 "*"，v-auth 见 "*" 即视为全放行。
+		authorityList: [] as string[],
+		// 是否超级管理员（后端 /api/currentUser 的 superAdmin）
+		superAdmin: false
 	}),
 	getters: {
 		isLogin: (state) => !!state.token,
@@ -34,6 +39,7 @@ export const useUserStore = defineStore('userStore', {
 			else localStorage.removeItem('token')
 		},
 		// 账号登录：POST /api/login/account -> { status:'ok', token }
+		// loginForm 需带 username / password / captchaId / captcha（验证码由登录页 GET /api/captcha 获取）
 		async accountLoginAction(loginForm: any) {
 			// 响应拦截器已把 AxiosResponse 解包成业务 body，这里显式按 any 收窄
 			const body: any = await http.post('/api/login/account', { ...loginForm, type: 'account' })
@@ -68,11 +74,17 @@ export const useUserStore = defineStore('userStore', {
 			// 守卫就会把 user.id 兜底成 'unknown' 直接放进首页。
 			if (!body || !body.data) {
 				this.currentUser = null
+				this.authorityList = []
+				this.superAdmin = false
 				return null
 			}
 
 			this.currentUser = body.data
 			this.user = { ...this.user, ...body.data, id: body.data.userid ?? body.data.id ?? this.user.id }
+			// 权限清单提到 store 顶层：v-auth 指令读的是 store.authorityList，
+			// 而后端下发在 data.authorityList 里，不搬上来按钮权限永远不会生效
+			this.authorityList = Array.isArray(body.data.authorityList) ? body.data.authorityList : []
+			this.superAdmin = !!body.data.superAdmin
 			return this.currentUser
 		},
 		// 兼容旧页面命名
@@ -88,6 +100,8 @@ export const useUserStore = defineStore('userStore', {
 			}
 			this.setToken('')
 			this.currentUser = null
+			this.authorityList = []
+			this.superAdmin = false
 		},
 		logout() {
 			this.logoutAction()

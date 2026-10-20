@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 import xyz.wewin.autumn.gateway.dashboard.dto.LoginRequest;
 import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicUser;
 import xyz.wewin.autumn.gateway.dashboard.repo.BasicUserRepository;
+import xyz.wewin.autumn.gateway.dashboard.security.CaptchaService;
 import xyz.wewin.autumn.gateway.dashboard.security.JwtUtil;
 import xyz.wewin.autumn.gateway.dashboard.security.LoginUser;
 import xyz.wewin.autumn.gateway.dashboard.security.Permissions;
@@ -46,18 +47,31 @@ public class LoginController {
     @Autowired
     private JwtUtil jwtUtil;
 
+    @Autowired
+    private CaptchaService captchaService;
+
     /**
      * 登录：校验用户名密码（basic_user），成功返回 JWT token。
      *
      * <p>响应遵循 ant-design-pro 官方格式：
      * 成功 {@code {status:'ok', type, currentAuthority, token, userid, name}}；
-     * 失败 {@code {status:'error', type, currentAuthority:'guest'}}（不抛异常，前端展示错误提示）。</p>
+     * 失败 {@code {status:'error', type, currentAuthority:'guest', message}}（不抛异常，前端展示错误提示）。
+     * {@code message} 为服务端给出的具体原因（验证码错误 / 账号或密码错误 / 账号已禁用），
+     * 前端优先展示，缺失时回落前端默认文案。</p>
+     *
+     * <p>防暴力破解：验证码在账号密码校验<b>之前</b>拦截，不通过直接返回，不走认证流程；
+     * 密码错误累计达到上限会禁用账号（见 {@link UserService}）。</p>
      */
     @PostMapping("/api/login/account")
     public Map<String, Object> account(@RequestBody LoginRequest request) {
         String type = request.getType() == null ? "account" : request.getType();
+        // 1) 验证码校验（一次性消费）：不通过直接返回，从源头挡住暴力提交
+        if (this.captchaService.isEnabled()
+                && !this.captchaService.validate(request.getCaptchaId(), request.getCaptcha())) {
+            return loginError(type, "验证码错误或已失效，请重新输入");
+        }
         try {
-            // 统一认证入口：按登录名查找 basic_user 并校验 BCrypt 密码与账号状态
+            // 2) 统一认证入口：按登录名查找 basic_user 并校验 BCrypt 密码与账号状态
             BasicUser user = userService.authenticate(UserService.IDENTITY_TYPE_PASSWORD,
                     request.getUsername(), request.getPassword());
 
@@ -72,12 +86,19 @@ public class LoginController {
                     ? user.getNickname() : user.getUsername());
             return result;
         } catch (IllegalArgumentException e) {
-            Map<String, Object> result = new HashMap<>();
-            result.put("status", "error");
-            result.put("type", type);
-            result.put("currentAuthority", "guest");
-            return result;
+            // 3) 认证失败：把服务端判定原因带回前端（账号或密码错误 / 账号已禁用）
+            return loginError(type, e.getMessage());
         }
+    }
+
+    /** 登录失败响应：ant-design-pro 协议 + message 具体原因 */
+    private Map<String, Object> loginError(String type, String message) {
+        Map<String, Object> result = new HashMap<>();
+        result.put("status", "error");
+        result.put("type", type);
+        result.put("currentAuthority", "guest");
+        result.put("message", message);
+        return result;
     }
 
     /**
