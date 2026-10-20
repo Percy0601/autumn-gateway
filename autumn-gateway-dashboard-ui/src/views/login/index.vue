@@ -90,7 +90,7 @@
 					</el-form-item>
 				</el-form>
 
-				<div class="login-tip">默认账号 admin / 123456</div>
+				<div class="login-tip">默认账号 admin / Autumn@123456</div>
 			</div>
 		</div>
 	</div>
