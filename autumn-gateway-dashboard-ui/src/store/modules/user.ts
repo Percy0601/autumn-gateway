@@ -8,6 +8,8 @@ export const useUserStore = defineStore('userStore', {
 			id: '',
 			username: '',
 			name: '',
+			// 部分历史接口/库数据用 realName，后端 /api/currentUser 目前只给 name
+			realName: '',
 			avatar: ''
 		},
 		currentUser: null as any,
@@ -16,8 +18,14 @@ export const useUserStore = defineStore('userStore', {
 	}),
 	getters: {
 		isLogin: (state) => !!state.token,
+		// 显示名：realName 与 name 兼容取值，避免首页问候语渲染成「早安，，」
 		displayName: (state) =>
-			state.currentUser?.name || state.user?.username || state.currentUser?.username || '未登录'
+			state.currentUser?.realName ||
+			state.user?.realName ||
+			state.currentUser?.name ||
+			state.user?.name ||
+			state.user?.username ||
+			'未登录'
 	},
 	actions: {
 		setToken(token: string) {
@@ -27,23 +35,45 @@ export const useUserStore = defineStore('userStore', {
 		},
 		// 账号登录：POST /api/login/account -> { status:'ok', token }
 		async accountLoginAction(loginForm: any) {
-			const body = await http.post('/api/login/account', { ...loginForm, type: 'account' })
+			// 响应拦截器已把 AxiosResponse 解包成业务 body，这里显式按 any 收窄
+			const body: any = await http.post('/api/login/account', { ...loginForm, type: 'account' })
 			if (body && body.token) {
 				this.setToken(body.token)
 			}
 			return body
 		},
-		// 获取当前用户信息
+		// 获取当前用户信息。
+		//
+		// 返回值约定（路由守卫依赖，勿随意改）：
+		//   - 成功            → 返回 currentUser 对象
+		//   - 200 但无 data   → 返回 null      （服务端明确表示认不出身份 → 守卫应回登录页）
+		//   - 网络抖动等错误  → 返回 undefined （守卫保守放行，避免误踢）
+		//   - 401 / 403       → 抛异常         （守卫清 token 并跳登录页）
 		async getUserInfoAction() {
+			let body: any = null
 			try {
-				const body = await http.get('/api/currentUser')
-				if (body && body.data) {
-					this.currentUser = body.data
-					this.user = { ...this.user, ...body.data, id: body.data.userid ?? body.data.id ?? this.user.id }
-				}
-			} catch {
+				body = await http.get('/api/currentUser')
+			} catch (error: any) {
 				this.currentUser = null
+				// 鉴权失败必须向上抛，交给路由守卫清 token 并跳登录页；
+				// 其他错误（网络抖动、超时等）保持静默，避免误踢用户
+				if (error?.response?.status === 401 || error?.response?.status === 403) {
+					throw error
+				}
+				return undefined
 			}
+
+			// 请求成功但服务端没给出用户数据 → 等同未认证，返回 null 让守卫判空。
+			// 注意：这段必须放在 try 之外，否则会被上面的 catch 当作普通错误静默掉，
+			// 守卫就会把 user.id 兜底成 'unknown' 直接放进首页。
+			if (!body || !body.data) {
+				this.currentUser = null
+				return null
+			}
+
+			this.currentUser = body.data
+			this.user = { ...this.user, ...body.data, id: body.data.userid ?? body.data.id ?? this.user.id }
+			return this.currentUser
 		},
 		// 兼容旧页面命名
 		async fetchUserInfo() {

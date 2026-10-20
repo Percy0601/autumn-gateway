@@ -42,10 +42,10 @@ http.interceptors.response.use(
 	},
 	(error: any) => {
 		if (error.response && error.response.status === 401) {
+			// 只清本地 token + 提示，**跳转统一交给路由守卫处理**：
+			// 1) 路由是 createWebHistory（无 hash 模式），改 hash 不会触发 vue-router；
+			// 2) 这里再强制跳转会与守卫形成双重跳转。
 			localStorage.removeItem('token')
-			if (typeof location !== 'undefined' && !location.hash.includes('/login')) {
-				location.hash = '#/login'
-			}
 			ElMessage.warning('登录已过期，请重新登录')
 		} else {
 			const msg =

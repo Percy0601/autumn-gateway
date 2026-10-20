@@ -27,6 +27,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import xyz.wewin.autumn.gateway.dashboard.security.GrantChanged;
 
 /**
  * 用户组服务，基于 basic_group，并维护 basic_role_group（用户组-角色关联）。
@@ -127,6 +128,7 @@ public class BasicGroupService {
     }
 
     /** 软删除：deleted = 1，同时解除与其它用户组的上下级关联 */
+    @GrantChanged
     public void remove(Long id) {
         BasicGroup existing = repository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("用户组不存在: " + id));
@@ -157,6 +159,7 @@ public class BasicGroupService {
     }
 
     /** 全量覆盖用户组的角色关联 */
+    @GrantChanged
     public void setRoles(Long groupId, List<Long> roleIds) {
         if (!repository.existsById(groupId)) {
             throw new IllegalArgumentException("用户组不存在: " + groupId);
@@ -197,6 +200,7 @@ public class BasicGroupService {
     }
 
     /** 全量覆盖用户组的用户关联 */
+    @GrantChanged
     public void setUsers(Long groupId, List<Long> userIds) {
         if (!repository.existsById(groupId)) {
             throw new IllegalArgumentException("用户组不存在: " + groupId);
@@ -235,6 +239,7 @@ public class BasicGroupService {
     }
 
     /** 全量覆盖某个用户组的下级组 */
+    @GrantChanged
     public void setSubGroups(Long groupId, List<Long> subIds) {
         if (!repository.existsById(groupId)) {
             throw new IllegalArgumentException("用户组不存在: " + groupId);
@@ -260,6 +265,7 @@ public class BasicGroupService {
     }
 
     /** 全量覆盖某个用户组的上级组 */
+    @GrantChanged
     public void setParentGroups(Long groupId, List<Long> parentIds) {
         if (!repository.existsById(groupId)) {
             throw new IllegalArgumentException("用户组不存在: " + groupId);

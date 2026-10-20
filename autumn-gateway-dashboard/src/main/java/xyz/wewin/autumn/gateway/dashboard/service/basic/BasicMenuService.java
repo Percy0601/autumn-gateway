@@ -23,6 +23,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import xyz.wewin.autumn.gateway.dashboard.security.GrantChanged;
 
 /**
  * 菜单服务，基于 basic_menu。
@@ -144,6 +145,7 @@ public class BasicMenuService {
     }
 
     /** 全量覆盖菜单的资源关联 */
+    @GrantChanged
     public void setResources(Long menuId, List<Long> resourceIds) {
         if (!repository.existsById(menuId)) {
             throw new IllegalArgumentException("菜单不存在: " + menuId);

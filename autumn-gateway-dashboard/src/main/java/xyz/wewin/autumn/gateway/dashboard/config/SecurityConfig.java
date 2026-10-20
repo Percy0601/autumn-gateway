@@ -1,53 +1,160 @@
 package xyz.wewin.autumn.gateway.dashboard.config;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import xyz.wewin.autumn.gateway.dashboard.security.JwtAuthenticationFilter;
+import xyz.wewin.autumn.gateway.dashboard.security.RequestAttributeSecurityContextRepository;
+import xyz.wewin.autumn.gateway.dashboard.security.UrlAuthorizationManager;
 
-import static org.springframework.security.config.Customizer.withDefaults;
-
+/**
+ * Spring Security 配置（Spring Security 7 / Boot 4，仅支持 Lambda DSL）。
+ *
+ * <h3>三层鉴权</h3>
+ * <ol>
+ *   <li><b>认证</b>：{@link JwtAuthenticationFilter} 解析 Bearer token → {@code LoginUser}；</li>
+ *   <li><b>功能授权（页面/接口）</b>：{@code /api/**} 走 {@link UrlAuthorizationManager}，
+ *       按数据库里配置的 {@code basic_resource} 动态判定；</li>
+ *   <li><b>按钮授权</b>：{@code @PreAuthorize("hasAuthority('system:user:create')")}
+ *       在 Service/Controller 方法上做细粒度控制，权限标识来自 {@code basic_menu}。</li>
+ * </ol>
+ *
+ * <h3>灰度开关（重要）</h3>
+ * {@code basic.rbac.enabled}：
+ * <ul>
+ *   <li>{@code false}（默认）——保持现状，所有接口 permitAll。
+ *       代码全部就位但不生效，可以先合入主干、部署验证不影响线上。</li>
+ *   <li>{@code true}——启用完整鉴权。</li>
+ * </ul>
+ * 切换方式（无需改代码）：
+ * <pre>
+ *   # 启动参数
+ *   java -jar app.jar --basic.rbac.enabled=true
+ *   # 或 application.properties
+ *   basic.rbac.enabled=true
+ * </pre>
+ *
+ * <p><b>为什么默认关：</b>项目接近尾声，直接全量收紧会让所有既有调用方（前端、
+ * 网关、脚本）立刻 401/403。先关着合入、跑通初始化 SQL、用 auditor 账号验证，
+ * 确认权限配置无误后再打开开关，出问题改一个配置项即可回滚，不用回滚代码。</p>
+ */
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 public class SecurityConfig {
 
-    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private static final Logger log = LoggerFactory.getLogger(SecurityConfig.class);
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final UrlAuthorizationManager urlAuthorizationManager;
+    private final boolean rbacEnabled;
+
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
+                          UrlAuthorizationManager urlAuthorizationManager,
+                          @Value("${basic.rbac.enabled:false}") boolean rbacEnabled) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.urlAuthorizationManager = urlAuthorizationManager;
+        this.rbacEnabled = rbacEnabled;
+        log.info("RBAC 鉴权开关 basic.rbac.enabled = {}", rbacEnabled);
+        if (!rbacEnabled) {
+            log.warn("鉴权未启用：所有接口目前可匿名访问。上线前请置 basic.rbac.enabled=true");
+        }
     }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-//        http
-//                .csrf(csrf -> csrf.disable())
-//                .formLogin(form -> form.disable())
-//                .httpBasic(basic -> basic.disable())
-//                .logout(logout -> logout.disable())
-//                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-//                .authorizeHttpRequests(auth ->
-//                        auth.requestMatchers("/**").permitAll()
-//                        .anyRequest().authenticated()
-//                )
-//                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
-
-
         http
+                // 前后端分离 + JWT：不使用 Cookie 会话，CSRF 无攻击面，关闭是正确选择
                 .csrf(csrf -> csrf.disable())
                 .formLogin(form -> form.disable())
                 .httpBasic(basic -> basic.disable())
                 .logout(logout -> logout.disable())
-                .sessionManagement(session -> session.disable()) // 完全无状态
-                .authorizeHttpRequests(auth -> auth
-                        .anyRequest().permitAll()   // 所有请求免登录
+                // 完全无状态：不创建 Session，水平扩容无需粘性会话
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                // JWT 过滤器插在用户名密码认证过滤器之前
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                // 关键：把 SecurityContext 换成「请求级共享实例」的仓库。
+                // 不设这一行时用的是 NullSecurityContextRepository，它每次 load 都新建
+                // 空 context，JWT 过滤器写入的认证态在下游读取时被丢弃
+                // —— 表现为「登录成功但所有接口 401」。
+                //
+                // 注意必须放在 authorizeHttpRequests 之前：
+                // SecurityContextConfigurer 是把仓库塞进 sharedObject 的，
+                // 而 authorizeHttpRequests 的 configurer 在 init 阶段就会
+                // 读取该 sharedObject 来构建 AuthorizationFilter。
+                // 顺序反了就会退回默认仓库，症状与不配置完全一样。
+                .securityContext(sc -> sc.securityContextRepository(
+                        new RequestAttributeSecurityContextRepository()))
+                .authorizeHttpRequests(auth -> {
+                    // 顺序有讲究：从上到下，第一个匹配的规则生效。
+                    // 具体规则必须排在 /api/** 之前，否则会被宽规则吞掉。
+
+                    // 1) 静态资源与前端路由：放行（前端产物编译进 static）
+                    auth.requestMatchers(
+                            "/", "/index.html",
+                            "/assets/**", "/static/**",
+                            "/favicon.ico", "/favicon.svg",
+                            "/error"
+                    ).permitAll();
+
+                    // 2) 登录相关：登录接口必须匿名可访问，否则谁也登不进来
+                    auth.requestMatchers(
+                            "/api/login/account",
+                            "/api/login/outLogin",
+                            "/auth/**"
+                    ).permitAll();
+
+                    // 3) 探活：给 K8s / 负载均衡用，不需要凭据
+                    auth.requestMatchers("/actuator/health", "/actuator/health/**").permitAll();
+
+                    if (rbacEnabled) {
+                        // 4) 启用鉴权：/api/** 全部要求已登录，且由动态授权管理器判定资源
+                        auth.requestMatchers("/api/**")
+                                .access(urlAuthorizationManager);
+                        // 5) 兜底：其余接口只要登录即可（static 已在上方放行）
+                        auth.anyRequest().authenticated();
+                    } else {
+                        // 灰度期：保持既有行为，全部放行
+                        auth.anyRequest().permitAll();
+                    }
+                })
+                // 未认证 / 无权限的响应格式：前端 axios 拦截器按 HTTP 状态码分支，
+                // 返回 JSON 而不是默认的 HTML 错误页，避免前端 JSON.parse 失败
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint((request, response, authException) ->
+                                writeJson(response, HttpStatus.UNAUTHORIZED, 401,
+                                        "未登录或登录已失效，请重新登录"))
+                        .accessDeniedHandler((request, response, accessDeniedException) ->
+                                writeJson(response, HttpStatus.FORBIDDEN, 403,
+                                        "无权限访问该资源"))
                 );
-        // 不再添加 JwtAuthenticationFilter，因为不需要认证
+
         return http.build();
     }
 
+    /** 统一输出 {@link Result} 结构的 JSON 错误响应 */
+    private void writeJson(jakarta.servlet.http.HttpServletResponse response,
+                           HttpStatus status, int code, String message) throws java.io.IOException {
+        response.setStatus(status.value());
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.setCharacterEncoding("UTF-8");
+        // 手写 JSON 而不用注入 ObjectMapper：
+        // Boot 4 把 Jackson 3（tools.jackson.*）作为首选，Jackson 2 仅为兼容保留，
+        // 注入 ObjectMapper 的包名会随版本变化。这里只有两个固定字段，
+        // 手写可以彻底躲开这个坑，也少一次依赖。
+        // message 是代码里的常量字符串，不含用户输入，无需转义；
+        // 若将来要带入动态内容，必须先做 JSON 转义再用。
+        response.getWriter().write(
+                "{\"code\":" + code + ",\"message\":\"" + message + "\",\"data\":null}");
+    }
 }

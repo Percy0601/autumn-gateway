@@ -31,6 +31,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import xyz.wewin.autumn.gateway.dashboard.security.GrantChanged;
 
 /**
  * 角色服务，基于 basic_role。
@@ -190,6 +191,7 @@ public class BasicRoleService {
     }
 
     /** 全量覆盖角色的用户关联 */
+    @GrantChanged
     public void setUsers(Long roleId, List<Long> userIds) {
         if (!repository.existsById(roleId)) {
             throw new IllegalArgumentException("角色不存在: " + roleId);
@@ -231,6 +233,7 @@ public class BasicRoleService {
     }
 
     /** 全量覆盖角色的菜单授权（type=1） */
+    @GrantChanged
     public void setMenus(Long roleId, List<Long> menuIds) {
         setPermissions(roleId, menuIds, PERM_TYPE_MENU);
     }
@@ -245,6 +248,7 @@ public class BasicRoleService {
     }
 
     /** 全量覆盖角色的资源授权（type=2） */
+    @GrantChanged
     public void setResources(Long roleId, List<Long> resourceIds) {
         setPermissions(roleId, resourceIds, PERM_TYPE_RESOURCE);
     }
@@ -306,6 +310,7 @@ public class BasicRoleService {
     }
 
     /** 全量覆盖角色的用户组关联 */
+    @GrantChanged
     public void setGroups(Long roleId, List<Long> groupIds) {
         if (!repository.existsById(roleId)) {
             throw new IllegalArgumentException("角色不存在: " + roleId);

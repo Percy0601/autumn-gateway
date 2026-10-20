@@ -10,6 +10,10 @@
 		"skipLibCheck": true,
 		"allowJs": true,
 		"sourceMap": true,
+		// 关键：禁止 tsc/vue-tsc 把编译产物（.js/.js.map）吐进 src/。
+		// 历史上这些产物与同名 .ts 并存，Vite 的 resolve.extensions 中 .js 优先于 .ts，
+		// 导致运行时加载到过期模块，出现「登录后首页空白」。
+		"noEmit": true,
 		"resolveJsonModule": true,
 		"esModuleInterop": true,
 		"allowSyntheticDefaultImports": true,

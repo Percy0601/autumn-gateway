@@ -47,6 +47,10 @@ dist
 dist-ssr
 *.local
 
+# 前端 src 下绝不允许出现 tsc 编译产物（.js/.js.map 与同名 .ts 并存会污染 Vite 解析）
+autumn-gateway-dashboard-ui/src/**/*.js.map
+autumn-gateway-dashboard-ui/src/**/*.d.ts.map
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

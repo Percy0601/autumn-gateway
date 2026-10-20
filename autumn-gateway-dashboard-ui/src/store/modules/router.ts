@@ -33,10 +33,20 @@ const fallbackMenu = [
 	}
 ]
 
+// 只保留可展示的菜单项：过滤按钮(menuType=3)、停用(menuStatus=2)、已删除(delFlag=1)。
+// 这些数据一旦进入路由表，会生成 component 为 undefined 的路由，直接造成白屏。
+const isVisibleMenu = (m: any): boolean => {
+	if (!m || m.id == null) return false
+	if (m.delFlag === 1 || m.delFlag === '1') return false
+	if (m.menuStatus === 2 || m.menuStatus === '2') return false
+	if (m.menuType === 3 || m.menuType === '3') return false
+	return true
+}
+
 // 将后端 basic_menu 扁平列表转换为 generateRoutes 需要的结构（含父子树）
 const buildMenuTree = (menus: any[]): any[] => {
 	const map = new Map<number, any>()
-	menus.forEach((m) => {
+	menus.filter(isVisibleMenu).forEach((m) => {
 		map.set(m.id, {
 			id: m.id,
 			name: m.menuName,
@@ -83,11 +93,24 @@ export const useRouterStore = defineStore('routerStore', {
 				menus = res?.data || []
 			} catch (e) {
 				console.error('加载菜单失败，使用静态兜底菜单', e)
-				menus = fallbackMenu
+				menus = []
 			}
-			const tree = buildMenuTree(menus)
-			const routes = generateRoutes(tree)
-			this.menuRoutes.push(...routes)
+
+			// 只有后端返回的「扁平」basic_menu 列表才需要 buildMenuTree；
+			// fallbackMenu 本身已是 generateRoutes 需要的「嵌套」结构（name/url/icon/children），
+			// 若再喂给 buildMenuTree，会被读成 name=undefined、url=null，
+			// 最终 generateRoutes 解析不到组件而全部丢弃 —— 兜底形同虚设。
+			let routes: RouteRecordRaw[] = []
+			if (Array.isArray(menus) && menus.length > 0) {
+				routes = generateRoutes(buildMenuTree(menus))
+			}
+			if (routes.length === 0) {
+				console.warn('[router] 未获得可用菜单路由，使用静态兜底菜单')
+				routes = generateRoutes(fallbackMenu)
+			}
+
+			// 用赋值而非 push，避免重复调用时路由累加
+			this.menuRoutes = routes
 			return this.menuRoutes
 		},
 		setSearchMenu(routers: RouteRecordRaw[]) {

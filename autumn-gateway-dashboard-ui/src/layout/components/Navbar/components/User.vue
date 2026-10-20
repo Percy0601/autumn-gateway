@@ -2,14 +2,12 @@
 	<el-dropdown class="avatar-container" trigger="hover">
 		<div class="avatar-wrapper">
 			<el-avatar shape="circle" :size="30" :src="userStore.user.avatar"></el-avatar>
-			<span>{{ userStore.user.realName }}</span>
+			<span>{{ userStore.displayName }}</span>
 			<el-icon class="el-icon--right"><ArrowDown /></el-icon>
 		</div>
 		<template #dropdown>
 			<el-dropdown-menu class="user-dropdown">
-				<router-link to="/profile">
-					<el-dropdown-item> {{ $t('app.profile') }} </el-dropdown-item>
-				</router-link>
+				<!-- 暂不提供个人中心页（/profile 路由不存在，点了会跳 404），先隐藏入口 -->
 				<el-dropdown-item divided @click="logout"> {{ $t('app.signOut') }} </el-dropdown-item>
 			</el-dropdown-menu>
 		</template>
@@ -26,10 +24,11 @@ const router = useRouter()
 
 const logout = () => {
 	userStore.logoutAction().then(() => {
-		// router.push({ path: '/login' })
-
-		// 刷新页面
-		location.reload()
+		// 用路由跳转代替 location.reload()：
+		// 后端没有 SPA 回退，在 /dashboard/index 这类深链上 reload 会拿到
+		// Spring Boot Whitelabel 404。退出时 token 已在 logoutAction 里清空，
+		// 直接进登录页即可（守卫走 whiteList 分支放行）。
+		router.push({ path: '/login' })
 	})
 }
 </script>

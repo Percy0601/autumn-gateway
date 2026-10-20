@@ -5,7 +5,7 @@
 				<div style="display: flex; flex-direction: row">
 					<el-avatar :size="60" :src="userStore.user.avatar" />
 					<div style="display: flex; flex-direction: column; margin-left: 20px; line-height: 28px">
-						<h1>早安，{{ userStore.user.realName }}，祝你开心每一天!</h1>
+						<h1>早安，{{ userStore.displayName }}，祝你开心每一天!</h1>
 						<div>今日晴，25℃ - 28℃！</div>
 					</div>
 				</div>

@@ -126,10 +126,14 @@ const handleSubmit = () => {
 		if (!valid) return
 		loading.value = true
 		try {
-			const body = await userStore.accountLoginAction({ ...form })
-			if (body && body.status === 'ok') {
-				ElMessage.success('登录成功')
-				await userStore.fetchUserInfo()
+				const body = await userStore.accountLoginAction({ ...form })
+				if (body && body.status === 'ok') {
+					ElMessage.success('登录成功')
+					// 这里只是预热用户态：登录本身已经成功，即便 /api/currentUser 暂时取不到
+					// 也不能让异常冒泡到外层 catch —— 那会把流程误判成「登录失败」，
+					// 用户会看到「登录成功」和「登录失败」自相矛盾的提示。
+					// 真正的认证判定由路由守卫负责（守卫失败会清 token 并回登录页）。
+					await userStore.fetchUserInfo().catch(() => undefined)
 				const redirect = route.query.redirect
 				const target =
 					typeof redirect === 'string' && redirect.startsWith('/') ? redirect : '/dashboard/index'

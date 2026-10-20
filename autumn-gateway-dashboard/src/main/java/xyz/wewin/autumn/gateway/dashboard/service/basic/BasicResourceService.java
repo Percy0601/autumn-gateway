@@ -27,6 +27,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import xyz.wewin.autumn.gateway.dashboard.security.GrantChanged;
 
 /**
  * 资源（权限原子项）服务，基于 basic_resource。
@@ -175,6 +176,7 @@ public class BasicResourceService {
     }
 
     /** 全量覆盖资源的菜单关联 */
+    @GrantChanged
     public void setMenus(Long resourceId, List<Long> menuIds) {
         if (!repository.existsById(resourceId)) {
             throw new IllegalArgumentException("资源不存在: " + resourceId);

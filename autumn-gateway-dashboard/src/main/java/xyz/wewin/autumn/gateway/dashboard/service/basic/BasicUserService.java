@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import xyz.wewin.autumn.gateway.dashboard.security.GrantChanged;
 
 /**
  * 基础用户服务，基于 basic_user，并维护 basic_user_group（用户-用户组关联）。
@@ -140,6 +141,7 @@ public class BasicUserService {
         repository.save(existing);
     }
 
+    @GrantChanged
     public void remove(Long id) {
         if (!repository.existsById(id)) {
             throw new IllegalArgumentException("用户不存在: " + id);
@@ -166,6 +168,7 @@ public class BasicUserService {
     }
 
     /** 全量覆盖用户的用户组关联 */
+    @GrantChanged
     public void setGroups(Long userId, List<Long> groupIds) {
         if (!repository.existsById(userId)) {
             throw new IllegalArgumentException("用户不存在: " + userId);
@@ -204,6 +207,7 @@ public class BasicUserService {
     }
 
     /** 全量覆盖用户的角色关联；角色已跨应用，用户-角色关联的 app_id 统一置 0（命名空间级） */
+    @GrantChanged
     public void setRoles(Long userId, List<Long> roleIds) {
         if (!repository.existsById(userId)) {
             throw new IllegalArgumentException("用户不存在: " + userId);
