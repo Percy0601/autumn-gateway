@@ -87,10 +87,10 @@
 							class="captcha-img"
 							alt="验证码"
 							title="点击刷新验证码"
-							@click="fetchCaptcha"
-							@error="onCaptchaImgError"
+							@click="refreshCaptcha"
+							@load="onCaptchaImgLoad" @error="onCaptchaImgError"
 						/>
-						<el-button v-else class="captcha-img" size="large" :type="captchaError ? 'danger' : 'default'" :loading="captchaLoading" @click="fetchCaptcha">
+						<el-button v-else class="captcha-img" size="large" :type="captchaError ? 'danger' : 'default'" :loading="captchaLoading" @click="refreshCaptcha">
 							{{ captchaLoading ? '' : captchaError ? '重试' : '获取验证码' }}
 						</el-button>
 					</div>
@@ -120,7 +120,6 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Lock, User } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/modules/user'
-import http from '@/utils/request'
 
 const route = useRoute()
 const router = useRouter()
@@ -136,73 +135,35 @@ const form = reactive({
 	captcha: ''
 })
 
-// 验证码：captchaId 提交时带回服务端校验，captchaImg 归一化成可直接渲染的图片地址。
+// 验证码：直出图片方案（与授权服务器一致）——GET /api/captcha 直接返回 SVG，
+// <img src> 渲染，点击刷新；captchaId 由后端 HttpOnly Cookie 下发，前端无需感知。
 // 加载中/失败都有明确视觉状态——静默失败是「验证码不显示」类问题最难排查的原因。
-const captchaId = ref('')
 const captchaImg = ref('')
 const captchaLoading = ref(false)
 const captchaError = ref(false)
 
-// 裸 SVG 源码 → data URI（btoa 只接受 latin1，先按 UTF-8 编码字节）
-const svgToDataUri = (svg: string) => {
-	const bytes = new TextEncoder().encode(svg)
-	let binary = ''
-	bytes.forEach((byte) => (binary += String.fromCharCode(byte)))
-	return `data:image/svg+xml;base64,${window.btoa(binary)}`
-}
-
-// 归一化后端返回值：
-// 当前后端返回 { captchaId, img: 'data:image/svg+xml;base64,...' }，但只接受 data URI
-// 过于脆弱——当 img 是不带 data: 前缀的裸 Base64 时（旧版本 / 中间层改写都会造成），
-// 浏览器会把整串 Base64 当成相对路径去请求，表现为「接口 200 且有 Base64，
-// 但验证码位置就是不显示」。这里对两种形态都做兼容。
-const toCaptchaSrc = (raw: unknown): string => {
-	if (typeof raw !== 'string') return ''
-	const value = raw.trim()
-	if (!value) return ''
-	if (value.startsWith('data:')) return value // 已是 data URI
-	if (value.startsWith('<svg') || value.startsWith('<?xml')) return svgToDataUri(value) // 裸 SVG 源码
-	// 裸 Base64：按魔数判断实际格式，未知一律按 SVG 处理
-	if (value.startsWith('iVBORw0KGgo')) return `data:image/png;base64,${value}`
-	if (value.startsWith('/9j/')) return `data:image/jpeg;base64,${value}`
-	if (value.startsWith('R0lGOD')) return `data:image/gif;base64,${value}`
-	return `data:image/svg+xml;base64,${value}`
-}
-
-const fetchCaptcha = async () => {
+// 刷新验证码：换 URL 触发新请求。?_t= 时间戳防浏览器缓存（后端已带 Cache-Control: no-store，双保险），
+// 保证点击必然拿到新图 + 新 captchaId Cookie。
+const refreshCaptcha = () => {
 	captchaLoading.value = true
 	captchaError.value = false
-	try {
-		const body: any = await http.get('/api/captcha')
-		// 兼容 { captchaId, img } 与 { code, data: { captchaId, img } } 两种返回结构
-		const payload = body?.data && typeof body.data === 'object' ? body.data : body
-		const src = toCaptchaSrc(payload?.img ?? payload?.image ?? payload?.base64 ?? payload)
-		if (src) {
-			captchaId.value = payload?.captchaId || body?.captchaId || ''
-			captchaImg.value = src
-			form.captcha = ''
-		} else {
-			// 接口通但没给图：按失败处理，让用户看到可点击的重试而不是静默空白
-			captchaId.value = ''
-			captchaImg.value = ''
-			captchaError.value = true
-		}
-	} catch {
-		captchaId.value = ''
-		captchaImg.value = ''
-		captchaError.value = true
-	} finally {
-		captchaLoading.value = false
-	}
+	captchaImg.value = `/api/captcha?_t=${Date.now()}`
+	form.captcha = ''
 }
 
-// dataURI 渲染失败（极小概率）：退回按钮态，允许手动重试
+// 图片加载成功：清除加载态
+const onCaptchaImgLoad = () => {
+	captchaLoading.value = false
+}
+
+// 图片加载失败（接口 404 / 后端未启动 / 网络异常）：退回按钮态，允许手动重试
 const onCaptchaImgError = () => {
+	captchaLoading.value = false
 	captchaImg.value = ''
 	captchaError.value = true
 }
 
-onMounted(fetchCaptcha)
+onMounted(refreshCaptcha)
 
 const rules = {
 	username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
@@ -215,8 +176,8 @@ const handleSubmit = () => {
 		if (!valid) return
 		loading.value = true
 		try {
-			// 验证码一次性消费：无论成败都会刷新，避免复用与过期
-			const body = await userStore.accountLoginAction({ ...form, captchaId: captchaId.value })
+			// 验证码一次性消费：无论成败都会刷新，避免复用与过期（captchaId 由后端 Cookie 自动携带）
+			const body = await userStore.accountLoginAction({ ...form })
 			if (body && body.status === 'ok') {
 				ElMessage.success('登录成功')
 				// 这里只是预热用户态：登录本身已经成功，即便 /api/currentUser 暂时取不到
@@ -232,10 +193,10 @@ const handleSubmit = () => {
 			}
 			// 失败：优先展示服务端返回的具体原因（验证码错误 / 账号或密码错误 / 账号已禁用），
 			// 连续失败达到上限账号会被锁定，此时必须由管理员重新启用
-			await fetchCaptcha()
+			await refreshCaptcha()
 			ElMessageBox.alert(body?.message || '用户名或密码错误', '登录失败', { type: 'error' })
 		} catch {
-			await fetchCaptcha()
+			await refreshCaptcha()
 			ElMessage.error('登录失败，请稍后重试')
 		} finally {
 			loading.value = false

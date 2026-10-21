@@ -1,5 +1,6 @@
 package xyz.wewin.autumn.gateway.dashboard.controller;
 
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -63,11 +64,13 @@ public class LoginController {
      * 密码错误累计达到上限会禁用账号（见 {@link UserService}）。</p>
      */
     @PostMapping("/api/login/account")
-    public Map<String, Object> account(@RequestBody LoginRequest request) {
+    public Map<String, Object> account(@RequestBody LoginRequest request, HttpServletRequest httpRequest) {
         String type = request.getType() == null ? "account" : request.getType();
-        // 1) 验证码校验（一次性消费）：不通过直接返回，从源头挡住暴力提交
+        // 1) 验证码校验（一次性消费）：不通过直接返回，从源头挡住暴力提交。
+        // captchaId 优先取 Cookie（直出图片方案由 /api/captcha 下发），请求体字段仅作兼容旧流程。
+        String captchaId = resolveCaptchaId(httpRequest, request.getCaptchaId());
         if (this.captchaService.isEnabled()
-                && !this.captchaService.validate(request.getCaptchaId(), request.getCaptcha())) {
+                && !this.captchaService.validate(captchaId, request.getCaptcha())) {
             return loginError(type, "验证码错误或已失效，请重新输入");
         }
         try {
@@ -99,6 +102,20 @@ public class LoginController {
         result.put("currentAuthority", "guest");
         result.put("message", message);
         return result;
+    }
+
+    /** captchaId 优先取 Cookie（直出图片方案），请求体字段仅作旧前端 JSON 流程的兼容 */
+    private String resolveCaptchaId(HttpServletRequest httpRequest, String bodyCaptchaId) {
+        Cookie[] cookies = httpRequest.getCookies();
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                if (CaptchaService.CAPTCHA_COOKIE.equals(cookie.getName())
+                        && cookie.getValue() != null && !cookie.getValue().isBlank()) {
+                    return cookie.getValue();
+                }
+            }
+        }
+        return bodyCaptchaId;
     }
 
     /**

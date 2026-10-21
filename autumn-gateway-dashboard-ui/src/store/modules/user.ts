@@ -39,7 +39,8 @@ export const useUserStore = defineStore('userStore', {
 			else localStorage.removeItem('token')
 		},
 		// 账号登录：POST /api/login/account -> { status:'ok', token }
-		// loginForm 需带 username / password / captchaId / captcha（验证码由登录页 GET /api/captcha 获取）
+		// loginForm 需带 username / password / captcha（验证码由登录页 <img src="/api/captcha"> 获取，
+		// captchaId 由后端 HttpOnly Cookie 下发并自动携带，无需前端传）
 		async accountLoginAction(loginForm: any) {
 			// 响应拦截器已把 AxiosResponse 解包成业务 body，这里显式按 any 收窄
 			const body: any = await http.post('/api/login/account', { ...loginForm, type: 'account' })

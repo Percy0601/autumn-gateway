@@ -5,9 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
-import java.util.Base64;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -21,7 +19,7 @@ import java.util.concurrent.ConcurrentHashMap;
  *   <li>授权服务器登录本身依赖 HTTP session，答案存 session；</li>
  *   <li>本服务是<b>完全无状态</b>的 JWT 架构（{@code SessionCreationPolicy.STATELESS}，不建 Session、
  *       水平扩容无需粘性会话），因此答案存内存 {@link ConcurrentHashMap}，以 captchaId 关联：
- *       生成时返回 captchaId，前端提交登录时带回，服务端据此取答案校验。</li>
+ *       生成时通过 HttpOnly Cookie 下发 captchaId（前端无需感知），登录时服务端从 Cookie 读取校验。</li>
  * </ul>
  *
  * <p>安全性约定：</p>
@@ -46,6 +44,9 @@ public class CaptchaService {
     /** 内存容量上限：超出先清过期项，仍超限则整体重置（防内存泄漏的兜底） */
     private static final int MAX_CACHE_SIZE = 10_000;
 
+    /** 验证码 Cookie 名：/api/captcha 下发，登录时服务端从 Cookie 读取 captchaId 关联答案 */
+    public static final String CAPTCHA_COOKIE = "captchaId";
+
     private final SecureRandom random = new SecureRandom();
 
     /** captchaId -> 验证码答案（含过期时间） */
@@ -68,18 +69,21 @@ public class CaptchaService {
         return this.enabled;
     }
 
+    /** 验证码有效期（秒）：Cookie Max-Age 与内存 TTL 保持一致 */
+    public long getTtlSeconds() {
+        return this.ttlMillis / 1000;
+    }
+
     /**
-     * 生成验证码：返回 captchaId（前端提交登录时原样带回）+ 可直接用于 {@code <img src>} 的 data URI。
+     * 生成验证码：返回 captchaId（由 {@code /api/captcha} 以 HttpOnly Cookie 下发，登录时服务端据此取答案）
+     * + 可直接作为 {@code <img src>} 输出的 SVG 源码（与授权服务器同一套画法）。
      */
     public CaptchaImage generate() {
         purgeExpired();
         String captchaId = UUID.randomUUID().toString().replace("-", "");
         String code = randomCode();
         this.cache.put(captchaId, new Captcha(code, System.currentTimeMillis() + this.ttlMillis));
-        String svg = render(code);
-        String dataUri = "data:image/svg+xml;base64,"
-                + Base64.getEncoder().encodeToString(svg.getBytes(StandardCharsets.UTF_8));
-        return new CaptchaImage(captchaId, dataUri);
+        return new CaptchaImage(captchaId, render(code));
     }
 
     /**
@@ -159,7 +163,7 @@ public class CaptchaService {
             int rotate = this.random.nextInt(30) - 15;
             svg.append("<text x=\"").append(x).append("\" y=\"").append(y)
                     .append("\" font-family=\"Verdana,DejaVu Sans,Helvetica,Arial,sans-serif\"")
-                    .append("\" font-size=\"").append(22 + this.random.nextInt(6))
+                    .append(" font-size=\"").append(22 + this.random.nextInt(6))
                     .append("\" font-weight=\"bold\" fill=\"").append(randomColor(20, 120))
                     .append("\" transform=\"rotate(").append(rotate).append(' ')
                     .append(x).append(' ').append(y).append(")\">")
@@ -182,7 +186,7 @@ public class CaptchaService {
     public record Captcha(String code, long expiresAtMillis) {
     }
 
-    /** 生成结果：captchaId 供提交时带回，dataUri 可直接作为 img src */
-    public record CaptchaImage(String captchaId, String dataUri) {
+    /** 生成结果：captchaId 供服务端关联答案，svg 为可直接输出的 SVG 图片源码 */
+    public record CaptchaImage(String captchaId, String svg) {
     }
 }

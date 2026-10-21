@@ -5,7 +5,7 @@ public class LoginRequest {
     private String password;
     private boolean autoLogin;
     private String type;
-    /** 验证码标识：GET /api/captcha 返回，提交登录时原样带回 */
+    /** 验证码标识：直出图片方案下由 /api/captcha 的 HttpOnly Cookie 下发，请求体字段仅作旧流程兼容 */
     private String captchaId;
     /** 用户输入的验证码（大小写不敏感） */
     private String captcha;
