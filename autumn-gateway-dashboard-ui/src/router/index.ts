@@ -96,68 +96,74 @@ router.beforeEach(async (to, from, next) => {
 	if (userStore.token) {
 		if (to.path === '/login') {
 			next(constant.loginPage)
-		} else {
-			// user.id 为空说明当前会话还没初始化过用户信息。
-			// 无论成功失败都必须有确定出口：成功就继续注册路由；失败（抛异常或返回 null）
-			// 就清 token 回登录页。绝不能让流程落回「什么都不做」，
-			// 否则每次导航都重入该分支 → next({...to,replace:true}) 无限重定向 →
-			// 导航中断 → 白屏。
+			return
+		}
+
+		// 1) 用户信息：user.id 为空说明当前会话还没初始化过用户信息。
+		// 无论成功失败都必须有确定出口：成功就继续注册路由；失败（抛异常或返回 null）
+		// 就清 token 回登录页。绝不能让流程落回「什么都不做」，
+		// 否则每次导航都重入该分支 → 无限重定向 → 导航中断 → 白屏。
+		if (!userStore.user.id) {
+			let currentUser: any
+			try {
+				currentUser = await userStore.getUserInfoAction()
+			} catch (error) {
+				// 鉴权失败（401/403）：**先清 token** 再回登录页。
+				// 顺序很关键：不清 token 的话 userStore.token 仍有值，
+				// 上面 to.path === '/login' 分支会把人 next(constant.loginPage) 弹回首页。
+				userStore.setToken('')
+				next('/login')
+				// 用 return 而非 Promise.reject：守卫声明了 (to, from, next) 三形参，
+				// vue-router 仍会监听返回的 promise，一旦 reject 就会中断导航，
+				// 把 next('/login') 的跳转也一并取消掉。
+				return
+			}
+
+			// null = 接口 200 但没有用户数据，服务端明确认不出身份 → 回登录页。
+			// undefined = 网络抖动等非鉴权错误 → 保守放行，避免误踢用户。
+			if (currentUser === null) {
+				userStore.setToken('')
+				next('/login')
+				return
+			}
+
+			// 兜底：后端没返回用户标识时也要有个非空值，避免守卫反复重入
 			if (!userStore.user.id) {
-				let currentUser: any
-				try {
-					currentUser = await userStore.getUserInfoAction()
-				} catch (error) {
-					// 鉴权失败（401/403）：**先清 token** 再回登录页。
-					// 顺序很关键：不清 token 的话 userStore.token 仍有值，
-					// 上面 to.path === '/login' 分支会把人 next(constant.loginPage) 弹回首页。
-					userStore.setToken('')
-					next('/login')
-					// 用 return 而非 Promise.reject：守卫声明了 (to, from, next) 三形参，
-					// vue-router 仍会监听返回的 promise，一旦 reject 就会中断导航，
-					// 把 next('/login') 的跳转也一并取消掉。
-					return
-				}
-
-				// null = 接口 200 但没有用户数据，服务端明确认不出身份 → 回登录页。
-				// undefined = 网络抖动等非鉴权错误 → 保守放行，避免误踢用户。
-				if (currentUser === null) {
-					userStore.setToken('')
-					next('/login')
-					return
-				}
-
-				// 兜底：后端没返回用户标识时也要有个非空值，避免守卫反复重入
-				if (!userStore.user.id) {
-					userStore.user.id = userStore.currentUser?.userid || userStore.currentUser?.id || 'unknown'
-				}
-
-				if (!routesRegistered) {
-					// 后端菜单 + 内置首页
-					const menuRoutes = await routerStore.getMenuRoutes()
-					const keepAliveRoutes = getKeepAliveRoutes(menuRoutes, [])
-
-					// 保证首页一定可达，否则 '/' 的 redirect 会落空导致白屏
-					const hasDashboard = keepAliveRoutes.some((item: any) => item.path === dashboardRoute.path)
-					if (!hasDashboard) {
-						keepAliveRoutes.push(dashboardRoute)
-					}
-
-					asyncRoutes.children?.push(...keepAliveRoutes)
-					router.addRoute(asyncRoutes)
-					router.addRoute(errorRoute)
-					routerStore.setRoutes(constantRoutes.concat(asyncRoutes))
-					routerStore.setSearchMenu(keepAliveRoutes)
-					routesRegistered = true
-
-					// 路由刚注册完，重放一次当前导航让新路由生效
-					next({ ...to, replace: true })
-				} else {
-					next()
-				}
-			} else {
-				next()
+				userStore.user.id = userStore.currentUser?.userid || userStore.currentUser?.id || 'unknown'
 			}
 		}
+
+		// 2) 动态路由注册：必须与「是否首次拉用户信息」解耦。
+		//
+		// 登录页在提交成功后已经调过 fetchUserInfo，user.id 此时非空；
+		// 若把注册逻辑嵌在「user.id 为空」分支里就会被跳过 —— 路由表里没有
+		// /dashboard/index，登录页的 router.replace 无处可去，表现为
+		// 「登录成功但页面空白，必须手动 F5 才正常（刷新后 store 重建、
+		// user.id 为空，注册逻辑才被走到）」。这就是「登录后需要手动刷新」的根因。
+		if (!routesRegistered) {
+			// 后端菜单 + 内置首页
+			const menuRoutes = await routerStore.getMenuRoutes()
+			const keepAliveRoutes = getKeepAliveRoutes(menuRoutes, [])
+
+			// 保证首页一定可达，否则 '/' 的 redirect 会落空导致白屏
+			const hasDashboard = keepAliveRoutes.some((item: any) => item.path === dashboardRoute.path)
+			if (!hasDashboard) {
+				keepAliveRoutes.push(dashboardRoute)
+			}
+
+			asyncRoutes.children?.push(...keepAliveRoutes)
+			router.addRoute(asyncRoutes)
+			router.addRoute(errorRoute)
+			routerStore.setRoutes(constantRoutes.concat(asyncRoutes))
+			routerStore.setSearchMenu(keepAliveRoutes)
+			routesRegistered = true
+
+			// 路由刚注册完，重放一次当前导航让新路由生效
+			next({ ...to, replace: true })
+			return
+		}
+
+		next()
 	} else {
 		if (whiteList.indexOf(to.path) > -1) {
 			next()

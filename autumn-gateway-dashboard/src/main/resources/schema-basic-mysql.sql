@@ -241,7 +241,7 @@ CREATE TABLE IF NOT EXISTS `basic_user` (
     `admin`               INT NOT NULL DEFAULT 0 COMMENT '是否是管理员：1-是；0：否',
     `status`              TINYINT NOT NULL DEFAULT 1 COMMENT '状态：1-正常 0=禁用',
     `password`            VARCHAR(100) NOT NULL DEFAULT '' COMMENT '登录密码（BCrypt 哈希），参考 sys_user 方式',
-    `login_error_count`   INT NOT NULL DEFAULT 0 COMMENT '连续登录失败次数（成功登录清零，供锁定策略使用）',
+    `login_error_count`   INT NOT NULL DEFAULT 5 COMMENT '剩余登录重试次数：每次密码错误 -1，减到 0 自动禁用账号；登录成功 / 重置密码 / 管理员启用时恢复为 5',
     `latest_role_id`      BIGINT NOT NULL DEFAULT 0 COMMENT '最近登录使用角色Id',
     `password_updated_at` DATETIME DEFAULT NULL COMMENT '密码最后修改时间，用于密码有效期/强制改密',
     `last_login_at`       DATETIME DEFAULT NULL COMMENT '最近登录时间',

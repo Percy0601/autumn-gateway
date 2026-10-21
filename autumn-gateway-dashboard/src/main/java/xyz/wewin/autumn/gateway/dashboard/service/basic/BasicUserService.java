@@ -23,7 +23,9 @@ import xyz.wewin.autumn.gateway.dashboard.security.RequestContext;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import xyz.wewin.autumn.gateway.dashboard.security.GrantChanged;
@@ -65,8 +67,13 @@ public class BasicUserService {
     /** 管理员重置密码时未指定新密码，则回落到系统默认密码 */
     private final String defaultPassword;
 
-    public BasicUserService(@Value("${autumn.user.default-password:Autumn@123456}") String defaultPassword) {
+    /** 登录允许的剩余重试次数（满额值）：新用户初始、改密后、管理员启用时都回填为该值 */
+    private final int maxLoginErrorCount;
+
+    public BasicUserService(@Value("${autumn.user.default-password:Autumn@123456}") String defaultPassword,
+                            @Value("${autumn.user.max-login-error-count:5}") int maxLoginErrorCount) {
         this.defaultPassword = defaultPassword;
+        this.maxLoginErrorCount = maxLoginErrorCount;
     }
 
     private static String nvl(String v) {
@@ -96,7 +103,17 @@ public class BasicUserService {
         return repository.findById(id);
     }
 
-    public BasicUser create(BasicUser user) {
+    /**
+     * 新增用户。
+     *
+     * <p>密码由<b>后台下发</b>：请求未指定 password 时使用系统默认密码
+     * {@code autumn.user.default-password}（默认 {@code Autumn@123456}），
+     * 库中只存 BCrypt 哈希，<b>明文</b>随返回值一次性回给调用方，供弹窗转告用户。
+     *
+     * @param user 待创建用户；password 留空表示使用系统默认密码
+     * @return {@code id / username / password(明文)}
+     */
+    public Map<String, Object> create(BasicUser user) {
         if (user.getEmpNo() == null || user.getEmpNo().isBlank()) {
             throw new IllegalArgumentException("员工工号不能为空");
         }
@@ -121,14 +138,31 @@ public class BasicUserService {
         if (user.getAdmin() == null) user.setAdmin(0);
         if (user.getStatus() == null) user.setStatus(1);
         if (user.getLatestRoleId() == null) user.setLatestRoleId(0L);
-        // 新用户未登录过、也未设置过密码
+        // 登录重试次数给满额，与建表默认值一致
+        if (user.getLoginErrorCount() == null) user.setLoginErrorCount(maxLoginErrorCount);
+        // 新用户未登录过
         user.setLastLoginAt(null);
-        user.setPasswordUpdatedAt(null);
 
+        // 密码：未显式指定则用系统默认密码，库里只留哈希
+        String plain = (user.getPassword() == null || user.getPassword().isBlank())
+                ? defaultPassword
+                : user.getPassword().trim();
+        if (plain.length() < MIN_PASSWORD_LENGTH) {
+            throw new IllegalArgumentException("密码长度不能少于 " + MIN_PASSWORD_LENGTH + " 位");
+        }
         LocalDateTime now = LocalDateTime.now();
+        user.setPassword(passwordEncoder.encode(plain));
+        user.setPasswordUpdatedAt(now);
+
         user.setCreateTime(now);
         user.setUpdateTime(now);
-        return repository.save(user);
+        BasicUser saved = repository.save(user);
+
+        Map<String, Object> created = new HashMap<>(4);
+        created.put("id", saved.getId());
+        created.put("username", saved.getUsername());
+        created.put("password", plain);
+        return created;
     }
 
     public BasicUser update(Long id, BasicUser req) {
@@ -258,8 +292,8 @@ public class BasicUserService {
      * <ul>
      *   <li>{@code newPassword} 为空 → 回落到系统默认密码 {@code autumn.user.default-password}；</li>
      *   <li>无论哪种情况都会刷新 {@code password_updated_at}，便于审计「上次改密时间」；</li>
-     *   <li>清零 {@code login_error_count}：账号常常是因为连续输错被自动禁用才来找管理员的，
-     *       改了密码却仍被锁着会让用户以为重置失败；</li>
+     *   <li>把 {@code login_error_count} 恢复满额：账号常常是因为重试次数耗尽被自动禁用
+     *       才来找管理员的，改了密码却仍被锁着会让用户以为重置失败；</li>
      *   <li>{@code unlock=true} 时顺带把 {@code status} 置回 1（启用）。</li>
      * </ul>
      *
@@ -295,7 +329,7 @@ public class BasicUserService {
         existing.setPassword(passwordEncoder.encode(plain));
         existing.setPasswordUpdatedAt(now);
         // 改密必然伴随解锁诉求：被自动锁定的账号重置后应能立刻登录
-        existing.setLoginErrorCount(0);
+        existing.setLoginErrorCount(maxLoginErrorCount);
         if (unlock) {
             existing.setStatus(1);
         }
@@ -309,10 +343,10 @@ public class BasicUserService {
         BasicUser existing = repository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("用户不存在: " + id));
         existing.setStatus(status);
-        // 重新启用时清零登录失败计数：账号可能因连续失败被自动锁定（login_error_count 已达上限），
-        // 不清零的话启用后一次错误又会立刻锁定
+        // 重新启用时恢复满额重试次数：账号可能因次数耗尽被自动锁定，
+        // 不恢复的话启用后一次错误又会立刻锁定
         if (Integer.valueOf(1).equals(status)) {
-            existing.setLoginErrorCount(0);
+            existing.setLoginErrorCount(maxLoginErrorCount);
         }
         existing.setUpdateTime(LocalDateTime.now());
         return repository.save(existing);

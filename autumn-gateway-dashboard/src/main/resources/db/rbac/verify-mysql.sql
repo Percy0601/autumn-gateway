@@ -109,10 +109,10 @@ SELECT 'user_without_password' AS problem, u.`id`, u.`username`
   FROM `basic_user` u
  WHERE u.`password` IS NULL OR u.`password` = '';
 
--- 5.2 被自动锁定但仍是启用状态的账号（login_error_count 达上限却未清零）
+-- 5.2 剩余重试次数已耗尽但仍是启用状态的账号（login_error_count 减到 0 却未被禁用）——应为空
 SELECT 'locked_but_enabled' AS problem, u.`id`, u.`username`, u.`login_error_count`
   FROM `basic_user` u
- WHERE u.`status` = 1 AND u.`login_error_count` >= 5;
+ WHERE u.`status` = 1 AND u.`login_error_count` <= 0;
 
 
 -- ---------- 6. 本次新增：重置密码权限点 ----------

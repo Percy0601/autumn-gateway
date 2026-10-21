@@ -19,12 +19,11 @@ import java.time.LocalDateTime;
  * 不再依赖旧表 user / user_auth_account。授权服务器（autumn-gateway-authorization）的账号体系
  * 保持独立，待后续安全/权限方案统一时再整合。</p>
  *
- * <p>连续登录失败计数（login_error_count）在此维护：</p>
+ * <p>剩余登录重试次数（login_error_count）在此维护：</p>
  * <ul>
- *   <li>密码错误 +1，登录成功清零；</li>
- *   <li>达到 {@code autumn.user.max-login-error-count}（默认 5）后<b>自动禁用账号</b>
- *       （status 置 0）并打 WARN 日志——账号被锁后必须由管理员在用户管理页重新启用
- *       （启用时会自动清零失败计数，避免解锁后一次错误又立刻锁定）；</li>
+ *   <li>该列存的是<b>剩余可重试次数</b>（新库默认 5），密码错误 -1，登录成功恢复满额；</li>
+ *   <li>减到 0 后<b>自动禁用账号</b>（status 置 0）并打 WARN 日志——账号被锁后必须由管理员
+ *       在用户管理页重新启用（启用时会自动恢复满额次数，避免解锁后一次错误又立刻锁定）；</li>
  *   <li>锁定后再登录（哪怕密码正确）会先被 status 检查拦下，提示"账号已禁用"。</li>
  * </ul>
  *
@@ -43,7 +42,7 @@ public class UserService {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
-    /** 连续登录失败次数上限：达到后自动禁用账号（status=0） */
+    /** 登录允许的剩余重试次数上限（满额值）：新用户初始为该值，耗尽后自动禁用账号（status=0） */
     @Value("${autumn.user.max-login-error-count:5}")
     private int maxLoginErrorCount;
 
@@ -67,20 +66,24 @@ public class UserService {
         }
         if (user.getPassword() == null
                 || !passwordEncoder.matches(credential, user.getPassword())) {
-            // 仅当账号存在且密码错误时累加连续失败次数（不暴露账号是否存在）
-            int next = (user.getLoginErrorCount() == null ? 0 : user.getLoginErrorCount()) + 1;
+            // 仅当账号存在且密码错误时扣减剩余重试次数（不暴露账号是否存在）
+            // null 视为历史数据未按新语义回填，按满额处理
+            int remain = user.getLoginErrorCount() == null
+                    ? this.maxLoginErrorCount
+                    : Math.min(user.getLoginErrorCount(), this.maxLoginErrorCount);
+            int next = Math.max(remain - 1, 0);
             user.setLoginErrorCount(next);
-            if (next >= this.maxLoginErrorCount) {
-                // 达到上限：自动禁用账号，需管理员重新启用后才能登录
+            if (next <= 0) {
+                // 次数耗尽：自动禁用账号，需管理员重新启用后才能登录
                 user.setStatus(0);
-                log.warn("账号 {} 连续登录失败 {} 次（上限 {}），已自动禁用，需管理员重新启用",
-                        identifier, next, this.maxLoginErrorCount);
+                log.warn("账号 {} 剩余登录重试次数已耗尽（上限 {}），已自动禁用，需管理员重新启用",
+                        identifier, this.maxLoginErrorCount);
             }
             basicUserRepository.save(user);
             throw new IllegalArgumentException("账号或密码错误");
         }
-        // 登录成功：清零连续失败次数并刷新最近登录时间
-        user.setLoginErrorCount(0);
+        // 登录成功：恢复满额重试次数并刷新最近登录时间
+        user.setLoginErrorCount(this.maxLoginErrorCount);
         user.setLastLoginAt(LocalDateTime.now());
         basicUserRepository.save(user);
         return user;

@@ -54,7 +54,7 @@ public class BasicUser {
     private String password; // 登录密码（BCrypt 哈希），参考 sys_user 方式存储
 
     @Column("login_error_count")
-    private Integer loginErrorCount; // 连续登录失败次数（成功登录清零；用于后续锁定策略）
+    private Integer loginErrorCount; // 剩余登录重试次数：默认 5，密码错误 -1，减到 0 自动禁用账号；登录成功/重置密码/管理员启用时恢复为 5
 
     @Column("password_updated_at")
     private LocalDateTime passwordUpdatedAt; // 密码最后修改时间，用于密码有效期/强制改密

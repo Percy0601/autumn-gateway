@@ -376,8 +376,9 @@ ON CONFLICT (id) DO UPDATE SET "name" = EXCLUDED."name", "remark" = EXCLUDED."re
 -- ================================================================
 INSERT INTO "basic_user" ("id", "uuid", "username", "nickname", "avatar", "email", "phone", "emp_no", "admin", "status", "password", "login_error_count", "latest_role_id", "password_updated_at", "last_login_at", "create_time", "update_time")
 VALUES
- (1, '00000000-0000-0000-0000-000000000001', 'admin',   '超级管理员', '', 'admin@example.com',   '', 'A0001', 1, 1, @pwd_admin, 0, 1, @now, NULL, @now, @now),
- (2, '00000000-0000-0000-0000-000000000002', 'auditor', '审计员',     '', 'auditor@example.com', '', 'A0002', 0, 1, @pwd_user,  0, 4, @now, NULL, @now, @now)
+-- 注意：login_error_count 是「剩余登录重试次数」，初始账号给满 5 次。
+ (1, '00000000-0000-0000-0000-000000000001', 'admin',   '超级管理员', '', 'admin@example.com',   '', 'A0001', 1, 1, @pwd_admin, 5, 1, @now, NULL, @now, @now),
+ (2, '00000000-0000-0000-0000-000000000002', 'auditor', '审计员',     '', 'auditor@example.com', '', 'A0002', 0, 1, @pwd_user,  5, 4, @now, NULL, @now, @now)
 ON CONFLICT (id) DO UPDATE SET "nickname" = EXCLUDED."nickname", "admin" = EXCLUDED."admin", "status" = 1,
                         "update_time" = @now;
 

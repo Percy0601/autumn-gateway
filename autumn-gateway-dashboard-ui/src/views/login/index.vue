@@ -136,21 +136,50 @@ const form = reactive({
 	captcha: ''
 })
 
-// 验证码：captchaId 提交时带回服务端校验，captchaImg 是后端返回的 SVG dataURI，点击图片即刷新。
+// 验证码：captchaId 提交时带回服务端校验，captchaImg 归一化成可直接渲染的图片地址。
 // 加载中/失败都有明确视觉状态——静默失败是「验证码不显示」类问题最难排查的原因。
 const captchaId = ref('')
 const captchaImg = ref('')
 const captchaLoading = ref(false)
 const captchaError = ref(false)
 
+// 裸 SVG 源码 → data URI（btoa 只接受 latin1，先按 UTF-8 编码字节）
+const svgToDataUri = (svg: string) => {
+	const bytes = new TextEncoder().encode(svg)
+	let binary = ''
+	bytes.forEach((byte) => (binary += String.fromCharCode(byte)))
+	return `data:image/svg+xml;base64,${window.btoa(binary)}`
+}
+
+// 归一化后端返回值：
+// 当前后端返回 { captchaId, img: 'data:image/svg+xml;base64,...' }，但只接受 data URI
+// 过于脆弱——当 img 是不带 data: 前缀的裸 Base64 时（旧版本 / 中间层改写都会造成），
+// 浏览器会把整串 Base64 当成相对路径去请求，表现为「接口 200 且有 Base64，
+// 但验证码位置就是不显示」。这里对两种形态都做兼容。
+const toCaptchaSrc = (raw: unknown): string => {
+	if (typeof raw !== 'string') return ''
+	const value = raw.trim()
+	if (!value) return ''
+	if (value.startsWith('data:')) return value // 已是 data URI
+	if (value.startsWith('<svg') || value.startsWith('<?xml')) return svgToDataUri(value) // 裸 SVG 源码
+	// 裸 Base64：按魔数判断实际格式，未知一律按 SVG 处理
+	if (value.startsWith('iVBORw0KGgo')) return `data:image/png;base64,${value}`
+	if (value.startsWith('/9j/')) return `data:image/jpeg;base64,${value}`
+	if (value.startsWith('R0lGOD')) return `data:image/gif;base64,${value}`
+	return `data:image/svg+xml;base64,${value}`
+}
+
 const fetchCaptcha = async () => {
 	captchaLoading.value = true
 	captchaError.value = false
 	try {
 		const body: any = await http.get('/api/captcha')
-		if (body?.img) {
-			captchaId.value = body.captchaId || ''
-			captchaImg.value = body.img
+		// 兼容 { captchaId, img } 与 { code, data: { captchaId, img } } 两种返回结构
+		const payload = body?.data && typeof body.data === 'object' ? body.data : body
+		const src = toCaptchaSrc(payload?.img ?? payload?.image ?? payload?.base64 ?? payload)
+		if (src) {
+			captchaId.value = payload?.captchaId || body?.captchaId || ''
+			captchaImg.value = src
 			form.captcha = ''
 		} else {
 			// 接口通但没给图：按失败处理，让用户看到可点击的重试而不是静默空白
@@ -195,12 +224,12 @@ const handleSubmit = () => {
 				// 用户会看到「登录成功」和「登录失败」自相矛盾的提示。
 				// 真正的认证判定由路由守卫负责（守卫失败会清 token 并回登录页）。
 				await userStore.fetchUserInfo().catch(() => undefined)
-			const redirect = route.query.redirect
-			const target =
-				typeof redirect === 'string' && redirect.startsWith('/') ? redirect : '/dashboard/index'
-			router.replace(target)
-			return
-		}
+				const redirect = route.query.redirect
+				const target =
+					typeof redirect === 'string' && redirect.startsWith('/') ? redirect : '/dashboard/index'
+				await router.replace(target)
+				return
+			}
 			// 失败：优先展示服务端返回的具体原因（验证码错误 / 账号或密码错误 / 账号已禁用），
 			// 连续失败达到上限账号会被锁定，此时必须由管理员重新启用
 			await fetchCaptcha()

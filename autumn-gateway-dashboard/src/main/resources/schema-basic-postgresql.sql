@@ -343,7 +343,7 @@ CREATE TABLE IF NOT EXISTS basic_user (
     admin               INT NOT NULL DEFAULT 0,
     status              SMALLINT NOT NULL DEFAULT 1,
     password            VARCHAR(100) NOT NULL DEFAULT '',
-    login_error_count   INT NOT NULL DEFAULT 0,
+    login_error_count   INT NOT NULL DEFAULT 5,
     latest_role_id      BIGINT NOT NULL DEFAULT 0,
     password_updated_at TIMESTAMP,
     last_login_at       TIMESTAMP,

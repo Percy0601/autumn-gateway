@@ -247,6 +247,19 @@ function openEdit(row) {
   drawerOpen.value = true
 }
 
+// ---------- 创建成功后的一次性默认密码（不落库、不缓存） ----------
+const createdPwdVisible = ref(false)
+const createdPwdForm = reactive({
+  username: '',
+  password: '',
+})
+
+function closeCreatedPwdDialog() {
+  createdPwdVisible.value = false
+  createdPwdForm.username = ''
+  createdPwdForm.password = ''
+}
+
 function handleSubmit() {
   formRef.value.validate(async (valid) => {
     if (!valid) return
@@ -266,11 +279,17 @@ function handleSubmit() {
         await basicUserApi.update(currentRow.value.id, payload)
         ElMessage.success('更新成功')
       } else {
-        await basicUserApi.create(payload)
+        // 密码由后台下发默认密码，data.password 为明文，仅此次返回
+        const body = await basicUserApi.create(payload)
+        createdPwdForm.username = body?.data?.username || form.username
+        createdPwdForm.password = body?.data?.password || ''
         ElMessage.success('创建成功')
       }
       drawerOpen.value = false
       loadData()
+      if (!currentRow.value && createdPwdForm.password) {
+        createdPwdVisible.value = true
+      }
     } finally {
       saving.value = false
     }
@@ -536,6 +555,37 @@ onMounted(() => {
         </div>
       </template>
     </el-drawer>
+
+    <!-- 创建成功：展示后台下发的默认密码（明文仅出现这一次） -->
+    <el-dialog
+      v-model="createdPwdVisible"
+      title="创建成功"
+      width="480px"
+      :close-on-click-modal="false"
+      :show-close="false"
+      @closed="closeCreatedPwdDialog"
+    >
+      <el-form label-width="110px">
+        <el-form-item label="登录名">
+          <span>{{ createdPwdForm.username || '-' }}</span>
+        </el-form-item>
+        <el-form-item label="初始密码">
+          <el-space>
+            <el-tag type="success" effect="light">{{ createdPwdForm.password }}</el-tag>
+            <el-button size="small" @click="copyText(createdPwdForm.password)">复制</el-button>
+          </el-space>
+        </el-form-item>
+      </el-form>
+      <el-alert
+        type="warning"
+        :closable="false"
+        show-icon
+        title="该初始密码由系统下发，关闭弹窗后将无法再次查看，请及时转告用户并提醒其登录后修改。"
+      />
+      <template #footer>
+        <el-button type="primary" @click="closeCreatedPwdDialog">我已保存</el-button>
+      </template>
+    </el-dialog>
 
     <!-- 重置密码 -->
     <el-dialog

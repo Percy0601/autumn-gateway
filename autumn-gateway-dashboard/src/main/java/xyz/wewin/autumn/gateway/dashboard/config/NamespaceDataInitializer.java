@@ -47,17 +47,21 @@ public class NamespaceDataInitializer implements ApplicationRunner {
     private final JdbcTemplate jdbcTemplate;
     private final PasswordEncoder passwordEncoder;
     private final String defaultPassword;
+    /** basic_user.login_error_count 的满额值（剩余登录重试次数），与建表默认值保持一致 */
+    private final int maxLoginErrorCount;
 
     public NamespaceDataInitializer(BasicNamespaceRepository namespaceRepository,
                                     BasicNamespaceService namespaceService,
                                     JdbcTemplate jdbcTemplate,
                                     PasswordEncoder passwordEncoder,
-                                    @Value("${autumn.user.default-password:Autumn@123456}") String defaultPassword) {
+                                    @Value("${autumn.user.default-password:Autumn@123456}") String defaultPassword,
+                                    @Value("${autumn.user.max-login-error-count:5}") int maxLoginErrorCount) {
         this.namespaceRepository = namespaceRepository;
         this.namespaceService = namespaceService;
         this.jdbcTemplate = jdbcTemplate;
         this.passwordEncoder = passwordEncoder;
         this.defaultPassword = defaultPassword;
+        this.maxLoginErrorCount = maxLoginErrorCount;
     }
 
     @Override
@@ -278,7 +282,7 @@ public class NamespaceDataInitializer implements ApplicationRunner {
                             + " create_time, update_time)"
                             + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     "u-admin-0001", ADMIN_USERNAME, "管理员", "", "admin@autumn.local", "", "E0001", 1, 1,
-                    passwordEncoder.encode(defaultPassword), 0, 0L, null, null, now, now);
+                    passwordEncoder.encode(defaultPassword), maxLoginErrorCount, 0L, null, null, now, now);
             id = queryForLongOrNull("SELECT id FROM basic_user WHERE username = ?", ADMIN_USERNAME);
         } else {
             // 存量库（v5 之前）：admin 可能还没有 password，补填默认密码

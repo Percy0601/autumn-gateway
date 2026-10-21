@@ -58,8 +58,19 @@ public class BasicUserController {
                 .orElse(Result.error(404, "用户不存在"));
     }
 
+    /**
+     * 新增用户（认证即可）。
+     *
+     * <p>密码不接收前端输入：由后台下发系统默认密码 {@code autumn.user.default-password}，
+     * 响应 {@code data} 形如：</p>
+     * <pre>{@code
+     * { "id": 12, "username": "zhangsan", "password": "Autumn@123456" }
+     * }</pre>
+     * 其中 {@code password} 为<b>明文</b>，仅本次返回（库中为 BCrypt 哈希），
+     * 前端创建成功后弹窗展示，供管理员转告用户。
+     */
     @PostMapping
-    public Result<BasicUser> create(@RequestBody BasicUser user) {
+    public Result<Map<String, Object>> create(@RequestBody BasicUser user) {
         try {
             return Result.success(service.create(user));
         } catch (IllegalArgumentException e) {
