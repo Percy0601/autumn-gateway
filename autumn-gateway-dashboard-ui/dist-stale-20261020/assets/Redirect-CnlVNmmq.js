@@ -1,0 +1,1 @@
+import{B as o,D as s,aW as n,aV as c}from"./vue-COE7327B.js";const d=o({created(){const{params:e,query:a}=n(),{path:r}=e;c().replace({path:"/"+r,query:a}).catch(t=>{console.warn(t)})},render(){return s("div")}});export{d as default};
