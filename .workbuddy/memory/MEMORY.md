@@ -104,3 +104,24 @@
 - **native 硬约束补充**：网关侧 JWT 一律用 **Nimbus**（`NimbusReactiveJwtDecoder`，SAS 已在用），**不要引入 JJWT**（impl/jackson 走反射，native 需额外 hints）。
 - 微信登录三类场景别混：小程序 `jscode2session` 换 openid+session_key（**不是 OAuth2**）、公众号网页授权 `snsapi_userinfo`、开放平台扫码 `snsapi_login`（当前已实现的是这类）。小程序路径：code → authorization 换 openid → 查/建 `user_auth_account` 绑定 → 签发自家 JWT，令牌格式与 Web 端一致。
 - 路线图 P0 身份收敛 → P1 网关认证 → P2 网关授权 → P3 SSO → P4 服务发现 → P5 限流 → P6 可观测 + 全链路 native。
+
+## 工作记录（用户 2026-10-21 明确要求）
+- **每次做完事都要写 `docs/工作记录.md`**（按日期倒序：做了什么 / 产物在哪 / 验证到什么程度 / 下一步 / 环境备忘），目的是后续接着干活时不重复执行已完成且已验证的部分。规划类文档放 `docs/网关认证授权演进规划.md`。
+
+## RBAC 数据与权限码（2026-10-21 现场修复，改动前必看）
+- **权限码必须是三段 `模块:资源:动作`**（`system:user:create`），与 `PermCodes.java` 严格一致。库里曾出现单段 `user`/`role`/`menu`，直接导致**超管也点不动授权按钮**——因为 `PermissionService#allMenuIdentifications` 就是拿 `basic_menu.menu_identification` 装配超管 authorities，`@PreAuthorize` 做字符串精确比对，对不上就全拒。
+- **不要对已有库再跑 `db/rbac/V2__rbac_init_data_mysql.sql`**：V2 用固定 ID 段 1000–1399，而真实库里菜单 ID 是 1549–1562，跑完会出现两棵菜单树、前端两份同名菜单。正确做法是就地升级（见 `V4__rbac_fix_and_grant_mysql.sql`）。
+- **`basic_resource.app_code` 必须是 `dashboard`**，与 `basic.rbac.app-code` 一致；否则 `PermissionService#SQL_RESOURCES` 里 `r.app_code = ?` 永远匹配不上，一开 `url-check` 就全 403。
+- 子路径资源（`/roles`、`/menus`、`/groups`）用 `match_type='suffix'` + `path='/roles'`，别再堆 `prefix /api/system/basic/user`（会和父路径规则重复）。
+- 授权类接口（assign-* / delete / enable / disable / reset-pwd）走 `@PreAuthorize`，**超管的 authorities 必须包含库里全部权限码**，否则管理员反而不能用。
+- `login_error_count` 语义是「剩余重试次数」，为 0 会被判定为已耗尽，初始应为 5。
+- 已产出但未执行：`db/rbac/V4__rbac_unique_keys_mysql.sql`（3 个唯一键，需 root/DDL 权限，102 上 `docker exec -i mysql mysql -uroot -p123456`）。不执行也不影响功能——V4 主脚本用 `NOT EXISTS` 判重，不依赖唯一键。
+
+## 环境与工具备忘
+- 本机**无 mysql 客户端**。查/改 102 的库用隔离 venv 的 pymysql：
+  `/Users/mac/.workbuddy/binaries/python/envs/default/bin/python`（pymysql 已装）。批量执行 SQL 用「去掉 `--` 注释行后按 `;` 切分 + 事务 + 失败回滚」的方式。
+- 诊断脚本在 `/tmp/rbac_diag.py`、`/tmp/rbac_diag2.py`（只读，可反复跑）——但 /tmp 会清，需要时按 `docs/工作记录.md` 里的字段重写即可。
+- 8080 常被用户自己的 dashboard 实例占用；做验证另起端口：
+  `env -u SERVER__PORT SPRING_PROFILES_ACTIVE=mysql ./mvnw -pl autumn-gateway-dashboard spring-boot:run -Dspring-boot.run.arguments="--server.port=8081 --autumn.captcha.enabled=false"`
+  （`--autumn.captcha.enabled=false` 是运行时参数，不改任何配置文件，方便脚本登录）
+- 登录验证：POST `/api/login/account` `{username, password}`，admin 初始密码 `Autumn@123456`；`GET /api/system/rbac/status` 可看 RBAC 是否 ready。curl 访问 localhost 要加 `--noproxy '*'`。
