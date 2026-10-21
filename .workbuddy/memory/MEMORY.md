@@ -95,3 +95,12 @@
 ## 协作提醒
 - 用户对列表列的增删需求会反复（如「最近登录」先删后加），改动列前先确认当前期望。
 - 关联维护菜单（用户组-角色/用户-用户组/用户-角色/角色-菜单/角色-资源）2026-10-18 起从侧边栏隐藏，`router/index.ts` 留有注释块可快速放开；用户后续可能为权限管理重新放开，**放开时交互大概率要调整**，勿原样恢复。
+
+## 认证 / 授权 / SSO 边界（2026-10-21 定调，详见 `docs/网关认证授权演进规划.md`）
+- **认证（签发令牌）只在 `autumn-gateway-authorization`**（SAS IdP：登录页/验证码/账号锁定/微信/SSO 会话/签发 JWT）。网关**不自己写登录**——网关多实例自签发 = SSO 失效 + 网关变重 + 违背 native 轻量化；正确做法是网关暴露 `/auth/**` 代理端点透传给 authorization，客户端只跟网关打交道但签发点唯一。
+- **网关职责**：OAuth2 Resource Server（JWKS 验签）→ 身份透传（`X-User-Id`/`X-Username`/`X-Authorities`）→ 路由级**粗粒度**权限码判定 → 限流 → 转发。细粒度/数据权限留给业务服务。
+- **网关鉴权不用 `@PreAuthorize`**（网关无业务方法），用 `ReactiveAuthorizationManager` + `GatewayFilter`；起点参考 `autumn-gateway-examples-security-oidc` 的 `DynamicReactiveAuthorizationManager`。
+- **P0 隐患：现有两套互不认识的令牌**——dashboard 自签 HS256（`jwt.secret` 明文硬编码、sub=数字 userId、claims **无 authorities**）vs authorization 签发 RS256（JWKS、sub=uuid、带 authorities）。规划方向是 dashboard 停止自签、并入 authorization（其鉴权 `@PreAuthorize` 那套挂在 SecurityContext 上，与令牌来源解耦，可保留不动）。
+- **native 硬约束补充**：网关侧 JWT 一律用 **Nimbus**（`NimbusReactiveJwtDecoder`，SAS 已在用），**不要引入 JJWT**（impl/jackson 走反射，native 需额外 hints）。
+- 微信登录三类场景别混：小程序 `jscode2session` 换 openid+session_key（**不是 OAuth2**）、公众号网页授权 `snsapi_userinfo`、开放平台扫码 `snsapi_login`（当前已实现的是这类）。小程序路径：code → authorization 换 openid → 查/建 `user_auth_account` 绑定 → 签发自家 JWT，令牌格式与 Web 端一致。
+- 路线图 P0 身份收敛 → P1 网关认证 → P2 网关授权 → P3 SSO → P4 服务发现 → P5 限流 → P6 可观测 + 全链路 native。

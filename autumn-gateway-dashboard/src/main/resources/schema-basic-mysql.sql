@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS `basic_namespace` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='命名空间（租户）';
 
 
--- basic_app 应用（多应用隔离）
+-- basic_app 应用（多应用隔离）pwd
 CREATE TABLE IF NOT EXISTS `basic_app` (
     `id`            BIGINT NOT NULL AUTO_INCREMENT,
     `app_code`      VARCHAR(64) NOT NULL COMMENT '短标识，如 order、crm、admin',
