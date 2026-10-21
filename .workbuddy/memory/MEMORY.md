@@ -1,127 +1,74 @@
-# 项目长期约定（autumn-gateway-dashboard-ui 前端）
+# 项目长期约定（autumn-gateway → autumn-cloud）
 
-## 终极目标：autumn-cloud 全链路 GraalVM native 化（2026-10-20 用户明确提出）
-- 最终目标是把 **autumn-cloud 整体 native 化**；本地仓库 `autumn-gateway` 即其前身/一部分，后续沟通默认朝这个目标推进。
-- **autumn-cloud-dashboard 就是界面配置模块**（对应本地 `autumn-gateway-dashboard`），同样要 native 化。
-- 推进路径（用户确认的顺序）：
-  1. **第一步（进行中）**：dashboard-ui `vite build` 打包 → dist 复制到 `autumn-gateway-dashboard/src/main/resources/static`，由 Spring Boot 直接托管开放页面（不再依赖单独前端服务器）。
-  2. **第二步**：在 102 虚拟机（`ssh percy@192.168.0.102`，密码 `1`）配置 GraalVM + native-image 对 dashboard 做 native image 化；虚拟机已有 GraalVM、Maven，缺的软件直接装。
-  3. 后续：discovery / authorization 等其他模块逐步 native 化。
-- 沟通约定：讨论任何技术选型时先对照这个总目标（启动速度、内存占用、单二进制分发），别跑偏。
+## 终极目标：autumn-cloud 全链路 GraalVM native 化
+- 本地仓库 `autumn-gateway` 是 autumn-cloud 的前身；**autumn-cloud-dashboard 就是界面配置模块**（对应本地 `autumn-gateway-dashboard`）。
+- 推进路径：① dashboard-ui `vite build` → dist 放进 `autumn-gateway-dashboard/src/main/resources/static`（已完成）② dashboard native 化（已完成）③ authorization / discovery 等逐步 native 化 ④ **统一在 `autumn-gateway-deploy` 构建发布**，可编排 starter 组合、按 OS（win/linux/linux-arm）出不同发行版。
+- 讨论技术选型一律对照：启动速度、内存占用、单二进制分发。
 
-## UI 风格
-- 参照 **maku-admin 原生**风格：主色 `#409eff`（`src/store/theme/config.js`），尽量多用蓝色。
-- 列表页统一布局：**查询栏 → 操作栏（`.pro-toolbar`）→ 表格 → 分页**，卡片顶部不再放标题行和「新增」按钮。
-- 状态标签用蓝色 `type="primary" effect="light"`（正常/启用），异常用 `danger`。
-- 操作列链接统一 `type="primary"`（蓝色），表头居中 `align="center"`，操作列宽 340。
-- 所有表格都有内部边框（网格线），全局生效。
+## 环境与运维（102 Ubuntu 虚拟机）
+- `ssh percy@192.168.0.102`，密码 `1`。macOS 无 sshpass/setsid → 用 `/usr/bin/expect` 脚本免交互。
+- MySQL 跑在 102 的 docker 容器 `mysql`，`0.0.0.0:3306->3306`，库 `autumn-security`。
+  - 应用账号 `admin/123456`（**无 ALTER/DROP**）；root 也是 `123456`，DDL 用 `docker exec -i mysql mysql -uroot -p123456 autumn-security < x.sql`。
+  - Spring Boot 报 `JdbcAggregateOperations` 连环错 = 连不上库，先 `nc -z 192.168.0.102 3306`，别改代码。
+- GraalVM `/home/percy/opt/graalvm-jdk-25.0.3+9.1`、Maven `/home/percy/opt/apache-maven-3.9.16`；VM 构建目录 `~/work/project/autumn-gateway-native/`。SSH 非登录 shell 要手工 export PATH。
+- 本机无 mysql 客户端，用 `/Users/mac/.workbuddy/binaries/python/envs/default/bin/python`（pymysql）。
+- 沙箱：`ps` 被禁（用 `lsof -i :端口`）；有 `HTTP_PROXY`（访问 localhost 需 `curl --noproxy '*'`）；**`SERVER__PORT=64884` 会覆盖 server.port**，起后端要 `env -u SERVER__PORT`。
 
-## 全局样式
-- 统一放在 **`src/styles/pro.scss`**（在 `src/styles/index.scss` 里 `@use './pro.scss'`）：
-  `.pro-toolbar`（操作条）、`.link-op`（操作项间距 10px）、`.el-table` 单元格竖线、`.group-tag`。
-- 不要在单个页面里重复写 scoped 同名样式，改全局那一处。
+## 构建约定
+- **native 配方**：`mvn -Pnative,native-image -pl <模块> package -DskipTests`（JAVA_HOME 指 GraalVM）。
+  `native` profile 由 starter-parent 提供，`native-image` 由本仓库根 pom 提供。**切勿用 `mvn native:compile`**（跳过 process-aot，产物一启动就 ClassNotFoundException）。
+  dashboard 产物 139MB、构建 ~4.5min、启动 ~0.3s、RSS ~155MB；authorization 产物 ~114MB、构建 ~3m45s、启动 0.12s。
+- **native 反射元数据：优先用 tracing agent 生成，别手写枚举**。
+  `java -agentlib:native-image-agent=config-output-dir=... -jar 应用.jar` 跑一遍真实流程 → `kill -TERM`（必须 TERM 才落盘）→ 得到 `reachability-metadata.json`。
+  **放进 `src/main/resources/META-INF/native-image/<group>/<artifact>/` 时必须改名成 `reflect-config.json`**
+  （Spring AOT 会写同名的 `reachability-metadata.json` 把我们的覆盖掉；旧格式名不会被覆盖且同样生效）。
+  转换要点：`type`→`name`、跳过无点的原始类型、并补 `allDeclaredConstructors/Methods/Fields`（agent 对只 forName 的类不记成员，
+  而 Jackson mixin 必须读到成员上的 `@JsonCreator` 才生效）。`resources` 段不要转（glob≠pattern），交给 Spring AOT。
+- **Spring Security 的 Jackson 模块在 native 下会静默加载失败**（`SecurityJacksonModules.loadAndGetInstance` catch 掉只打 DEBUG），
+  症状是 `InvalidTypeIdException: Could not resolve type id 'java.util.Collections$UnmodifiableMap' ... denied resolution`
+  —— 看着像 JDK 类没注册，真因是默认多态类型的白名单没建起来。排查：
+  `--logging.level.org.springframework.security.jackson=DEBUG` → 满屏 `Cannot load module ...`。
+- OAuth2 授权服务器 starter：`spring-boot-starter-security-oauth2-authorization-server`（Boot 4 新名），版本 4.1.1，底层 `spring-security-oauth2-authorization-server:7.1.1`。当前 Boot 4.1.1 / Java 25。
+- 验证「依赖改名是否生效」必须 `clean compile` 或 `dependency:tree`。
+- **Maven profile 坑**：命令行只要显式写了任何一个 `-P`，所有 `activeByDefault` 的 profile 都会被关闭。
+  deploy 的组件 profile 因此用「属性不存在则激活」（`<property><name>!no.authn</name></property>`），
+  用法：`-Pcomponent-limit` 追加组件、`-Dno.authn` 关认证、`-Pos-windows` 换平台。
+- 后台起服务要用 Bash 工具的后台任务；普通 `nohup ... &` 在命令返回后会被回收。
 
-## 能力边界（重要）
-- **只有 user、group 有删除能力**：`src/api/basic.js` 里仅 `basicUserApi`、`basicGroupApi` 有 `remove`；后端 `DeleteMapping` 也只在 `BasicUserController` / `BasicGroupController`。app/role/resource/menu/permission **没有删除接口**，不要给它们加删除/批量删除。
-- 用户列表接口 `/basic/user` **不返回用户组**，需按行调 `basicUserApi.groups(id)` 拉取。
+## 认证 / 授权 / SSO 边界（2026-10-21 落地，详见 `docs/OAuth2 统一认证登录使用手册.md`）
+- **已定调并跑通：网关（`autumn-gateway-deploy`）是 OAuth2 客户端**（`authn-autumn-gateway-starter`），
+  dashboard 降级为纯 Resource Server（**只验签，不自签**）。浏览器只持 HttpOnly `SESSION` Cookie，**access_token 不过浏览器**。
+  令牌存网关服务端 WebSession，由 `TokenRelay=` 过滤器以 `Authorization: Bearer` 注入转发请求（多实例需 Spring Session）。
+- 端口/入口：**网关 8080**（业务入口、登录 `/oauth2/authorization/web-client`、回调 `/login/oauth2/code/web-client`、登出 `/logout`）；
+  **IdP 9000**（`/login`、`/oauth2/authorize`、`/oauth2/token`、`/oauth2/jwks`、`/userinfo`、`/api/csrf`、`/api/captcha`）；
+  **dashboard 8081**（内部，浏览器不要直连）。账号 `admin / Autumn@123456`。
+- **SAS 7 = OAuth 2.1，强制 PKCE**：reactive 侧只对 public client 自动加 PKCE，必须显式 `ClientSettings.builder().requireProofKey(true)`，否则 `invalid_request: code_challenge`。
+- **JWT 一律用 Nimbus**（`NimbusJwtDecoder`/`NimbusReactiveJwtDecoder`），**禁止 JJWT**。dashboard 已删除 `JwtUtil` 与 `AuthController`（自签下线），改用 `JwtTokenService` 验签。
+- dashboard 的 `/api/login/account` **已删除**；只剩 `GET /api/currentUser`（401 时回 loginUrl）与 `POST /api/login/outLogin`。
+- 待办：P2 网关细粒度授权（`ReactiveAuthorizationManager`，不用 `@PreAuthorize`）、P3 单点登出（`end_session_endpoint`，现 `/logout` 只清网关会话）、P4 服务发现、P5 限流、P6 可观测。
 
-## 数据库与 schema 变更（重要）
-- **用户的真实开发库是 MySQL**：`192.168.0.102:3306/autumn-security`（2026-10-18 由 192.168.0.115 切换），账号 `admin/123456`。
-  该账号权限只有 `SELECT, INSERT, UPDATE, DELETE, CREATE, REFERENCES, INDEX, CREATE VIEW, SHOW VIEW`——**没有 ALTER/DROP**。
-- **MySQL 跑在 102 虚拟机的 Docker 容器里**（容器名 `mysql`，端口 `0.0.0.0:3306->3306`；**root 密码 = 123456**，2026-10-20 从 `docker inspect mysql` 的 env `MYSQL_ROOT_PASSWORD` 确认，与应用账号同密码；
-  需要 ALTER 时直接在容器内 `docker exec -i mysql mysql -uroot -p123456 autumn-security < xxx.sql`，备份用 `mysqldump --single-transaction --no-tablespaces`）。
-  虚拟机没启动容器时 Spring Boot 报 `Cannot resolve reference to bean 'org.springframework.data.jdbc.core.JdbcAggregateOperations'` 连环错——
-  真实原因只是连不上库（`jdbcDialect` 要连库读 DatabaseMetaData，`namedParameterJdbcTemplate` 又绑了 `dataSourceScriptDatabaseInitializer`，
-  连接被拒 → dialect 建不出 → 所有 Spring Data JDBC 仓库挂）。看到这个错先 `nc -z 192.168.0.102 3306`，别改代码。
-- **远程启动/运维 102 虚拟机**：`ssh percy@192.168.0.102`，密码 `1`（2026-10-19 用户明确要求记住）。常用命令 `docker start mysql` / `docker ps`。
-  本机 macOS 无 `sshpass`、无 `setsid`；免交互登录用 `/usr/bin/expect` 脚本（密码走 `send`，OpenSSH 9.9 + `-o StrictHostKeyChecking=no`）。- 因此**任何列宽/类型变更都不能靠应用启动时改表**：`spring.sql.init.mode=always` 只跑 `CREATE TABLE IF NOT EXISTS`，不会 ALTER 已存在的表。
-  正确做法：在 `src/main/resources/db/` 下按既有模式写 `migration-vX-to-vY.sql`（幂等、information_schema 存在性判断），
-  并提醒用户用有 ALTER 权限的账号执行（或 `GRANT ALTER ON autumn-security.* TO 'admin'@'%'`）。
-  **2026-10-20 已把 v1→v2 / v2→v3 / v4→v5 / v5→v6 四个迁移全部在 102 真实库执行完毕**（修复登录 500：basic_user 补 password/login_error_count）。
-  当前最新迁移是 `db/migration-v5-to-v6.sql`（basic_role_permission 时间列 TIMESTAMP→DATETIME、basic_menu 两列收紧 NOT NULL、补 4 表 7 个索引、删 basic_user_role.eid 僵尸列）。
-  改表前先 mysqldump 备份（102 上已有 `/home/percy/backup-autumn-security-20261020.sql.gz`）。
-- **种子数据全部由 `NamespaceDataInitializer`（Java, ApplicationRunner）幂等播种**，已无 `data-*.sql`：
-  默认租户 default、登录账号 **admin / Autumn@123456**（密码取 `autumn.user.default-password`，运行时 BCrypt 编码）、
-  basic_* 演示数据。缺 namespace 列的存量库上：回填/演示数据只 WARN 不崩，启动不再中断；但 basic 页面会 500，需先跑迁移。
-- 沙箱里 bash 的 `ps` 被禁；查进程用 `lsof -i :端口` + `kill -0 PID`。
-- 沙箱设有 `HTTP_PROXY`，Python urllib 走代理会挂起；访问 localhost 要用 `ProxyHandler({})` 或 curl `--noproxy '*'`。
-- 后端启动后需等 SQL 初始化完成才可请求（约 40s+），过早请求会挂起；用轮询 `/api/system/basic/app/list` 判断就绪。
+## dashboard（后端）约定
+- 本地起：`env -u SERVER__PORT SPRING_PROFILES_ACTIVE=h2 ./mvnw spring-boot:run`（MySQL profile 去掉 h2 变量）。
+- 登录走网关（见上节），admin 初始密码 `Autumn@123456`；`GET /api/system/rbac/status` 看 RBAC 就绪。
+- Spring Security 7 包迁移：`oauth2.jwt`（Jwt/JwtDecoder/NimbusJwtDecoder）在 **`spring-security-oauth2-jose`**，
+  `spring-security-oauth2-resource-server` 不再传递它；`oauth2.client.registration.*`（不是 `.client.*`）；
+  `ClientSettings` 是 `ClientRegistration.ClientSettings` 内部类。
+- RBAC 三档：匿名放行 → 认证即可（GET + 新增/编辑）→ 权限管控（assign-*、删除、启停、重置密码，`@PreAuthorize`）。
+  `basic.rbac.enabled`(默认 true) / `basic.rbac.url-check`(默认 **false**，刻意：URL 层默认拒绝与"新增认证即可"冲突)。
+- **超管 authorities 必须包含库里全部权限码**（`UserGrant.fullAccess`）；只给 `"*"` 会让 `hasAuthority` 拒掉管理员。权限码三段式 `system:user:create`，与 `PermCodes.java` 和 `basic_menu.menu_identification` 严格一致。
+- `basic_resource.app_code` 必须是 `dashboard`。
+- 不要对已有库再跑 `db/rbac/V2__rbac_init_data_mysql.sql`（固定 ID 段会造出两棵菜单树），就地升级用 `V4__rbac_fix_and_grant_mysql.sql`。
+- 迁移脚本在 `src/main/resources/db/migration-vX-to-vY.sql`（v1→v6 已在 102 执行完）。种子数据由 `NamespaceDataInitializer` 幂等播种。
+- `BasicResourceRepository.findWithPage` 的 `LIMIT :offset OFFSET :limit` 是既有约定，**不要"修复"**。
+- Boot 4 迁移坑：`ContentCachingRequestWrapper` 包路径 `org.springframework.web.filter` → `org.springframework.web.util`，构造器必须传 `maxContentLength`。
 
-## 构建约定（后端）
-- **GraalVM native 构建配方（2026-10-20 验证通过）**：
-  - 命令：`mvn -Pnative,native-image -pl autumn-gateway-dashboard package -DskipTests`，JAVA_HOME 指向 GraalVM。
-  - `native` profile 由 spring-boot-starter-parent 提供（process-aot + 原始类路径 + reachability metadata）；`native-image` 由本仓库根 pom 提供（`native:compile-no-fork` 绑 package 阶段，官方多模块定制模式）。
-  - **切勿用 `mvn native:compile`**：buildtools 1.1.x 的 CLI 目标 fork 到 package 但跳过 process-aot，产物启动即 `ClassNotFoundException: WebMvcWebApplicationTypeDeducer`（症状：64MB 小二进制一启动就挂）。
-  - 构建环境在 102 虚拟机：GraalVM 25.0.3+9.1 `/home/percy/opt/graalvm-jdk-25.0.3+9.1`（native-image 内置）、Maven 3.9.16 `/home/percy/opt/apache-maven-3.9.16`；SSH 非登录 shell 需手工 export PATH。产物 139MB、构建约 4.5 分钟、启动 ~0.3s、RSS ~155MB。
-  - VM 上构建目录 `~/work/project/autumn-gateway-native/`（mac 源码 tar 管道同步，勿覆盖 VM 上 feature/opentelemetry 的既有 checkout）。
-  - 后续模块 native 化照此配方；dashboard 已验证登录/JWT/RBAC/Spring Data JDBC/MySQL 全链路 native 正常。
-- OAuth2 授权服务器 starter 统一用 **`spring-boot-starter-security-oauth2-authorization-server`**（Boot 4 新名，旧名 `spring-boot-starter-oauth2-authorization-server` 已废弃）；版本 4.1.1 锁在根 pom 的 `spring-boot-starter-security-oauth2-authorization-server.version`，底层库 `spring-security-oauth2-authorization-server:7.1.1`。当前 Boot 4.1.1，Java 25。
-- 角色定位：`autumn-gateway-authorization` 是 SAS 授权服务器（IdP，发令牌、管登录/验证码/微信）；APISIX 只能当 RP 校验令牌、不能发令牌，二者互补不是替代。用户路线：暂不引入 APISIX。
-- 验证「依赖改名是否生效」必须 `clean compile` 或 `dependency:tree`；`mvn compile` 的「Nothing to compile - all classes are up to date」会跳过类路径解析，会误判通过。
+## dashboard-ui（前端）约定
+- maku-admin 风格，主色 `#409eff`。列表页：查询栏 → `.pro-toolbar` → 表格 → 分页。全局样式只在 `src/styles/pro.scss`。
+- **只有 user、group 有删除接口**，别给 app/role/resource/menu/permission 加删除。
+- **已改为会话模式**：axios 开 `withCredentials`，不再从 localStorage 取 token；`user.ts` 用 `ensureAuthenticated()` / `redirectToLogin()`；
+  `views/login/index.vue` 只剩「使用统一认证登录」按钮。`vite.config.ts` 的 `base` 必须是 `/`（`./` 在深链 F5 时资源 404）。
+- Vite **`.js` 优先于 `.ts`**：`store/modules/user`、`utils/request`、`utils/constant` 等双份文件实际生效的是 `.js`，改这些必须改 `.js`（`router/index.js` 已删）。
+- 菜单图标必须存在于 `src/icons/iconfont/iconfont.js`（599 个 symbol），不存在会静默不显示。
 
-## 易踩坑
-- **bash grep 查中文内容会误报为空**（locale 问题），必须用 Grep 工具（ripgrep）查含中文的字符串，否则会误判"已删除/已修改"。
-- **菜单图标名必须在 iconfont 库里真实存在**：图标来自 `src/icons/iconfont/iconfont.js`（599 个 symbol，Ant Design 风格，如 `file-text`/`audit`/`appstore`），`src/icons/svg/` 只有 404.svg。
-  写了不存在的图标名（如曾经的 `icon-log`）不会报错，只会静默不显示。新增菜单项后建议全量校验一遍。
-- Vite 默认 **`.js` 优先于 `.ts`**。`router/index.js` 已删除（只留 `index.ts`，含命名空间菜单 id 25）；
-  但 `store/modules/user`、`utils/request`、`utils/constant` 等仍是 `.js`/`.ts` 双份，**实际生效的是 `.js`**，改这些文件必须改 `.js`。
-- 唯一权威 auth store 是 `src/store/modules/user`（Pinia id=`userStore`），路由守卫读它；不要新建重复 store。
-- 后端 `/api/currentUser` 返回 `userid` 而非 `id`。
-- **沙箱环境变量 `SERVER__PORT=64884` 会覆盖 `server.port`**：不带 `env -u SERVER__PORT` 重启后端会监听 64884 而不是 8080，前端/dev 代理全连不上（表现为连接被拒但进程正常）。
-  起 MySQL profile 后端的正确命令：`env -u SERVER__PORT ./mvnw -pl autumn-gateway-dashboard spring-boot:run`（仓库根目录）。
-- 本地起后端用 H2 profile：`env -u SERVER__PORT SPRING_PROFILES_ACTIVE=h2 ./mvnw spring-boot:run`（`./mvnw` 在仓库根目录）。
-  h2 依赖已补进 pom（runtime）；`application-h2.properties` 需带 `CASE_INSENSITIVE_IDENTIFIERS=TRUE`，
-  否则 Spring Data JDBC 生成的 `"ID"/"NAME"` 大写列名匹配不上 schema 里的小写列，basic_* 派生查询全报 Column not found。
-- `BasicResourceRepository.findWithPage` 的 `LIMIT :offset OFFSET :limit` 看似参数写反，实为与 Service 传参顺序相互抵消的既有约定，**不要"修复"**。
-- **Spring Boot 4 / Spring Web 7.0.9 的 API 迁移**：`ContentCachingRequestWrapper` 已从 `org.springframework.web.filter` **移到 `org.springframework.web.util`**；且其构造器从单参 `(HttpServletRequest)` 改为**必须传 `int maxContentLength`**（如 `new ContentCachingRequestWrapper(request, 1024*1024)`）。写可重复读请求体的过滤器/拦截器要注意这两点。
-
-## 命名空间（租户）模型（2026-10-18 定型）
-- `basic_namespace`（default 默认租户）→ `basic_app`、`basic_role`、`basic_group` 都有 `namespace_id/namespace_code`，按公司/企业隔离。
-- `basic_menu` / `basic_resource` **不加** namespace：它们已有 `app_id`/`app_code` 维度，而 app 归属 namespace，间接隔离，保持平台级语义。
-- 角色跨应用：`basic_user_role.app_id` 是僵尸列，统一写 0；`BasicRole` 已无 app_id。
-- 用户详情弹窗「关联角色」页签显示「所属命名空间」（namespaceCode），勿再改回「应用」列。
-
-## 授权（RBAC）约定（2026-10-20 落地，改动前先看 `docs/权限与授权设计.md`）
-- **三档管控**：匿名放行（登录/验证码/静态/health）→ 认证即可（全部 GET + 新增/编辑 POST·PUT）→ 权限管控（授权类 assign-*、删除、启停、重置密码，走 `@PreAuthorize("hasAuthority('...')")`）。
-- **新增类操作刻意不加权限码**（用户明确要求：用户/角色/用户组/菜单/资源的添加不重要，登录即可）。
-- 开关：`basic.rbac.enabled`（默认 **true**，false=全部 permitAll 紧急回滚）、`basic.rbac.url-check`（默认 **false**，true 才叠加 `UrlAuthorizationManager` 的 URL 资源表默认拒绝）。
-  `url-check=false` 是刻意的——需求要求「新增认证即可」，而 URL 层默认拒绝，两者冲突；细粒度一律下沉到方法级。
-- **超管的 authorities 必须包含库里全部权限码**（`UserGrant.fullAccess(Set)`）。只有 `"*"` 会让 `hasAuthority()` 把超管拒掉——「管理员反而不能用」是最难排查的一类 bug。
-- 权限码常量在 `security/PermCodes.java`，值必须与 `basic_menu.menu_identification` 一致（权威数据来自 `db/rbac/V2__rbac_init_data_mysql.sql`）。
-- 重置密码：`PUT /api/system/basic/user/{id}/reset-password`，权限码 `system:user:reset-pwd`；`OperLogInterceptor` 已跳过该路径（避免明文密码入审计日志）。
-- 自举/检查：`GET /api/system/rbac/status`、`/me`；一键脚本 `db/rbac/bootstrap-mysql.sh --docker mysql`；检查脚本 `db/rbac/verify-mysql.sql`。SQL 顺序：schema-basic → V1 → V2 → V3。
-- `NamespaceDataInitializer#ensureBasicMenus` 只在 **basic_menu 为空**时播种，避免与 V2 菜单树重复。
-
-## 协作提醒
-- 用户对列表列的增删需求会反复（如「最近登录」先删后加），改动列前先确认当前期望。
-- 关联维护菜单（用户组-角色/用户-用户组/用户-角色/角色-菜单/角色-资源）2026-10-18 起从侧边栏隐藏，`router/index.ts` 留有注释块可快速放开；用户后续可能为权限管理重新放开，**放开时交互大概率要调整**，勿原样恢复。
-
-## 认证 / 授权 / SSO 边界（2026-10-21 定调，详见 `docs/网关认证授权演进规划.md`）
-- **认证（签发令牌）只在 `autumn-gateway-authorization`**（SAS IdP：登录页/验证码/账号锁定/微信/SSO 会话/签发 JWT）。网关**不自己写登录**——网关多实例自签发 = SSO 失效 + 网关变重 + 违背 native 轻量化；正确做法是网关暴露 `/auth/**` 代理端点透传给 authorization，客户端只跟网关打交道但签发点唯一。
-- **网关职责**：OAuth2 Resource Server（JWKS 验签）→ 身份透传（`X-User-Id`/`X-Username`/`X-Authorities`）→ 路由级**粗粒度**权限码判定 → 限流 → 转发。细粒度/数据权限留给业务服务。
-- **网关鉴权不用 `@PreAuthorize`**（网关无业务方法），用 `ReactiveAuthorizationManager` + `GatewayFilter`；起点参考 `autumn-gateway-examples-security-oidc` 的 `DynamicReactiveAuthorizationManager`。
-- **P0 隐患：现有两套互不认识的令牌**——dashboard 自签 HS256（`jwt.secret` 明文硬编码、sub=数字 userId、claims **无 authorities**）vs authorization 签发 RS256（JWKS、sub=uuid、带 authorities）。规划方向是 dashboard 停止自签、并入 authorization（其鉴权 `@PreAuthorize` 那套挂在 SecurityContext 上，与令牌来源解耦，可保留不动）。
-- **native 硬约束补充**：网关侧 JWT 一律用 **Nimbus**（`NimbusReactiveJwtDecoder`，SAS 已在用），**不要引入 JJWT**（impl/jackson 走反射，native 需额外 hints）。
-- 微信登录三类场景别混：小程序 `jscode2session` 换 openid+session_key（**不是 OAuth2**）、公众号网页授权 `snsapi_userinfo`、开放平台扫码 `snsapi_login`（当前已实现的是这类）。小程序路径：code → authorization 换 openid → 查/建 `user_auth_account` 绑定 → 签发自家 JWT，令牌格式与 Web 端一致。
-- 路线图 P0 身份收敛 → P1 网关认证 → P2 网关授权 → P3 SSO → P4 服务发现 → P5 限流 → P6 可观测 + 全链路 native。
-
-## 工作记录（用户 2026-10-21 明确要求）
-- **每次做完事都要写 `docs/工作记录.md`**（按日期倒序：做了什么 / 产物在哪 / 验证到什么程度 / 下一步 / 环境备忘），目的是后续接着干活时不重复执行已完成且已验证的部分。规划类文档放 `docs/网关认证授权演进规划.md`。
-
-## RBAC 数据与权限码（2026-10-21 现场修复，改动前必看）
-- **权限码必须是三段 `模块:资源:动作`**（`system:user:create`），与 `PermCodes.java` 严格一致。库里曾出现单段 `user`/`role`/`menu`，直接导致**超管也点不动授权按钮**——因为 `PermissionService#allMenuIdentifications` 就是拿 `basic_menu.menu_identification` 装配超管 authorities，`@PreAuthorize` 做字符串精确比对，对不上就全拒。
-- **不要对已有库再跑 `db/rbac/V2__rbac_init_data_mysql.sql`**：V2 用固定 ID 段 1000–1399，而真实库里菜单 ID 是 1549–1562，跑完会出现两棵菜单树、前端两份同名菜单。正确做法是就地升级（见 `V4__rbac_fix_and_grant_mysql.sql`）。
-- **`basic_resource.app_code` 必须是 `dashboard`**，与 `basic.rbac.app-code` 一致；否则 `PermissionService#SQL_RESOURCES` 里 `r.app_code = ?` 永远匹配不上，一开 `url-check` 就全 403。
-- 子路径资源（`/roles`、`/menus`、`/groups`）用 `match_type='suffix'` + `path='/roles'`，别再堆 `prefix /api/system/basic/user`（会和父路径规则重复）。
-- 授权类接口（assign-* / delete / enable / disable / reset-pwd）走 `@PreAuthorize`，**超管的 authorities 必须包含库里全部权限码**，否则管理员反而不能用。
-- `login_error_count` 语义是「剩余重试次数」，为 0 会被判定为已耗尽，初始应为 5。
-- 已产出但未执行：`db/rbac/V4__rbac_unique_keys_mysql.sql`（3 个唯一键，需 root/DDL 权限，102 上 `docker exec -i mysql mysql -uroot -p123456`）。不执行也不影响功能——V4 主脚本用 `NOT EXISTS` 判重，不依赖唯一键。
-
-## 环境与工具备忘
-- 本机**无 mysql 客户端**。查/改 102 的库用隔离 venv 的 pymysql：
-  `/Users/mac/.workbuddy/binaries/python/envs/default/bin/python`（pymysql 已装）。批量执行 SQL 用「去掉 `--` 注释行后按 `;` 切分 + 事务 + 失败回滚」的方式。
-- 诊断脚本在 `/tmp/rbac_diag.py`、`/tmp/rbac_diag2.py`（只读，可反复跑）——但 /tmp 会清，需要时按 `docs/工作记录.md` 里的字段重写即可。
-- 8080 常被用户自己的 dashboard 实例占用；做验证另起端口：
-  `env -u SERVER__PORT SPRING_PROFILES_ACTIVE=mysql ./mvnw -pl autumn-gateway-dashboard spring-boot:run -Dspring-boot.run.arguments="--server.port=8081 --autumn.captcha.enabled=false"`
-  （`--autumn.captcha.enabled=false` 是运行时参数，不改任何配置文件，方便脚本登录）
-- 登录验证：POST `/api/login/account` `{username, password}`，admin 初始密码 `Autumn@123456`；`GET /api/system/rbac/status` 可看 RBAC 是否 ready。curl 访问 localhost 要加 `--noproxy '*'`。
+## 工作记录
+- **每次做完事都要写 `docs/工作记录.md`**（按日期倒序：做了什么 / 产物在哪 / 验证程度 / 下一步 / 环境备忘）。规划类文档放 `docs/网关认证授权演进规划.md`。

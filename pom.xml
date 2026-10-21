@@ -93,6 +93,22 @@
                 <artifactId>autumn-gateway-common</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <!-- 网关可选组件 starter：由 autumn-gateway-deploy 用 -Pcomponent-* 选择装配 -->
+            <dependency>
+                <groupId>xyz.wewin.autumn</groupId>
+                <artifactId>authn-autumn-gateway-starter</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>xyz.wewin.autumn</groupId>
+                <artifactId>limit-autumn-gateway-starter</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>xyz.wewin.autumn</groupId>
+                <artifactId>config-discovery-autumn-gateway-starter</artifactId>
+                <version>${project.version}</version>
+            </dependency>
 			<dependency>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-starter-actuator</artifactId>
@@ -132,6 +148,13 @@
 			注意用不同 id：同 id 会与 parent 的 native profile 发生继承合并，行为不确定。
 			要求：JAVA_HOME 指向 GraalVM（native-image 25+），且模块已声明
 			  org.graalvm.buildtools:native-maven-plugin（imageName/mainClass）。
+
+			⚠️ 本 profile 会被所有模块继承（包括 pom 打包的父模块），所以
+			native 构建**必须只针对单个模块**，不能加 -am：
+			  ✗ mvn -Pnative,native-image -pl autumn-gateway-deploy -am package
+			    → 父模块报 "Image classpath is empty"
+			  ✓ mvn -B -pl autumn-gateway-deploy -am install -DskipTests   （先装依赖，不带 native）
+			  ✓ mvn -B -Pnative,native-image -pl autumn-gateway-deploy package -DskipTests
 		-->
 		<profile>
 			<id>native-image</id>

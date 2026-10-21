@@ -8,8 +8,13 @@ import vueSetupExtend from 'vite-plugin-vue-setup-extend'
 
 // 参考：https://cn.vitejs.dev/config/
 export default defineConfig({
-	// 相对路径：独立部署或挂在网关子路径下都能正确加载静态资源
-	base: './',
+	// 站点根路径部署（经网关访问 http://localhost:8080/）。
+	//
+	// 原来用 './'（相对路径），好处是可以塞进任意子目录，代价是深链刷新会崩：
+	// 在 /system/user 上 F5，浏览器按相对规则把 ./assets/index-xxx.js 解析成
+	// /system/assets/index-xxx.js → 404，且 utils/request.ts 推导出的 API 前缀
+	// 也会变成 /system，接口全部 404。网关部署形态下站点就在根，用 '/' 才是对的。
+	base: '/',
 	resolve: {
 		// 配置别名
 		alias: {

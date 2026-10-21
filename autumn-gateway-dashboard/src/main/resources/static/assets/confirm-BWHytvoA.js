@@ -1,1 +1,0 @@
-import{d as r}from"./element-CirwGr4F.js";const o={confirmButtonText:"确定",cancelButtonText:"取消",type:"warning"};function e(t,n="提示"){return r.confirm(t,n,{...o})}async function i(t,n="提示"){try{return await e(t,n),!0}catch{return!1}}export{i};

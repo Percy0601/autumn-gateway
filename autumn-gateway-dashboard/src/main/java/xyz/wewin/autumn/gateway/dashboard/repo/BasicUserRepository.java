@@ -19,6 +19,12 @@ public interface BasicUserRepository extends CrudRepository<BasicUser, Long> {
     Optional<BasicUser> findByUsername(String username);
 
     /**
+     * 按 uuid 定位用户：网关透传的令牌 sub 是 uuid（由 authorization 签发），
+     * 而 basic_user 与 user 两张表的自增 id 是两套互不相干的序列，必须用 uuid 关联。
+     */
+    Optional<BasicUser> findByUuid(String uuid);
+
+    /**
      * 分页查询基础用户。
      * 说明：字符串过滤统一用空串 '' 作为"不过滤"哨兵，状态用 -1 作为"不过滤"哨兵，
      * 避免 NULL 参数在 MySQL / PostgreSQL 下的类型推断差异。

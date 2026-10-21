@@ -43,19 +43,21 @@
 			<artifactId>spring-security-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+		<!--
+			JWT 校验：使用 Nimbus（spring-security-oauth2-jose 里的 NimbusJwtDecoder）。
+			不再使用 JJWT —— 其 impl/jackson 走反射，GraalVM native 需要额外 hints。
+
+			注意（Spring Security 7 的包迁移）：org.springframework.security.oauth2.jwt.*
+			（Jwt / JwtDecoder / NimbusJwtDecoder）在 spring-security-oauth2-jose 里，
+			既不在 spring-security-oauth2-core，也不随 spring-security-oauth2-resource-server 传递，
+			必须显式声明。
+
+			本服务不再自签令牌：令牌统一由 autumn-gateway-authorization 签发（RS256 + JWKS），
+			这里只做验签（Resource Server 角色）。
+		-->
 		<dependency>
-			<groupId>io.jsonwebtoken</groupId>
-			<artifactId>jjwt-api</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>io.jsonwebtoken</groupId>
-			<artifactId>jjwt-impl</artifactId>
-			<scope>runtime</scope>
-		</dependency>
-		<dependency>
-			<groupId>io.jsonwebtoken</groupId>
-			<artifactId>jjwt-jackson</artifactId>
-			<scope>runtime</scope>
+			<groupId>org.springframework.security</groupId>
+			<artifactId>spring-security-oauth2-jose</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>com.mysql</groupId>

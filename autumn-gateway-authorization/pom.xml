@@ -58,5 +58,29 @@
         </dependency>
     </dependencies>
 
+    <build>
+        <plugins>
+            <!--
+                GraalVM Native Image 配置。
+                构建命令（JAVA_HOME 指向 GraalVM）：
+                    mvn -Pnative,native-image -pl autumn-gateway-authorization package -DskipTests
+                - native       ：spring-boot-starter-parent 提供（process-aot + 原始类路径 + reachability metadata）
+                - native-image ：本仓库根 pom 提供（把 native:compile-no-fork 绑到 package 阶段）
+                切勿使用 mvn native:compile —— 会跳过 process-aot，产物一启动就 ClassNotFoundException。
+            -->
+            <plugin>
+                <groupId>org.graalvm.buildtools</groupId>
+                <artifactId>native-maven-plugin</artifactId>
+                <configuration>
+                    <imageName>${project.artifactId}</imageName>
+                    <mainClass>${start-class}</mainClass>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
 
 </project>

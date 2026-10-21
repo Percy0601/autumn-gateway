@@ -13,8 +13,11 @@ import org.springframework.security.oauth2.server.authorization.client.Registere
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.settings.TokenSettings;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -41,6 +44,7 @@ public class DemoRegisteredClientInitializer implements ApplicationRunner {
     @Value("${autumn.authorization-server.demo-client.client-secret:secret}")
     private String clientSecret;
 
+    /** 逗号分隔，可登记多个回调地址（网关 OAuth2 客户端 / 直连调试各一个） */
     @Value("${autumn.authorization-server.demo-client.redirect-uri:http://127.0.0.1:8080/callback}")
     private String redirectUri;
 
@@ -59,26 +63,45 @@ public class DemoRegisteredClientInitializer implements ApplicationRunner {
             return;
         }
 
-        RegisteredClient registeredClient = RegisteredClient.withId(UUID.randomUUID().toString())
+        RegisteredClient.Builder builder = RegisteredClient.withId(UUID.randomUUID().toString())
                 .clientId(this.clientId)
                 .clientSecret(this.passwordEncoder.encode(this.clientSecret))
                 .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                 .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
                 .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
-                .redirectUri(this.redirectUri)
                 .scope(OidcScopes.OPENID)
                 .scope(OidcScopes.PROFILE)
-                .scope("business:read")
-                .tokenSettings(TokenSettings.builder()
-                        .accessTokenTimeToLive(Duration.ofHours(2))
-                        .refreshTokenTimeToLive(Duration.ofDays(7))
-                        .reuseRefreshTokens(false)
-                        .build())
-                .build();
+                .scope("business:read");
 
-        this.registeredClientRepository.save(registeredClient);
-        log.warn("已初始化演示客户端 {} / {}（生产环境请关闭 autumn.authorization-server.demo-client.enabled）",
-                this.clientId, this.clientSecret);
+        for (String uri : resolveRedirectUris()) {
+            builder.redirectUri(uri);
+        }
+
+        builder.tokenSettings(TokenSettings.builder()
+                .accessTokenTimeToLive(Duration.ofHours(2))
+                .refreshTokenTimeToLive(Duration.ofDays(7))
+                .reuseRefreshTokens(false)
+                .build());
+
+        this.registeredClientRepository.save(builder.build());
+        log.warn("已初始化演示客户端 {} / {}，回调地址 {}（生产环境请关闭 autumn.authorization-server.demo-client.enabled）",
+                this.clientId, this.clientSecret, resolveRedirectUris());
+    }
+
+    /** 逗号分隔拆成多个回调地址；空白项丢弃，全空时回落到默认值 */
+    private List<String> resolveRedirectUris() {
+        List<String> uris = new ArrayList<>();
+        if (StringUtils.hasText(this.redirectUri)) {
+            for (String part : this.redirectUri.split(",")) {
+                if (StringUtils.hasText(part)) {
+                    uris.add(part.trim());
+                }
+            }
+        }
+        if (uris.isEmpty()) {
+            uris.add("http://127.0.0.1:8080/callback");
+        }
+        return uris;
     }
 }

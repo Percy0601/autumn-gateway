@@ -8,11 +8,15 @@
 		<version>0.0.1-SNAPSHOT</version>
 	</parent>
 	<artifactId>autumn-gateway-deploy</artifactId>
+	<name>autumn-gateway-deploy</name>
+	<description>最终网关发行包：按 profile 选择组件，统一在此做 GraalVM native 构建</description>
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 		<java.version>25</java.version>
 		<start-class>xyz.wewin.autumn.gateway.AutumnGatewayApplication</start-class>
+		<!-- 目标平台后缀，由 -Pos-* profile 覆盖；产物名形如 autumn-gateway-linux-amd64 -->
+		<image.suffix>-linux-amd64</image.suffix>
 	</properties>
 	<dependencies>
 		<!-- Spring Cloud Gateway -->
@@ -20,29 +24,11 @@
 			<groupId>org.springframework.cloud</groupId>
 			<artifactId>spring-cloud-starter-gateway-server-webflux</artifactId>
 		</dependency>
-        <dependency>
-            <groupId>joda-time</groupId>
-            <artifactId>joda-time</artifactId>
-            <version>2.12.7</version>
-        </dependency>
-<!--		<dependency>-->
-<!--			<groupId>org.springframework.boot</groupId>-->
-<!--			<artifactId>spring-boot-starter-security</artifactId>-->
-<!--		</dependency>-->
-<!--		<dependency>-->
-<!--			<groupId>io.jsonwebtoken</groupId>-->
-<!--			<artifactId>jjwt-api</artifactId>-->
-<!--		</dependency>-->
-<!--		<dependency>-->
-<!--			<groupId>io.jsonwebtoken</groupId>-->
-<!--			<artifactId>jjwt-impl</artifactId>-->
-<!--			<scope>runtime</scope>-->
-<!--		</dependency>-->
-<!--		<dependency>-->
-<!--			<groupId>io.jsonwebtoken</groupId>-->
-<!--			<artifactId>jjwt-jackson</artifactId>-->
-<!--			<scope>runtime</scope>-->
-<!--		</dependency>-->
+		<dependency>
+			<groupId>joda-time</groupId>
+			<artifactId>joda-time</artifactId>
+			<version>2.12.7</version>
+		</dependency>
 	</dependencies>
 
 	<build>
@@ -51,7 +37,7 @@
 				<groupId>org.graalvm.buildtools</groupId>
 				<artifactId>native-maven-plugin</artifactId>
 				<configuration>
-					<imageName>${project.artifactId}</imageName>
+					<imageName>${project.artifactId}${image.suffix}</imageName>
 					<mainClass>${start-class}</mainClass>
 				</configuration>
 			</plugin>
@@ -61,5 +47,87 @@
 			</plugin>
 		</plugins>
 	</build>
+
+	<profiles>
+		<!-- ============================================================
+		     组件编排：用 -Pcomponent-xxx 决定最终网关里装了哪些能力。
+		     默认只开 authn；全部关闭即为「纯路由网关」。
+		     这就是后续「表单勾选组件 → 生成 pom → 统一构建」的落点。
+
+		     例：认证 + 限流一起装
+		       mvn -Pcomponent-limit ...
+		     例：只装限流，不装认证
+		       mvn -Pcomponent-limit -Dno.authn ...
+
+		     ⚠️ Maven 坑：只要在命令行显式写了任何一个 -P，所有 activeByDefault
+		     的 profile 都会被关闭。所以组件 profile 一律用「属性不存在则激活」
+		     （!no.xxx）而不是 activeByDefault，否则写 -Pos-windows 会把认证也关掉。
+		     ============================================================ -->
+		<profile>
+			<id>component-authn</id>
+			<activation>
+				<property>
+					<name>!no.authn</name>
+				</property>
+			</activation>
+			<dependencies>
+				<dependency>
+					<groupId>xyz.wewin.autumn</groupId>
+					<artifactId>authn-autumn-gateway-starter</artifactId>
+				</dependency>
+			</dependencies>
+		</profile>
+
+		<profile>
+			<id>component-limit</id>
+			<dependencies>
+				<dependency>
+					<groupId>xyz.wewin.autumn</groupId>
+					<artifactId>limit-autumn-gateway-starter</artifactId>
+				</dependency>
+			</dependencies>
+		</profile>
+
+		<profile>
+			<id>component-discovery</id>
+			<dependencies>
+				<dependency>
+					<groupId>xyz.wewin.autumn</groupId>
+					<artifactId>config-discovery-autumn-gateway-starter</artifactId>
+				</dependency>
+			</dependencies>
+		</profile>
+
+		<!-- ============================================================
+		     目标操作系统。GraalVM 不做交叉编译：要出哪个平台的二进制，
+		     就得在哪个平台上构建（或用对应架构的 GraalVM 容器 + qemu 模拟）。
+
+		     这里用 activeByDefault 是安全的：即使它被 -P 关掉，
+		     <properties> 里的 image.suffix 默认值（-linux-amd64）仍然生效。
+		     ============================================================ -->
+		<profile>
+			<id>os-linux</id>
+			<activation>
+				<activeByDefault>true</activeByDefault>
+			</activation>
+			<properties>
+				<image.suffix>-linux-amd64</image.suffix>
+			</properties>
+		</profile>
+
+		<profile>
+			<id>os-linux-arm</id>
+			<properties>
+				<image.suffix>-linux-arm64</image.suffix>
+			</properties>
+		</profile>
+
+		<profile>
+			<id>os-windows</id>
+			<properties>
+				<image.suffix>-windows-amd64.exe</image.suffix>
+			</properties>
+		</profile>
+	</profiles>
 
 </project>
