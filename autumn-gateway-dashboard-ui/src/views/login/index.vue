@@ -61,25 +61,60 @@
 			<div class="login-card">
 				<div class="card-header">
 					<h2 class="card-title">欢迎使用</h2>
-					<p class="card-subtitle">本系统采用统一认证，点击下方按钮进入</p>
+					<p class="card-subtitle">请登录您的账户以继续使用</p>
 				</div>
 
-				<div class="sso-block">
-					<div class="sso-flow">
-						<span class="sso-node">浏览器</span>
-						<span class="sso-arrow">→</span>
-						<span class="sso-node">网关 :8080</span>
-						<span class="sso-arrow">→</span>
-						<span class="sso-node sso-node-primary">授权服务器 :9000</span>
-					</div>
-					<el-button type="primary" class="login-btn" :loading="loading" @click="handleSsoLogin">
-						使用统一认证登录
-					</el-button>
-					<p class="sso-hint">
-						账号密码在授权服务器的登录页输入。令牌只保存在网关的服务端会话里，
-						浏览器拿不到也存不下。
-					</p>
-				</div>
+				<el-form ref="formRef" :model="form" :rules="rules" class="login-form" @keyup.enter="handleSubmit">
+					<el-form-item prop="username">
+						<el-input v-model="form.username" placeholder="请输入用户名" :prefix-icon="User" clearable size="large" />
+					</el-form-item>
+					<el-form-item prop="password">
+						<el-input
+							v-model="form.password"
+							type="password"
+							placeholder="请输入密码"
+							:prefix-icon="Lock"
+							show-password
+							size="large"
+						/>
+					</el-form-item>
+					<el-form-item prop="captcha">
+						<div class="captcha-row">
+							<el-input v-model="form.captcha" placeholder="请输入验证码" size="large" clearable />
+							<img
+								v-if="captchaImg"
+								:src="captchaImg"
+								class="captcha-img"
+								alt="验证码"
+								title="点击刷新验证码"
+								@click="refreshCaptcha"
+								@load="onCaptchaImgLoad"
+								@error="onCaptchaImgError"
+							/>
+							<el-button
+								v-else
+								class="captcha-img"
+								size="large"
+								:type="captchaError ? 'danger' : 'default'"
+								:loading="captchaLoading"
+								@click="refreshCaptcha"
+							>
+								{{ captchaLoading ? '' : captchaError ? '重试' : '获取验证码' }}
+							</el-button>
+						</div>
+						<p v-if="captchaError" class="captcha-error">验证码加载失败，请点击右侧按钮重试</p>
+					</el-form-item>
+					<el-form-item>
+						<div class="login-options">
+							<el-checkbox v-model="autoLogin">自动登录</el-checkbox>
+						</div>
+					</el-form-item>
+					<el-form-item>
+						<el-button type="primary" class="login-btn" :loading="loading" @click="handleSubmit">
+							登 录
+						</el-button>
+					</el-form-item>
+				</el-form>
 
 				<div class="login-tip">默认账号 admin / Autumn@123456</div>
 			</div>
@@ -88,22 +123,95 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { Lock, User } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/modules/user'
 
+const route = useRoute()
+const router = useRouter()
 const userStore = useUserStore()
-const loading = ref(false)
 
-/**
- * 统一认证登录：把浏览器送到网关的 OAuth2 授权入口。
- *
- * 旧流程是前端 POST /api/login/account 拿自签 JWT 存 localStorage —— 已废弃。
- * 现在令牌由 autumn-gateway-authorization 签发（RS256），网关作为 OAuth2 客户端
- * 完成授权码 + PKCE 流程，令牌留在网关会话，再由 TokenRelay 注入转发给后端。
- */
-const handleSsoLogin = () => {
-	loading.value = true
-	userStore.redirectToLogin()
+const formRef = ref()
+const loading = ref(false)
+const autoLogin = ref(true)
+
+const form = reactive({
+	username: '',
+	password: '',
+	captcha: ''
+})
+
+// 验证码：直出图片方案 —— GET /gateway/endpoint/captcha 直接返回 SVG，<img src> 渲染，
+// 点击刷新；captchaId（若网关要求）由 HttpOnly Cookie 下发，前端无需感知。
+// 加载中/失败都有明确视觉状态——静默失败是「验证码不显示」类问题最难排查的原因。
+const captchaImg = ref('')
+const captchaLoading = ref(false)
+const captchaError = ref(false)
+
+// 刷新验证码：换 URL 触发新请求。?_t= 时间戳防浏览器缓存（后端已带 Cache-Control: no-store，双保险），
+// 保证点击必然拿到新图 + 新 captchaId。
+const refreshCaptcha = () => {
+	captchaLoading.value = true
+	captchaError.value = false
+	captchaImg.value = `/gateway/endpoint/captcha?_t=${Date.now()}`
+	form.captcha = ''
+}
+
+// 图片加载成功：清除加载态
+const onCaptchaImgLoad = () => {
+	captchaLoading.value = false
+}
+
+// 图片加载失败（接口 404 / 后端未启动 / 网络异常）：退回按钮态，允许手动重试
+const onCaptchaImgError = () => {
+	captchaLoading.value = false
+	captchaImg.value = ''
+	captchaError.value = true
+}
+
+onMounted(refreshCaptcha)
+
+const rules = {
+	username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
+	password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
+	captcha: [{ required: true, message: '请输入验证码', trigger: 'blur' }]
+}
+
+// 登录：POST /gateway/endpoint/login（由网关 starter 完成校验并签发 JWT），
+// 成功后 token 存 localStorage，后续请求统一带 Authorization: Bearer。
+const handleSubmit = () => {
+	formRef.value.validate(async (valid: boolean) => {
+		if (!valid) return
+		loading.value = true
+		try {
+			// 验证码一次性消费：无论成败都会刷新，避免复用与过期
+			const body = await userStore.accountLoginAction({ ...form })
+			if (body && body.status === 'ok') {
+				ElMessage.success('登录成功')
+				// 这里只是预热用户态：登录本身已经成功，即便 /api/currentUser 暂时取不到
+				// 也不能让异常冒泡到外层 catch —— 那会把流程误判成「登录失败」，
+				// 用户会看到「登录成功」和「登录失败」自相矛盾的提示。
+				// 真正的认证判定由路由守卫负责（守卫失败会清 token 并回登录页）。
+				await userStore.fetchUserInfo().catch(() => undefined)
+				const redirect = route.query.redirect
+				const target =
+					typeof redirect === 'string' && redirect.startsWith('/') ? redirect : '/dashboard/index'
+				await router.replace(target)
+				return
+			}
+			// 失败：优先展示服务端返回的具体原因（验证码错误 / 账号或密码错误 / 账号已禁用），
+			// 连续失败达到上限账号会被锁定，此时必须由管理员重新启用
+			await refreshCaptcha()
+			ElMessageBox.alert(body?.message || '用户名或密码错误', '登录失败', { type: 'error' })
+		} catch {
+			await refreshCaptcha()
+			ElMessage.error('登录失败，请稍后重试')
+		} finally {
+			loading.value = false
+		}
+	})
 }
 </script>
 
@@ -283,51 +391,52 @@ const handleSsoLogin = () => {
 		height: 46px;
 		font-size: 16px;
 		font-weight: 600;
-		letter-spacing: 2px;
+		letter-spacing: 4px;
 		border-radius: 6px;
+	}
+
+	.login-options {
+		width: 100%;
+		display: flex;
+		justify-content: space-between;
+	}
+
+	.captcha-row {
+		width: 100%;
+		display: flex;
+		align-items: center;
+		gap: 12px;
+
+		.el-input {
+			flex: 1;
+		}
 	}
 }
 
-.sso-block {
-	.sso-flow {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		flex-wrap: wrap;
-		gap: 6px;
-		margin-bottom: 24px;
-		font-size: 12px;
-		color: #6b7280;
+.captcha-img {
+	width: 120px;
+	height: 40px;
+	flex-shrink: 0;
+	border-radius: 6px;
+	border: 1px solid #dcdfe6;
+	background: #fff;
+	cursor: pointer;
+	object-fit: cover;
 
-		.sso-node {
-			padding: 4px 8px;
-			border: 1px solid #e5e7eb;
-			border-radius: 6px;
-			background: #f9fafb;
-			white-space: nowrap;
-		}
-
-		.sso-node-primary {
-			color: #409eff;
-			border-color: #b3d8ff;
-			background: #ecf5ff;
-		}
-
-		.sso-arrow {
-			color: #c0c4cc;
-		}
+	&:hover {
+		border-color: #409eff;
 	}
+}
 
-	.sso-hint {
-		margin: 14px 0 0;
-		font-size: 12px;
-		line-height: 1.7;
-		color: #909399;
-	}
+.captcha-error {
+	margin: 4px 0 0;
+	font-size: 12px;
+	line-height: 1.4;
+	color: #f56c6c;
 }
 
 .login-tip {
-	margin-top: 20px;
+	margin-top: 16px;
 	text-align: center;
 	font-size: 13px;
 	color: rgba(0, 0, 0, 0.45);

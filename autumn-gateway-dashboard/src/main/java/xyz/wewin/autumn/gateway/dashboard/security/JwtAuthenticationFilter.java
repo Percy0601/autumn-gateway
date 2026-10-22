@@ -29,10 +29,12 @@ import java.util.Optional;
  *   <li>{@link SecurityContextHolder} —— Spring Security 认证态，供鉴权使用。</li>
  * </ul>
  *
- * <h3>v7 变更：令牌改由授权服务器签发</h3>
+ * <h3>v7 变更：本服务只验签，不自签</h3>
  * <ul>
- *   <li>本服务<b>不再自签令牌</b>，只做验签 —— 验签密钥来自授权服务器的 JWKS
- *       （{@code autumn.security.jwt.jwk-set-uri}），由 {@link JwtTokenService} 用 Nimbus 完成；</li>
+ *   <li>本服务<b>不再自签令牌</b>，只做验签 —— 共享密钥 HS256
+ *       （{@code autumn.security.jwt.secret}，网关 starter 登录端点签发）与 JWKS RS256
+ *       （{@code autumn.security.jwt.jwk-set-uri}，授权服务器签发）双轨并存，
+ *       由 {@link JwtTokenService} 用 Nimbus 完成；</li>
  *   <li>令牌 {@code sub} 是<b>用户 uuid</b>，而 {@code basic_user.id} 是自增序列，
  *       两者不是同一个 id 空间，必须先用 uuid 反查到本服务的用户记录；</li>
  *   <li>权限仍由 {@link PermissionService} 从 basic_* 表装配（令牌里的 authorities 只是参考，不参与判权）；</li>
@@ -152,19 +154,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     /**
-     * 优先取 Authorization 头；网关若以其它方式透传，可回退到 token 参数。
+     * 只接受标准 {@code Authorization: Bearer <jwt>} 请求头。
      *
-     * <p>安全提示：token 放在 query 参数里会被 Nginx access_log、浏览器历史和 Referer
-     * 记录，属于凭据泄露的常见来源。保留此回退仅为兼容既有网关透传方式，
-     * 若可以收敛，建议后续只接受 Authorization 头。</p>
+     * <p>不再回退到 {@code token} 请求参数：token 放在 query 里会被 Nginx access_log、
+     * 浏览器历史和 Referer 记录，属于凭据泄露的常见来源，
+     * 而且会让「不可信的 query 参数」成为认证入口。前端统一走 header 传递。</p>
      */
     private String resolveToken(HttpServletRequest request) {
         String header = request.getHeader(HttpHeaders.AUTHORIZATION);
-        if (header != null && header.startsWith(BEARER_PREFIX)) {
-            String token = header.substring(BEARER_PREFIX.length()).trim();
-            return token.isEmpty() ? null : token;
+        if (header == null || !header.startsWith(BEARER_PREFIX)) {
+            return null;
         }
-        String param = request.getParameter("token");
-        return (param == null || param.isBlank()) ? null : param.trim();
+        String token = header.substring(BEARER_PREFIX.length()).trim();
+        return token.isEmpty() ? null : token;
     }
 }

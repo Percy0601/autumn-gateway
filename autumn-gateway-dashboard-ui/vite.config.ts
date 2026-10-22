@@ -40,6 +40,10 @@ export default defineConfig({
 			'/api': {
 				target: 'http://localhost:8080',
 				changeOrigin: true
+			},
+			'/gateway': {
+				target: 'http://localhost:8080',
+				changeOrigin: true
 			}
 		}
 	},

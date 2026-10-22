@@ -1,7 +1,6 @@
 package xyz.wewin.autumn.gateway.dashboard.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -20,18 +19,17 @@ import java.util.Map;
  * 前端页面协议（ant-design-pro 官方模板）：
  *
  * <pre>
- *   GET  /api/currentUser     当前用户信息（凭据由网关透传）
+ *   GET  /api/currentUser     当前用户信息（凭据 = Authorization: Bearer &lt;jwt&gt;）
  *   POST /api/login/outLogin  退出登录
  * </pre>
  *
  * <h3>登录去哪了（重要）</h3>
- * 本服务<b>不再签发令牌</b>：令牌统一由 {@code autumn-gateway-authorization} 以 RS256 签发，
- * 网关（{@code autumn-gateway-deploy}）作为 OAuth2 客户端完成登录后，
- * 通过 {@code TokenRelay} 把 access_token 以 {@code Authorization: Bearer} 注入转发请求。
- * 浏览器侧只持有网关的会话 Cookie，拿不到也存不下令牌。
+ * 本服务<b>不签发令牌</b>：登录由网关 starter 的 {@code POST /gateway/endpoint/login}
+ * 完成（含验证码校验），签发后的 JWT 由前端存进 localStorage，
+ * 之后每个请求都以 {@code Authorization: Bearer <jwt>} 头带上，
+ * 由 {@code JwtAuthenticationFilter} 验签。本服务不持有会话、不依赖 Cookie。
  *
- * <p>因此登录入口是网关的 {@code /oauth2/authorization/{registrationId}}，
- * 本 Controller 只负责「已认证之后」的用户信息与退出。</p>
+ * <p>因此这里只负责「已认证之后」的用户信息与退出。</p>
  */
 @RestController
 public class LoginController {
@@ -39,19 +37,11 @@ public class LoginController {
     @Autowired
     private BasicUserRepository basicUserRepository;
 
-    /** 网关 OAuth2 登录入口，返回给前端做跳转用（前端直接用相对路径即可） */
-    @Value("${autumn.auth.login-url:/oauth2/authorization/web-client}")
-    private String oauthLoginUrl;
-
-    /** 网关登出入口 */
-    @Value("${autumn.auth.logout-url:/logout}")
-    private String oauthLogoutUrl;
-
     /**
-     * 当前登录用户信息：凭据由网关透传，本服务验签后装配出 {@link LoginUser}。
+     * 当前登录用户信息：凭据来自 {@code Authorization} 头，验签后装配出 {@link LoginUser}。
      *
-     * <p>未登录/无效 token 返回 401（前端 request 拦截器会 reject，
-     * getInitialState 捕获后自动跳转登录页）。</p>
+     * <p>未登录 / 无效 token 返回 401（前端 request 拦截器清掉本地 token，
+     * 路由守卫随后跳登录页）。</p>
      *
      * <p>下发字段：
      * <ul>
@@ -64,19 +54,12 @@ public class LoginController {
     public ResponseEntity<Map<String, Object>> currentUser(
             @AuthenticationPrincipal LoginUser loginUser) {
         if (loginUser == null) {
-            // 没有认证态：告诉前端去哪儿登录，避免前端只能干瞪眼跳登录页
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("success", false,
-                            "data", Map.of("access", "guest"),
-                            "loginUrl", this.oauthLoginUrl));
+            return unauthorized();
         }
 
         BasicUser user = this.basicUserRepository.findById(loginUser.getUserId()).orElse(null);
         if (user == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("success", false,
-                            "data", Map.of("access", "guest"),
-                            "loginUrl", this.oauthLoginUrl));
+            return unauthorized();
         }
 
         Map<String, Object> data = new HashMap<>();
@@ -94,12 +77,21 @@ public class LoginController {
     }
 
     /**
-     * 退出登录：真正的登出在网关（清会话 + 通知授权服务器）。
-     * 这里只回一份协议一致的响应，并告诉前端下一步跳哪里。
+     * 退出登录：令牌无状态，服务端没有会话可清 —— 前端丢掉本地 token 即完成登出。
+     * 这里只回一份协议一致的响应。
      */
     @PostMapping("/api/login/outLogin")
     public Map<String, Object> outLogin() {
-        return Map.of("success", true, "data", Map.of("logoutUrl", this.oauthLogoutUrl));
+        return Map.of("success", true);
+    }
+
+    private static ResponseEntity<Map<String, Object>> unauthorized() {
+        // 401 只描述「没认出身份」，不再下发登录跳转地址：
+        // 登录页是前端的 /login 路由，跳不跳由守卫决定。
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(Map.of("success", false,
+                        "message", "未登录或登录已失效，请重新登录",
+                        "data", Map.of("access", "guest")));
     }
 
     /**

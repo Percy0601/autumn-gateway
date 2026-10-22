@@ -12,6 +12,7 @@
 
 	<modules>
         <module>authn-autumn-gateway-starter</module>
+        <module>authz-autumn-gateway-starter</module>
         <module>config-discovery-autumn-gateway</module>
         <module>config-discovery-autumn-gateway-starter</module>
         <module>config-discovery-autumn-gateway-starter-using</module>
@@ -31,6 +32,11 @@
 				<artifactId>authn-autumn-gateway-starter</artifactId>
 				<version>${project.version}</version>
 			</dependency>
+            <dependency>
+                <groupId>xyz.wewin.autumn</groupId>
+                <artifactId>authz-autumn-gateway-starter</artifactId>
+                <version>${project.version}</version>
+            </dependency>
 			<dependency>
 				<groupId>xyz.wewin.autumn</groupId>
 				<artifactId>limit-autumn-gateway</artifactId>

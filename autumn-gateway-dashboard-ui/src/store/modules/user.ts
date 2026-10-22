@@ -1,13 +1,6 @@
 import { defineStore } from 'pinia'
 import http from '@/utils/request'
 
-/**
- * 统一认证后的登录 / 登出入口（相对路径，经网关访问时直接生效）。
- * 后端 /api/currentUser 在 401 时会把 loginUrl 带回来，以服务端为准。
- */
-const DEFAULT_LOGIN_URL = '/oauth2/authorization/web-client'
-const DEFAULT_LOGOUT_URL = '/logout'
-
 export const useUserStore = defineStore('userStore', {
 	state: () => ({
 		// 用户信息（结构由后端 /api/currentUser 决定）
@@ -20,25 +13,17 @@ export const useUserStore = defineStore('userStore', {
 			avatar: ''
 		},
 		currentUser: null as any,
-		/**
-		 * 是否已认证。
-		 *
-		 * 统一认证落地后，前端不再持有令牌 —— 令牌只存在于网关的服务端会话里，
-		 * 浏览器侧只有一枚 HttpOnly 的 SESSION Cookie，JS 读不到也写不了。
-		 * 所以「是否登录」不能再看本地有没有 token，只能问后端「我是谁」。
-		 */
-		authenticated: false,
+		// 访问 token：登录后由网关 starter 签发，存 localStorage，请求时以
+		// Authorization: Bearer <token> 带上（见 utils/request.ts）
+		token: localStorage.getItem('token') || '',
 		// 按钮级权限标识清单（后端 /api/currentUser 的 authorityList），供 v-auth 指令使用。
 		// 超管的清单里带一个 "*"，v-auth 见 "*" 即视为全放行。
 		authorityList: [] as string[],
 		// 是否超级管理员（后端 /api/currentUser 的 superAdmin）
-		superAdmin: false,
-		// 登录 / 登出入口
-		loginUrl: DEFAULT_LOGIN_URL,
-		logoutUrl: DEFAULT_LOGOUT_URL
+		superAdmin: false
 	}),
 	getters: {
-		isLogin: (state) => state.authenticated,
+		isLogin: (state) => !!state.token,
 		// 显示名：realName 与 name 兼容取值，避免首页问候语渲染成「早安，，」
 		displayName: (state) =>
 			state.currentUser?.realName ||
@@ -49,90 +34,86 @@ export const useUserStore = defineStore('userStore', {
 			'未登录'
 	},
 	actions: {
-		/** 跳转到统一认证入口（网关 → 授权服务器登录页） */
-		redirectToLogin() {
-			window.location.href = this.loginUrl || DEFAULT_LOGIN_URL
+		setToken(token: string) {
+			this.token = token
+			if (token) localStorage.setItem('token', token)
+			else localStorage.removeItem('token')
 		},
-
-		/** 清除本地认证态（不跳转） */
-		markUnauthenticated() {
-			this.authenticated = false
-			this.currentUser = null
-			this.authorityList = []
-			this.superAdmin = false
-		},
-
-		/**
-		 * 确认当前会话是否已认证。
-		 *
-		 * <p>已认证时直接复用状态，不再打接口；未认证时问一次 {@code /api/currentUser}。</p>
-		 *
-		 * <p>网关会在请求进来前把 access_token 注入转发头，所以前端什么都不用带，
-		 * 只要带得上会话 Cookie 即可（axios 已配 withCredentials）。</p>
-		 */
-		async ensureAuthenticated(): Promise<boolean> {
-			if (this.authenticated) {
-				return true
+		// 账号登录：POST /gateway/endpoint/login -> { token }（登录由网关 starter 完成，
+		// 验证码也由它校验：GET /gateway/endpoint/captcha）。
+		// loginForm 需带 username / password / captcha
+		async accountLoginAction(loginForm: any) {
+			// 响应拦截器已把 AxiosResponse 解包成业务 body，这里显式按 any 收窄
+			const body: any = await http.post('/gateway/endpoint/login', { ...loginForm })
+			const token = body?.token || body?.data?.token
+			if (token) {
+				this.setToken(token)
+			} else {
+				this.setToken('')
 			}
-			try {
-				const body: any = await http.get('/api/currentUser')
-				if (!body || !body.data) {
-					this.markUnauthenticated()
-					return false
-				}
-				if (body.data.loginUrl) {
-					this.loginUrl = body.data.loginUrl
-				}
-				this.currentUser = body.data
-				this.user = { ...this.user, ...body.data, id: body.data.userid ?? body.data.id ?? this.user.id }
-				// 权限清单提到 store 顶层：v-auth 指令读的是 store.authorityList，
-				// 而后端下发在 data.authorityList 里，不搬上来按钮权限永远不会生效
-				this.authorityList = Array.isArray(body.data.authorityList) ? body.data.authorityList : []
-				this.superAdmin = !!body.data.superAdmin
-				this.authenticated = true
-				return true
-			} catch (error) {
-				// 401/403 是明确的未认证；网络抖动也按未认证处理 ——
-				// 反正授权服务器侧通常还留着会话，跳过去会无感知地自动重新登录，不会误伤用户。
-				this.markUnauthenticated()
-				return false
-			}
+			return body
 		},
-
-		/**
-		 * 获取当前用户信息。
-		 *
-		 * 返回值约定（路由守卫依赖，勿随意改）：
-		 *   - 成功     → currentUser 对象
-		 *   - 未认证   → null
-		 */
+		// 获取当前用户信息。
+		//
+		// 返回值约定（路由守卫依赖，勿随意改）：
+		//   - 成功            → 返回 currentUser 对象
+		//   - 200 但无 data   → 返回 null      （服务端明确表示认不出身份 → 守卫应回登录页）
+		//   - 网络抖动等错误  → 返回 undefined （守卫保守放行，避免误踢）
+		//   - 401 / 403       → 抛异常         （守卫清 token 并跳登录页）
 		async getUserInfoAction() {
-			const ok = await this.ensureAuthenticated()
-			return ok ? this.currentUser : null
-		},
+			let body: any = null
+			try {
+				body = await http.get('/api/currentUser')
+			} catch (error: any) {
+				this.currentUser = null
+				// 鉴权失败必须向上抛，交给路由守卫清 token 并跳登录页；
+				// 其他错误（网络抖动、超时等）保持静默，避免误踢用户
+				if (error?.response?.status === 401 || error?.response?.status === 403) {
+					throw error
+				}
+				return undefined
+			}
 
+			// 请求成功但服务端没给出用户数据 → 等同未认证，返回 null 让守卫判空。
+			// 注意：这段必须放在 try 之外，否则会被上面的 catch 当作普通错误静默掉，
+			// 守卫就会把 user.id 兜底成 'unknown' 直接放进首页。
+			if (!body || !body.data) {
+				this.currentUser = null
+				this.authorityList = []
+				this.superAdmin = false
+				return null
+			}
+
+			this.currentUser = body.data
+			this.user = { ...this.user, ...body.data, id: body.data.userid ?? body.data.id ?? this.user.id }
+			// 权限清单提到 store 顶层：v-auth 指令读的是 store.authorityList，
+			// 而后端下发在 data.authorityList 里，不搬上来按钮权限永远不会生效
+			this.authorityList = Array.isArray(body.data.authorityList) ? body.data.authorityList : []
+			this.superAdmin = !!body.data.superAdmin
+			return this.currentUser
+		},
 		// 兼容旧页面命名
 		async fetchUserInfo() {
 			return this.getUserInfoAction()
 		},
-
-		/**
-		 * 退出登录：清本地状态 + 跳网关登出入口（网关会清会话）。
-		 *
-		 * <p>已知限制：授权服务器的会话仍在，再次访问网关会被静默重新登录。
-		 * 真正的单点登出（SLO）需要 end_session_endpoint，属于 P3。</p>
-		 */
+		// 退出登录：令牌无状态，服务端没有会话可清，丢掉本地 token 即可
 		async logoutAction() {
 			try {
-				const body: any = await http.post('/api/login/outLogin')
-				if (body?.data?.logoutUrl) {
-					this.logoutUrl = body.data.logoutUrl
-				}
+				await http.post('/api/login/outLogin')
 			} catch {
 				/* 忽略退出接口异常 */
 			}
-			this.markUnauthenticated()
-			window.location.href = this.logoutUrl || DEFAULT_LOGOUT_URL
+			this.setToken('')
+			this.user = {
+				id: '',
+				username: '',
+				name: '',
+				realName: '',
+				avatar: ''
+			}
+			this.currentUser = null
+			this.authorityList = []
+			this.superAdmin = false
 		},
 		logout() {
 			this.logoutAction()

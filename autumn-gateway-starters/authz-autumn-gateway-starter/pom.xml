@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>xyz.wewin.autumn</groupId>
+		<artifactId>autumn-gateway-starters</artifactId>
+		<version>0.0.1-SNAPSHOT</version>
+	</parent>
+	<artifactId>authz-autumn-gateway-starter</artifactId>
+	<name>authz-autumn-gateway-starter</name>
+	<description>网关轻量认证 + 路由鉴权 starter：Authz 路由过滤器（JWT 校验 + JDBC RBAC）+ 本地登录/验证码端点</description>
+
+	<dependencies>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-autoconfigure</artifactId>
+		</dependency>
+		<!-- JDBC：只用原生 Connection/PreparedStatement 查 RBAC，不引 ORM -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-jdbc</artifactId>
+		</dependency>
+		<!-- BCrypt 校验（不含 web/config，体积最小） -->
+		<dependency>
+			<groupId>org.springframework.security</groupId>
+			<artifactId>spring-security-crypto</artifactId>
+		</dependency>
+		<!-- JWT 签发与验签：NimbusJwtEncoder / NimbusJwtDecoder，HS256；禁用 JJWT -->
+		<dependency>
+			<groupId>org.springframework.security</groupId>
+			<artifactId>spring-security-oauth2-jose</artifactId>
+		</dependency>
+		<!-- 网关过滤器工厂基类：由部署方提供（deploy），编译期需要，provided 不打包 -->
+		<dependency>
+			<groupId>org.springframework.cloud</groupId>
+			<artifactId>spring-cloud-starter-gateway-server-webflux</artifactId>
+			<scope>provided</scope>
+		</dependency>
+		<!-- 生成 spring-configuration-metadata.json（IDE 自动提示 autumn.authz.*） -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-configuration-processor</artifactId>
+			<optional>true</optional>
+		</dependency>
+	</dependencies>
+
+	<build>
+		<plugins>
+			<!--
+				显式打开注解处理：maven-compiler-plugin 较新版本默认不扫描编译类路径上的处理器，
+				不打开就生成不出 META-INF/spring-configuration-metadata.json，
+				IDE 也就拿不到 autumn.authz.* 的自动补全与文档提示。
+			-->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<configuration>
+					<proc>full</proc>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
+
+	<!--
+		注意：MySQL 驱动刻意不在这里声明。
+		本模块只面向 javax.sql.DataSource 编程，驱动由部署方（autumn-gateway-deploy 的 profile）提供，
+		starter 保持数据库无关。
+	-->
+
+</project>

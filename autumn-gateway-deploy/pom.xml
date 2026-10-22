@@ -51,29 +51,53 @@
 	<profiles>
 		<!-- ============================================================
 		     组件编排：用 -Pcomponent-xxx 决定最终网关里装了哪些能力。
-		     默认只开 authn；全部关闭即为「纯路由网关」。
+		     默认开轻量 authz（JWT + 路由级 FilterFactory）；OAuth2 单点方式仍保留为可选 profile。
+		     全部关闭即为「纯路由网关」。
 		     这就是后续「表单勾选组件 → 生成 pom → 统一构建」的落点。
 
-		     例：认证 + 限流一起装
+		     例：默认轻量 JWT 登录 + 路由级鉴权
+		       mvn ...
+		     例：OAuth2 单点认证（不用轻量 authz）
+		       mvn -Pcomponent-authn -Dno.authz ...
+		     例：轻量 authz + 限流
 		       mvn -Pcomponent-limit ...
-		     例：只装限流，不装认证
-		       mvn -Pcomponent-limit -Dno.authn ...
+		     例：只装限流，不装任何认证
+		       mvn -Pcomponent-limit -Dno.authz ...
 
 		     ⚠️ Maven 坑：只要在命令行显式写了任何一个 -P，所有 activeByDefault
-		     的 profile 都会被关闭。所以组件 profile 一律用「属性不存在则激活」
-		     （!no.xxx）而不是 activeByDefault，否则写 -Pos-windows 会把认证也关掉。
+		     的 profile 都会被关闭。默认组件因此用「属性不存在则激活」（!no.authz）
+		     而不是 activeByDefault；其余组件均为显式 profile。
 		     ============================================================ -->
 		<profile>
 			<id>component-authn</id>
+			<dependencies>
+				<dependency>
+					<groupId>xyz.wewin.autumn</groupId>
+					<artifactId>authn-autumn-gateway-starter</artifactId>
+				</dependency>
+			</dependencies>
+		</profile>
+
+		<!--
+			轻量认证 + 路由级鉴权：默认装配；用 -Dno.authz 关闭。
+			MySQL 驱动放在最终发行包而不是 starter 中，starter 本身只依赖 DataSource。
+		-->
+		<profile>
+			<id>component-authz</id>
 			<activation>
 				<property>
-					<name>!no.authn</name>
+					<name>!no.authz</name>
 				</property>
 			</activation>
 			<dependencies>
 				<dependency>
 					<groupId>xyz.wewin.autumn</groupId>
-					<artifactId>authn-autumn-gateway-starter</artifactId>
+					<artifactId>authz-autumn-gateway-starter</artifactId>
+				</dependency>
+				<dependency>
+					<groupId>com.mysql</groupId>
+					<artifactId>mysql-connector-j</artifactId>
+					<scope>runtime</scope>
 				</dependency>
 			</dependencies>
 		</profile>
