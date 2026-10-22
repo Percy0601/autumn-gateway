@@ -24,13 +24,13 @@
 
 -- basic_namespace 命名空间（租户，相当于一个公司/企业）
 CREATE TABLE IF NOT EXISTS `basic_namespace` (
-    `id`          BIGINT NOT NULL AUTO_INCREMENT,
+    `id`          BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键',
     `code`        VARCHAR(64) NOT NULL COMMENT '命名空间编码，如 default',
     `name`        VARCHAR(64) NOT NULL COMMENT '命名空间名称',
-    `description` VARCHAR(255) DEFAULT NULL,
+    `description` VARCHAR(255) DEFAULT NULL COMMENT '命名空间描述',
     `status`      TINYINT DEFAULT 1 COMMENT '1=正常 0=禁用',
-    `created_at`  DATETIME DEFAULT CURRENT_TIMESTAMP,
-    `updated_at`  DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `created_at`  DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_at`  DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最后更新时间',
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_namespace_code` (`code`),
     KEY `idx_namespace_status` (`status`)
@@ -39,16 +39,16 @@ CREATE TABLE IF NOT EXISTS `basic_namespace` (
 
 -- basic_app 应用（多应用隔离）pwd
 CREATE TABLE IF NOT EXISTS `basic_app` (
-    `id`            BIGINT NOT NULL AUTO_INCREMENT,
+    `id`            BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键',
     `app_code`      VARCHAR(64) NOT NULL COMMENT '短标识，如 order、crm、admin',
-    `name`          VARCHAR(64) NOT NULL,
+    `name`          VARCHAR(64) NOT NULL COMMENT '应用名称',
     `base_path`     VARCHAR(128) DEFAULT NULL COMMENT '该应用 API 统一前缀，如 /api/order',
-    `description`   VARCHAR(255) DEFAULT NULL,
+    `description`   VARCHAR(255) DEFAULT NULL COMMENT '应用描述',
     `status`        TINYINT DEFAULT 1 COMMENT '1=正常 0=禁用',
     `namespace_id`  BIGINT DEFAULT NULL COMMENT '所属命名空间ID，关联 basic_namespace.id',
     `namespace_code` VARCHAR(64) DEFAULT NULL COMMENT '所属命名空间编码',
-    `created_at`    DATETIME DEFAULT CURRENT_TIMESTAMP,
-    `updated_at`    DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `created_at`    DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_at`    DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最后更新时间',
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_appid` (`app_code`),
     KEY `idx_status` (`status`),
@@ -158,17 +158,17 @@ CREATE TABLE IF NOT EXISTS `basic_oper_log` (
 
 -- basic_resource 权限原子项（合并了 Resource 的 URL 四元组）
 CREATE TABLE IF NOT EXISTS `basic_resource` (
-    `id`          BIGINT NOT NULL AUTO_INCREMENT,
-    `app_id`      BIGINT NOT NULL,
-    `app_code`    VARCHAR(64) NOT NULL,
+    `id`          BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键',
+    `app_id`      BIGINT NOT NULL COMMENT '所属应用ID，关联 basic_app.id',
+    `app_code`    VARCHAR(64) NOT NULL COMMENT '所属应用编码（冗余），权限校验按它收敛，见 basic.rbac.app-code',
     `name`        VARCHAR(64) DEFAULT NULL COMMENT '权限名称，如"创建订单"',
     `path`        VARCHAR(255) DEFAULT NULL COMMENT 'URL 模式，如 /api/order/:id；MENU 时为路由路径',
     `http_method` VARCHAR(64) DEFAULT 'ALL' COMMENT 'HTTP 方法，支持多选逗号分隔，如 GET,POST；ALL 表示全部',
     `match_type`  VARCHAR(16) DEFAULT 'exact' COMMENT 'exact / prefix / suffix',
-    `description` VARCHAR(255) DEFAULT NULL,
+    `description` VARCHAR(255) DEFAULT NULL COMMENT '资源说明',
     `status`      TINYINT DEFAULT 1 COMMENT '1=正常 0=禁用',
-    `created_at`  DATETIME DEFAULT CURRENT_TIMESTAMP,
-    `updated_at`  DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `created_at`  DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_at`  DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最后更新时间',
     PRIMARY KEY (`id`),
     KEY `idx_resource_app_code` (`app_code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='权限原子项（合并了 Resource 的 URL 四元组）';

@@ -33,6 +33,10 @@ CREATE TABLE IF NOT EXISTS basic_namespace (
 CREATE INDEX IF NOT EXISTS idx_namespace_status ON basic_namespace(status);
 
 COMMENT ON TABLE basic_namespace IS '命名空间（租户，相当于一个公司/企业）';
+COMMENT ON COLUMN basic_namespace.id IS '主键';
+COMMENT ON COLUMN basic_namespace.description IS '命名空间描述';
+COMMENT ON COLUMN basic_namespace.created_at IS '创建时间';
+COMMENT ON COLUMN basic_namespace.updated_at IS '最后更新时间';
 COMMENT ON COLUMN basic_namespace.code IS '命名空间编码，如 default';
 COMMENT ON COLUMN basic_namespace.name IS '命名空间名称';
 COMMENT ON COLUMN basic_namespace.status IS '1=正常 0=禁用';
@@ -56,6 +60,11 @@ CREATE INDEX IF NOT EXISTS idx_status ON basic_app(status);
 CREATE INDEX IF NOT EXISTS idx_app_namespace ON basic_app(namespace_id);
 
 COMMENT ON TABLE basic_app IS '应用（多应用隔离）';
+COMMENT ON COLUMN basic_app.id IS '主键';
+COMMENT ON COLUMN basic_app.name IS '应用名称';
+COMMENT ON COLUMN basic_app.description IS '应用描述';
+COMMENT ON COLUMN basic_app.created_at IS '创建时间';
+COMMENT ON COLUMN basic_app.updated_at IS '最后更新时间';
 COMMENT ON COLUMN basic_app.app_code IS '短标识，如 order、crm、admin';
 COMMENT ON COLUMN basic_app.base_path IS '该应用 API 统一前缀，如 /api/order';
 COMMENT ON COLUMN basic_app.status IS '1=正常 0=禁用';
@@ -110,6 +119,7 @@ CREATE INDEX IF NOT EXISTS idx_group_group_parent ON basic_group_group(parent_gr
 CREATE INDEX IF NOT EXISTS idx_group_group_child ON basic_group_group(group_id);
 
 COMMENT ON TABLE basic_group_group IS '用户组与用户组关联表（组层级）';
+COMMENT ON COLUMN basic_group_group.id IS 'ID';
 COMMENT ON COLUMN basic_group_group.parent_group_id IS '上级用户组ID';
 COMMENT ON COLUMN basic_group_group.group_id IS '下级用户组ID';
 COMMENT ON COLUMN basic_group_group.deleted IS '删除状态：0-否 1-是';
@@ -133,6 +143,9 @@ CREATE INDEX IF NOT EXISTS idx_menu_resource_menu ON basic_menu_resource(menu_id
 CREATE INDEX IF NOT EXISTS idx_menu_resource_res ON basic_menu_resource(resource_id);
 
 COMMENT ON TABLE basic_menu_resource IS '菜单与资源关联表';
+COMMENT ON COLUMN basic_menu_resource.id IS 'ID';
+COMMENT ON COLUMN basic_menu_resource.create_time IS '创建时间';
+COMMENT ON COLUMN basic_menu_resource.update_time IS '更新时间';
 COMMENT ON COLUMN basic_menu_resource.menu_id IS '菜单ID';
 COMMENT ON COLUMN basic_menu_resource.resource_id IS '资源ID';
 COMMENT ON COLUMN basic_menu_resource.deleted IS '删除状态：0-否 1-是';
@@ -238,6 +251,12 @@ CREATE TABLE IF NOT EXISTS basic_resource (
 CREATE INDEX IF NOT EXISTS idx_resource_app_code ON basic_resource(app_code);
 
 COMMENT ON TABLE basic_resource IS '权限原子项（合并了 Resource 的 URL 四元组）';
+COMMENT ON COLUMN basic_resource.id IS '主键';
+COMMENT ON COLUMN basic_resource.app_id IS '所属应用ID，关联 basic_app.id';
+COMMENT ON COLUMN basic_resource.app_code IS '所属应用编码（冗余），权限校验按它收敛，见 basic.rbac.app-code';
+COMMENT ON COLUMN basic_resource.description IS '资源说明';
+COMMENT ON COLUMN basic_resource.created_at IS '创建时间';
+COMMENT ON COLUMN basic_resource.updated_at IS '最后更新时间';
 COMMENT ON COLUMN basic_resource.name IS '权限名称，如"创建订单"';
 COMMENT ON COLUMN basic_resource.path IS 'URL 模式，如 /api/order/:id；MENU 时为路由路径';
 COMMENT ON COLUMN basic_resource.http_method IS 'HTTP 方法，支持多选逗号分隔，如 GET,POST；ALL 表示全部';
@@ -358,6 +377,8 @@ CREATE INDEX IF NOT EXISTS idx_basic_user_phone ON basic_user(phone);
 CREATE INDEX IF NOT EXISTS idx_basic_user_status ON basic_user(status);
 
 COMMENT ON TABLE basic_user IS '基础用户表（已整合旧 user 主表字段）';
+COMMENT ON COLUMN basic_user.password IS '登录密码（BCrypt 哈希），参考 sys_user 方式';
+COMMENT ON COLUMN basic_user.login_error_count IS '剩余登录重试次数：每次密码错误 -1，减到 0 自动禁用账号；登录成功 / 重置密码 / 管理员启用时恢复为 5';
 COMMENT ON COLUMN basic_user.id IS 'ID';
 COMMENT ON COLUMN basic_user.uuid IS '对外统一标识（OIDC 的 sub）：生成后永不变化，避免暴露自增ID、便于跨库合并；唯一，可为 NULL';
 COMMENT ON COLUMN basic_user.username IS '登录名（工号语义）：创建后禁止修改，如需变更只能后台改库；唯一，可为 NULL';

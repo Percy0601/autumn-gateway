@@ -92,7 +92,12 @@ public class AuthorizationServerConfig {
     }
 
     /**
-     * 客户端仓储：从 oauth2_registered_client 表读取
+     * 客户端仓储：从 oauth2_registered_client 表读取。
+     *
+     * <p>该表由 schema-oauth2.sql 建立，一条记录 = 一个接入方；
+     * 「认证方式 / 授权模式 / scope / 回调地址」四列在库里是逗号分隔字符串，
+     * 由 {@code JdbcRegisteredClientRepository} 内部拆装，故不要在库里写带空格的逗号列表。
+     * 表为空时授权请求一律 401（invalid_client）。</p>
      */
     @Bean
     public RegisteredClientRepository registeredClientRepository(JdbcTemplate jdbcTemplate) {
@@ -100,7 +105,11 @@ public class AuthorizationServerConfig {
     }
 
     /**
-     * 授权记录持久化：不配置的话默认走内存，重启后已发放的令牌全部失效
+     * 授权记录持久化：不配置的话默认走内存，重启后已发放的令牌全部失效。
+     *
+     * <p>落表 oauth2_authorization，一行记录一次授权从授权码到刷新令牌的完整生命周期；
+     * 该表只增不减，需按 access_token_expires_at / refresh_token_expires_at 定期清理
+     * （清理语句见 schema-oauth2.sql 末尾的运维参考）。</p>
      */
     @Bean
     public OAuth2AuthorizationService authorizationService(JdbcTemplate jdbcTemplate,
@@ -110,7 +119,10 @@ public class AuthorizationServerConfig {
     }
 
     /**
-     * 授权同意记录持久化
+     * 授权同意记录持久化：落表 oauth2_authorization_consent。
+     *
+     * <p>只有客户端 client_settings 里 requireAuthorizationConsent=true 才会写入；
+     * 写入后同一用户 + 同一客户端不再重复弹确认页。</p>
      */
     @Bean
     public OAuth2AuthorizationConsentService authorizationConsentService(

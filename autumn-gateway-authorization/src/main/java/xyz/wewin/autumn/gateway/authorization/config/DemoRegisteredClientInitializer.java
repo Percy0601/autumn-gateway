@@ -63,24 +63,32 @@ public class DemoRegisteredClientInitializer implements ApplicationRunner {
             return;
         }
 
+        // 写入 oauth2_registered_client：withId 存 id 列，clientId/clientSecret 存同名两列。
+        // 密钥必须存哈希（PasswordEncoder 校验时会用 encode 后的值比对明文），明文只用于日志提示。
         RegisteredClient.Builder builder = RegisteredClient.withId(UUID.randomUUID().toString())
                 .clientId(this.clientId)
                 .clientSecret(this.passwordEncoder.encode(this.clientSecret))
+                // client_authentication_methods 列：BASIC = 走 Authorization 头传 client_id/secret
                 .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+                // authorization_grant_types 列：三个模式拼成逗号分隔字符串
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                 .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
                 .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
+                // scopes 列：openid 决定是否签发 id_token（OIDC），缺了它 userinfo 不可用
                 .scope(OidcScopes.OPENID)
                 .scope(OidcScopes.PROFILE)
                 .scope("business:read");
 
+        // redirect_uris 列：多个回调拼成逗号分隔字符串，授权请求必须精确命中其中之一
         for (String uri : resolveRedirectUris()) {
             builder.redirectUri(uri);
         }
 
+        // token_settings 列：整段序列化成 JSON 存库，改这里等于改令牌 TTL
         builder.tokenSettings(TokenSettings.builder()
                 .accessTokenTimeToLive(Duration.ofHours(2))
                 .refreshTokenTimeToLive(Duration.ofDays(7))
+                // 关闭刷新令牌复用：每次刷新都签发新 refresh_token（旧的可被检测重放）
                 .reuseRefreshTokens(false)
                 .build());
 

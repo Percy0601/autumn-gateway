@@ -49,6 +49,12 @@ public class JdbcJwkConfig {
         return new ImmutableJWKSet<>(jwkSet);
     }
 
+    /**
+     * 读取或首次生成 JWKS。
+     *
+     * <p>表结构见 schema-oauth2.sql 的 oauth2_jwk：
+     * id = kid（本配置的 key-id）、jwk_set_json = 含私钥的 JWK Set JSON、created_at/updated_at 为审计时间。</p>
+     */
     private JWKSet loadOrCreate() {
         String json = queryJson();
         if (StringUtils.hasText(json)) {
@@ -58,6 +64,7 @@ public class JdbcJwkConfig {
         // 首次启动（或多实例并发）时生成；并发场景下只有一个实例能插入成功
         String generated = JwkSupport.serialize(JwkSupport.generate(this.keyId));
         try {
+            // 时间列由数据库生成：多实例机器时钟不一致时，应用侧时间会导致 created_at 乱序
             this.jdbcTemplate.update(
                     "INSERT INTO oauth2_jwk (id, jwk_set_json, created_at, updated_at) VALUES (?, ?, NOW(), NOW())",
                     this.keyId, generated);
@@ -72,6 +79,10 @@ public class JdbcJwkConfig {
         throw new IllegalStateException("JWKS 密钥初始化失败：oauth2_jwk 中未找到 id=" + this.keyId);
     }
 
+    /**
+     * 只取 jwk_set_json 一列（BLOB/TEXT 全量取出后由 Nimbus 解析），
+     * 不做 count 校验——表里理论上只有一条，多 key 轮换时也按 kid 精确取。
+     */
     private String queryJson() {
         return this.jdbcTemplate.query(
                 "SELECT jwk_set_json FROM oauth2_jwk WHERE id = ?",

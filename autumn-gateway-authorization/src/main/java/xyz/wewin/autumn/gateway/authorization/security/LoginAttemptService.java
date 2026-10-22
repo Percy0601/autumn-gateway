@@ -79,6 +79,7 @@ public class LoginAttemptService {
         if (loginKey == null || loginKey.isBlank()) {
             return;
         }
+        // 仅对「未锁定」的行 +1：锁定期间继续输错既不加计数、也不顺延锁定时长
         int updated = this.jdbcTemplate.update("""
                         UPDATE user_login_security
                         SET failed_count = failed_count + 1,
@@ -89,6 +90,7 @@ public class LoginAttemptService {
                           AND (locked_until IS NULL OR locked_until <= NOW())
                         """, ip, loginKey);
 
+        // 该 login_key 首次失败时表里还没有行，补插一条（updated = 0 才会走到这里）
         if (updated == 0 && !exists(loginKey)) {
             this.jdbcTemplate.update("""
                             INSERT INTO user_login_security
@@ -97,6 +99,8 @@ public class LoginAttemptService {
                             """, loginKey, ip);
         }
 
+        // 达到阈值才写 locked_until；单独一条 SQL，避免在 ON DUPLICATE KEY UPDATE 里
+        // 读到刚被 +1 的新值而误判（MySQL 后续表达式使用已更新值）
         this.jdbcTemplate.update("""
                         UPDATE user_login_security
                         SET locked_until = DATE_ADD(NOW(), INTERVAL ? MINUTE),
@@ -114,6 +118,7 @@ public class LoginAttemptService {
         if (loginKey == null || loginKey.isBlank()) {
             return;
         }
+        // UPSERT：首次登录直接插入，已有记录则清零计数并解除锁定（locked_until = NULL）
         this.jdbcTemplate.update("""
                         INSERT INTO user_login_security
                             (login_key, failed_count, last_success_at, last_login_ip, created_at, updated_at)

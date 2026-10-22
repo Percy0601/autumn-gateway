@@ -27,33 +27,33 @@
 
 -- 1. 应用（多应用隔离）
 CREATE TABLE IF NOT EXISTS application (
-  id          BIGINT PRIMARY KEY AUTO_INCREMENT,
+  id          BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键',
   appid       VARCHAR(64) NOT NULL COMMENT '短标识，如 order、crm、admin',
-  name        VARCHAR(64) NOT NULL,
+  name        VARCHAR(64) NOT NULL COMMENT '应用名称',
   base_path   VARCHAR(128) COMMENT '该应用 API 统一前缀，如 /api/order',
-  description VARCHAR(255),
+  description VARCHAR(255) COMMENT '应用描述',
   status      TINYINT DEFAULT 1 COMMENT '1=正常 0=禁用',
-  created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updated_at  DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  created_at  DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  updated_at  DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最后更新时间',
   UNIQUE KEY uk_app_appid (appid),
   INDEX idx_app_status (status)
 ) COMMENT='应用（多应用隔离）';
 
 -- 2. 用户（全局共享）
 CREATE TABLE IF NOT EXISTS `user` (
-  id            BIGINT PRIMARY KEY AUTO_INCREMENT,
+  id            BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键',
   uuid          VARCHAR(36) NOT NULL COMMENT '对外统一标识（OIDC 的 sub）：生成后永不变化，避免暴露自增ID、便于跨库合并',
   username      VARCHAR(64) UNIQUE COMMENT '登录名（工号语义）：创建后禁止修改，如需变更只能后台改库',
-  nickname      VARCHAR(64),
-  avatar        VARCHAR(255),
-  email         VARCHAR(128),
-  phone         VARCHAR(32),
+  nickname      VARCHAR(64) COMMENT '昵称/姓名',
+  avatar        VARCHAR(255) COMMENT '头像地址',
+  email         VARCHAR(128) COMMENT '邮箱',
+  phone         VARCHAR(32) COMMENT '手机号',
   emp_no        VARCHAR(64) COMMENT '员工工号',
   status        TINYINT DEFAULT 1 COMMENT '1=正常 0=禁用',
   password_updated_at DATETIME COMMENT '密码最后修改时间，用于密码有效期/强制改密',
-  last_login_at DATETIME,
-  created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updated_at    DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  last_login_at DATETIME COMMENT '最近登录时间',
+  created_at    DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  updated_at    DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最后更新时间',
   UNIQUE KEY uk_uuid (uuid),
   INDEX idx_user_email (email),
   INDEX idx_user_phone (phone),
@@ -62,11 +62,11 @@ CREATE TABLE IF NOT EXISTS `user` (
 
 -- 3. 用户在哪些应用下有身份（Wolf 核心设计）
 CREATE TABLE IF NOT EXISTS user_app (
-    id         BIGINT AUTO_INCREMENT PRIMARY KEY,
-    user_id    BIGINT NOT NULL,
-    app_id     BIGINT NOT NULL,
+    id         BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '主键',
+    user_id    BIGINT NOT NULL COMMENT '用户ID，关联 user.id',
+    app_id     BIGINT NOT NULL COMMENT '应用ID，关联 application.id',
     is_admin   TINYINT DEFAULT 0 COMMENT '是否该应用管理员',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     UNIQUE KEY uk_user_app (user_id, app_id),
     INDEX idx_app_user (app_id, user_id),
     FOREIGN KEY (user_id) REFERENCES `user`(id) ON DELETE CASCADE,
@@ -75,8 +75,8 @@ CREATE TABLE IF NOT EXISTS user_app (
 
 -- 4. 认证账户（统一存储多种认证方式）
 CREATE TABLE IF NOT EXISTS user_auth_account (
-  id            BIGINT PRIMARY KEY AUTO_INCREMENT,
-  user_id       BIGINT NOT NULL,
+  id            BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键',
+  user_id       BIGINT NOT NULL COMMENT '用户ID，关联 user.id',
   identity_type VARCHAR(32) NOT NULL COMMENT 'password / oidc / wechat_mp / wechat_oa / sms',
   identifier    VARCHAR(255) NOT NULL COMMENT '该认证方式下的登录标识：password=用户名，oidc=外部sub，wechat=openid，sms=手机号',
   credential    VARCHAR(512) COMMENT '密码 bcrypt hash / OIDC refresh_token(加密)',
@@ -86,8 +86,8 @@ CREATE TABLE IF NOT EXISTS user_auth_account (
   union_id      VARCHAR(255) COMMENT '微信 unionid，跨应用打通（仅第三方登录使用）',
   verified      TINYINT DEFAULT 0 COMMENT '是否已验证',
   credential_updated_at DATETIME COMMENT '凭据最后更新时间（改密/换绑）',
-  created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updated_at    DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  created_at    DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  updated_at    DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最后更新时间',
   -- password 方式下 identifier 即用户名，天然保证用户名唯一
   UNIQUE KEY uk_type_identifier (identity_type, identifier),
   -- 第三方登录防重复绑定（issuer 非空的场景下生效）
@@ -99,8 +99,8 @@ CREATE TABLE IF NOT EXISTS user_auth_account (
 
 -- 5. 权限/资源（合并 RBAC Permission + Wolf Resource）
 CREATE TABLE IF NOT EXISTS permission (
-  id            BIGINT PRIMARY KEY AUTO_INCREMENT,
-  app_id        BIGINT NOT NULL,
+  id            BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键',
+  app_id        BIGINT NOT NULL COMMENT '所属应用ID，关联 application.id',
   category      VARCHAR(64) COMMENT '分类标签，如"订单管理"',
   code          VARCHAR(128) NOT NULL COMMENT '权限编码，如 order:create',
   name          VARCHAR(64) COMMENT '权限名称，如"创建订单"',
@@ -114,10 +114,10 @@ CREATE TABLE IF NOT EXISTS permission (
   sort          INT DEFAULT 0 COMMENT '排序',
   hidden        TINYINT DEFAULT 0 COMMENT '1=菜单隐藏',
   -- 通用字段
-  description   VARCHAR(255),
+  description   VARCHAR(255) COMMENT '权限说明',
   status        TINYINT DEFAULT 1 COMMENT '1=正常 0=禁用',
-  created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updated_at    DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  created_at    DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  updated_at    DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最后更新时间',
   UNIQUE KEY uk_app_code (app_id, code),
   INDEX idx_perm_type (perm_type),
   INDEX idx_perm_status (status),
@@ -127,14 +127,14 @@ CREATE TABLE IF NOT EXISTS permission (
 
 -- 6. 角色（RBAC 的 R）
 CREATE TABLE IF NOT EXISTS `role` (
-  id          BIGINT PRIMARY KEY AUTO_INCREMENT,
+  id          BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键',
   app_id      BIGINT NOT NULL COMMENT '角色按应用隔离',
   code        VARCHAR(64) NOT NULL COMMENT '如 admin, auditor, finance_viewer',
-  name        VARCHAR(64) NOT NULL,
-  description VARCHAR(255),
+  name        VARCHAR(64) NOT NULL COMMENT '角色名称',
+  description VARCHAR(255) COMMENT '角色说明',
   status      TINYINT DEFAULT 1 COMMENT '1=正常 0=禁用',
-  created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updated_at  DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  created_at  DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  updated_at  DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最后更新时间',
   UNIQUE KEY uk_app_role_code (app_id, code),
   INDEX idx_role_status (status),
   FOREIGN KEY (app_id) REFERENCES application(id) ON DELETE CASCADE
@@ -142,13 +142,13 @@ CREATE TABLE IF NOT EXISTS `role` (
 
 -- 7. 用户授角色（含应用上下文）
 CREATE TABLE IF NOT EXISTS user_role (
-  id         BIGINT AUTO_INCREMENT PRIMARY KEY,
-  user_id    BIGINT NOT NULL,
-  role_id    BIGINT NOT NULL,
+  id         BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '主键',
+  user_id    BIGINT NOT NULL COMMENT '用户ID，关联 user.id',
+  role_id    BIGINT NOT NULL COMMENT '角色ID，关联 role.id',
   app_id     BIGINT NOT NULL COMMENT '同一用户在不同应用可有不同角色',
   expires_at DATETIME COMMENT '临时授权到期时间',
   created_by BIGINT COMMENT '授权人 user_id',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '授权时间',
   UNIQUE KEY uk_user_role_app (user_id, role_id, app_id),
   INDEX idx_role_user (role_id),
   INDEX idx_app (app_id),
@@ -159,10 +159,10 @@ CREATE TABLE IF NOT EXISTS user_role (
 
 -- 8. 角色赋权
 CREATE TABLE IF NOT EXISTS role_permission (
-  id            BIGINT PRIMARY KEY AUTO_INCREMENT,
-  role_id       BIGINT NOT NULL,
-  permission_id BIGINT NOT NULL,
-  created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
+  id            BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键',
+  role_id       BIGINT NOT NULL COMMENT '角色ID，关联 role.id',
+  permission_id BIGINT NOT NULL COMMENT '权限ID，关联 permission.id',
+  created_at    DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '授权时间',
   UNIQUE KEY uk_role_perm (role_id, permission_id),
   INDEX idx_perm (permission_id),
   FOREIGN KEY (role_id) REFERENCES `role`(id) ON DELETE CASCADE,
@@ -171,18 +171,18 @@ CREATE TABLE IF NOT EXISTS role_permission (
 
 -- 9. 审计日志（所有经过网关的访问均记录）
 CREATE TABLE IF NOT EXISTS audit_log (
-  id         BIGINT PRIMARY KEY AUTO_INCREMENT,
-  app_id     BIGINT,
-  user_id    BIGINT,
+  id         BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键',
+  app_id     BIGINT COMMENT '应用ID，NULL 表示未能解析出所属应用',
+  user_id    BIGINT COMMENT '操作人用户ID，NULL 表示匿名访问',
   action     VARCHAR(64) COMMENT 'LOGIN / ACCESS_CHECK / PERMISSION_CHANGE / ROLE_ASSIGN',
   resource   VARCHAR(1024) COMMENT '请求的 URL 或操作的资源标识',
   method     VARCHAR(16) COMMENT 'HTTP method',
   status     TINYINT COMMENT '1=允许 0=拒绝',
   reason     VARCHAR(256) COMMENT '拒绝原因',
-  client_ip  VARCHAR(45),
-  user_agent TEXT,
+  client_ip  VARCHAR(45) COMMENT '客户端IP（兼容 IPv6，故为 45 位）',
+  user_agent TEXT COMMENT 'User-Agent 原文，便于排查客户端类型',
   request_id VARCHAR(36) COMMENT '链路追踪 ID',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '记录时间（审计表只追加，不修改）',
   INDEX idx_audit_user (user_id),
   INDEX idx_app_time (app_id, created_at),
   INDEX idx_created_at (created_at),
@@ -196,14 +196,14 @@ CREATE TABLE IF NOT EXISTS audit_log (
 
 -- basic_app 应用（多应用隔离）
 CREATE TABLE IF NOT EXISTS `basic_app` (
-    `id`          BIGINT NOT NULL AUTO_INCREMENT,
+    `id`          BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键',
     `app_code`    VARCHAR(64) NOT NULL COMMENT '短标识，如 order、crm、admin',
-    `name`        VARCHAR(64) NOT NULL,
+    `name`        VARCHAR(64) NOT NULL COMMENT '应用名称',
     `base_path`   VARCHAR(128) DEFAULT NULL COMMENT '该应用 API 统一前缀，如 /api/order',
-    `description` VARCHAR(255) DEFAULT NULL,
+    `description` VARCHAR(255) DEFAULT NULL COMMENT '应用描述',
     `status`      TINYINT DEFAULT 1 COMMENT '1=正常 0=禁用',
-    `created_at`  DATETIME DEFAULT CURRENT_TIMESTAMP,
-    `updated_at`  DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `created_at`  DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_at`  DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最后更新时间',
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_basic_app_code` (`app_code`),
     KEY `idx_basic_app_status` (`status`)
@@ -310,17 +310,17 @@ CREATE TABLE IF NOT EXISTS `basic_oper_log` (
 
 -- basic_resource 权限原子项（合并了 Resource 的 URL 四元组）
 CREATE TABLE IF NOT EXISTS `basic_resource` (
-    `id`          BIGINT NOT NULL AUTO_INCREMENT,
-    `app_id`      BIGINT NOT NULL,
-    `app_code`    VARCHAR(64) NOT NULL,
+    `id`          BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键',
+    `app_id`      BIGINT NOT NULL COMMENT '所属应用ID，关联 basic_app.id',
+    `app_code`    VARCHAR(64) NOT NULL COMMENT '所属应用编码（冗余），权限校验按它收敛，见 basic.rbac.app-code',
     `name`        VARCHAR(64) DEFAULT NULL COMMENT '权限名称，如"创建订单"',
     `path`        VARCHAR(255) DEFAULT NULL COMMENT 'URL 模式，如 /api/order/:id；MENU 时为路由路径',
     `http_method` VARCHAR(16) DEFAULT 'ALL' COMMENT 'ALL / GET / POST / PUT / DELETE / PATCH',
     `match_type`  VARCHAR(16) DEFAULT 'exact' COMMENT 'exact / prefix / suffix',
-    `description` VARCHAR(255) DEFAULT NULL,
+    `description` VARCHAR(255) DEFAULT NULL COMMENT '资源说明',
     `status`      TINYINT DEFAULT 1 COMMENT '1=正常 0=禁用',
-    `created_at`  DATETIME DEFAULT CURRENT_TIMESTAMP,
-    `updated_at`  DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `created_at`  DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_at`  DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最后更新时间',
     PRIMARY KEY (`id`),
     KEY `idx_resource_app_code` (`app_code`)
 ) COMMENT='权限原子项（合并了 Resource 的 URL 四元组）';
