@@ -135,19 +135,38 @@ public class AuthnGatewayAutoConfiguration {
     }
 
     /**
-     * XHR / JSON 请求直接回 401，而不是 302 到登录页。
+     * Return 401 for XHR / JSON requests instead of 302 redirect to login page.
      *
-     * <p>否则 SPA 的 axios 会跟随重定向拿到登录页 HTML（HTTP 200），
-     * 前端既判不出未登录，又会因为 JSON.parse 失败报一堆莫名其妙的错。</p>
+     * <p>Otherwise SPA axios follows redirect and gets login page HTML (HTTP 200),
+     * frontend cannot detect auth failure and JSON.parse fails with weird errors.</p>
+     *
+     * <p>Matching rules (avoid misjudging browser page request as XHR):
+     * <ul>
+     *   <li>Accept explicitly wants {@code text/html} -> page request, 302 (not XHR);</li>
+     *   <li>Accept explicitly wants {@code application/json} or {@code application/*} -> XHR, 401;</li>
+     *   <li>Accept is wildcard or empty -> default 302 (page request).</li>
+     * </ul>
+     * Key: do NOT use {@code isCompatibleWith(APPLICATION_JSON)}, because browser Accept
+     * header contains a wildcard type which is compatible with JSON,
+     * causing page requests to also return 401.</p>
      */
     private static ServerWebExchangeMatcher jsonOrXhrMatcher() {
         return (exchange) -> {
             List<MediaType> accept = exchange.getRequest().getHeaders().getAccept();
-            boolean jsonPreferred = !accept.isEmpty()
-                    && accept.stream().anyMatch((media) -> media.isCompatibleWith(MediaType.APPLICATION_JSON));
+            // Explicitly wants HTML = page navigation, not XHR
+            boolean wantsHtml = accept.stream()
+                    .anyMatch(media -> media.isCompatibleWith(MediaType.TEXT_HTML));
+            // Explicitly wants JSON (application/json or application/*), exclude wildcard */*
+            boolean wantsJson = accept.stream()
+                    .anyMatch(media -> media.getType().equals("application")
+                            && (media.getSubtype().equals("json") || media.getSubtype().equals("*")));
             boolean xhr = "XMLHttpRequest"
                     .equalsIgnoreCase(exchange.getRequest().getHeaders().getFirst("X-Requested-With"));
-            return (jsonPreferred || xhr)
+
+            if (wantsHtml) {
+                return ServerWebExchangeMatcher.MatchResult.notMatch();
+            }
+            return (wantsJson || xhr)
                     ? ServerWebExchangeMatcher.MatchResult.match()
                     : ServerWebExchangeMatcher.MatchResult.notMatch();
         };

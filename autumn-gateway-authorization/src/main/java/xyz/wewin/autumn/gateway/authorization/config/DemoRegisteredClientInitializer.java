@@ -11,6 +11,7 @@ import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.core.oidc.OidcScopes;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
+import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
 import org.springframework.security.oauth2.server.authorization.settings.TokenSettings;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -77,7 +78,10 @@ public class DemoRegisteredClientInitializer implements ApplicationRunner {
                 // scopes 列：openid 决定是否签发 id_token（OIDC），缺了它 userinfo 不可用
                 .scope(OidcScopes.OPENID)
                 .scope(OidcScopes.PROFILE)
-                .scope("business:read");
+                .scope("business:read")
+                // 本地联调：关闭授权确认页（consent），登录后直接发 code，不需要用户点"确认授权"
+                // 生产环境如需 consent，改为 true 并提供 Thymeleaf 模板 templates/oauth2/consent.html
+                .clientSettings(ClientSettings.builder().requireAuthorizationConsent(false).build());
 
         // redirect_uris 列：多个回调拼成逗号分隔字符串，授权请求必须精确命中其中之一
         for (String uri : resolveRedirectUris()) {
