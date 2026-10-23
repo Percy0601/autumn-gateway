@@ -39,8 +39,8 @@ export const useUserStore = defineStore('userStore', {
 			if (token) localStorage.setItem('token', token)
 			else localStorage.removeItem('token')
 		},
-		// 账号登录：POST /gateway/endpoint/login -> { token }（登录由网关 starter 完成，
-		// 验证码也由它校验：GET /gateway/endpoint/captcha）。
+		// 账号登录：POST /gateway/endpoint/login -> { token }（登录由网关 starter 完成并校验验证码，
+		// 验证码图片由 dashboard 的 GET /api/captcha 提供，captchaId 经 HttpOnly Cookie 下发）。
 		// loginForm 需带 username / password / captcha
 		async accountLoginAction(loginForm: any) {
 			// 响应拦截器已把 AxiosResponse 解包成业务 body，这里显式按 any 收窄

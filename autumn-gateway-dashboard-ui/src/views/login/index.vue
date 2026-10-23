@@ -143,8 +143,8 @@ const form = reactive({
 	captcha: ''
 })
 
-// 验证码：直出图片方案 —— GET /gateway/endpoint/captcha 直接返回 SVG，<img src> 渲染，
-// 点击刷新；captchaId（若网关要求）由 HttpOnly Cookie 下发，前端无需感知。
+// 验证码：直出图片方案 —— GET /api/captcha 直接返回 SVG，<img src> 渲染，
+// 点击刷新；captchaId 由 HttpOnly Cookie 下发，前端无需感知。
 // 加载中/失败都有明确视觉状态——静默失败是「验证码不显示」类问题最难排查的原因。
 const captchaImg = ref('')
 const captchaLoading = ref(false)
@@ -155,7 +155,7 @@ const captchaError = ref(false)
 const refreshCaptcha = () => {
 	captchaLoading.value = true
 	captchaError.value = false
-	captchaImg.value = `/gateway/endpoint/captcha?_t=${Date.now()}`
+	captchaImg.value = `/api/captcha?_t=${Date.now()}`
 	form.captcha = ''
 }
 
