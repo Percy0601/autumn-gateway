@@ -35,10 +35,10 @@ export default defineConfig({
 		host: '0.0.0.0',
 		port: 3000, // 端口号
 		open: false, // 是否自动打开浏览器
-		// 开发环境将 /api 代理到本地 dashboard 服务
+		// 开发环境将 /api 直接代理到 dashboard 服务（直连方式，不经过网关；网关可能未启动）
 		proxy: {
 			'/api': {
-				target: 'http://localhost:8080',
+				target: 'http://localhost:8081',
 				changeOrigin: true
 			},
 			'/gateway': {
