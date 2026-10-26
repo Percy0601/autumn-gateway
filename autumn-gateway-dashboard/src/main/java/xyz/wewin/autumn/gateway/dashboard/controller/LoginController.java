@@ -4,15 +4,22 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.util.StringUtils;
+import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import xyz.wewin.autumn.gateway.dashboard.dto.LoginRequest;
 import xyz.wewin.autumn.gateway.dashboard.entity.basic.BasicUser;
 import xyz.wewin.autumn.gateway.dashboard.repo.BasicUserRepository;
+import xyz.wewin.autumn.gateway.dashboard.security.CaptchaService;
+import xyz.wewin.autumn.gateway.dashboard.security.DashboardLoginService;
 import xyz.wewin.autumn.gateway.dashboard.security.LoginUser;
 import xyz.wewin.autumn.gateway.dashboard.security.Permissions;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -20,22 +27,77 @@ import java.util.Map;
  *
  * <pre>
  *   GET  /api/currentUser     当前用户信息（凭据 = Authorization: Bearer &lt;jwt&gt;）
+ *   POST /api/login/account   账号密码登录（验证码 + 密码 + 签发 JWT）
  *   POST /api/login/outLogin  退出登录
  * </pre>
  *
- * <h3>登录去哪了（重要）</h3>
- * 本服务<b>不签发令牌</b>：登录由网关 starter 的 {@code POST /gateway/endpoint/login}
- * 完成（含验证码校验），签发后的 JWT 由前端存进 localStorage，
- * 之后每个请求都以 {@code Authorization: Bearer <jwt>} 头带上，
- * 由 {@code JwtAuthenticationFilter} 验签。本服务不持有会话、不依赖 Cookie。
+ * <h3>登录在哪（重要）</h3>
+ * 登录由<b>本服务</b>的 {@code POST /api/login/account} 完成（含验证码校验，见
+ * {@link DashboardLoginService}），签发的 JWT 与网关 starter 的
+ * {@code /gateway/endpoint/login} 同契约（同一把共享密钥 HS256、同载荷字段），
+ * 前端把 token 存进 localStorage，之后每个请求都以
+ * {@code Authorization: Bearer <jwt>} 头带上，由 {@code JwtAuthenticationFilter} 验签。
+ * 本服务不持有会话、不依赖 Cookie。
  *
- * <p>因此这里只负责「已认证之后」的用户信息与退出。</p>
+ * <p>网关侧路由已预留匿名放行（{@code /api/captcha}、{@code /api/login/account}、
+ * {@code /api/login/outLogin} 不挂 Authz，直接转发到本服务），登录页整套协议无需 Bearer。</p>
  */
 @RestController
 public class LoginController {
 
     @Autowired
     private BasicUserRepository basicUserRepository;
+
+    @Autowired
+    private DashboardLoginService loginService;
+
+    /**
+     * 账号密码登录（替代原网关 {@code /gateway/endpoint/login}）。
+     *
+     * <p>协议与网关 authz starter 的登录端点完全一致，前端可无缝切换：</p>
+     * <pre>
+     *   成功  {"status":"ok","type":"account","currentAuthority":["admin"],
+     *          "token":"&lt;jwt&gt;","userid":"1","name":"admin"}
+     *   失败  {"status":"error","type":"account","currentAuthority":"guest","message":"..."}
+     * </pre>
+     * 失败也返回 HTTP 200 —— 前端只看 {@code status} 字段，返回 401 会走全局错误处理、
+     * 拿不到 {@code message}，表现为「点了登录没反应」。
+     *
+     * <p>验证码：{@code /api/captcha} 下发 SVG + HttpOnly Cookie（captchaId），
+     * 这里从 Cookie 读取并交给本服务校验 —— 生成与校验同源同机，不再出现
+     * 「网关用同名 Cookie 校验 dashboard 生成的验证码、必然查不到答案」的问题。</p>
+     */
+    @PostMapping("/api/login/account")
+    public Map<String, Object> accountLogin(@RequestBody(required = false) LoginRequest request,
+                                            @CookieValue(value = CaptchaService.CAPTCHA_COOKIE,
+                                                    required = false) String captchaIdCookie) {
+        String type = request != null && StringUtils.hasText(request.getType()) ? request.getType() : "account";
+        String username = request == null ? "" : request.getUsername();
+        String password = request == null ? "" : request.getPassword();
+        String captcha = request == null ? "" : request.getCaptcha();
+        // captchaId 优先取 Cookie（直出图片方案的唯一权威来源），请求体字段仅作旧流程兼容
+        String captchaId = StringUtils.hasText(captchaIdCookie) ? captchaIdCookie
+                : (request == null ? null : request.getCaptchaId());
+
+        DashboardLoginService.LoginResult result = this.loginService.login(username, password, captchaId, captcha);
+        if (result.ok()) {
+            List<String> authority = result.authorities().isEmpty()
+                    ? List.of(result.admin() ? "admin" : "user")
+                    : result.authorities();
+            return Map.of(
+                    "status", "ok",
+                    "type", type,
+                    "currentAuthority", authority,
+                    "token", result.token(),
+                    "userid", String.valueOf(result.userId()),
+                    "name", result.username());
+        }
+        return Map.of(
+                "status", "error",
+                "type", type,
+                "currentAuthority", "guest",
+                "message", result.message());
+    }
 
     /**
      * 当前登录用户信息：凭据来自 {@code Authorization} 头，验签后装配出 {@link LoginUser}。

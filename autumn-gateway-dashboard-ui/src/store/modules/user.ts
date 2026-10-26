@@ -13,8 +13,8 @@ export const useUserStore = defineStore('userStore', {
 			avatar: ''
 		},
 		currentUser: null as any,
-		// 访问 token：登录后由网关 starter 签发，存 localStorage，请求时以
-		// Authorization: Bearer <token> 带上（见 utils/request.ts）
+		// 访问 token：登录后由 dashboard 服务 /api/login/account 签发（与网关同契约），
+		// 存 localStorage，请求时以 Authorization: Bearer <token> 带上（见 utils/request.ts）
 		token: localStorage.getItem('token') || '',
 		// 按钮级权限标识清单（后端 /api/currentUser 的 authorityList），供 v-auth 指令使用。
 		// 超管的清单里带一个 "*"，v-auth 见 "*" 即视为全放行。
@@ -39,12 +39,12 @@ export const useUserStore = defineStore('userStore', {
 			if (token) localStorage.setItem('token', token)
 			else localStorage.removeItem('token')
 		},
-		// 账号登录：POST /gateway/endpoint/login -> { token }（登录由网关 starter 完成并校验验证码，
-		// 验证码图片由 dashboard 的 GET /api/captcha 提供，captchaId 经 HttpOnly Cookie 下发）。
+		// 账号登录：POST /api/login/account -> { status, token }（登录由 dashboard 服务完成：
+		// 验证码校验与签发都在同一服务，captchaId 经 HttpOnly Cookie 下发）。
 		// loginForm 需带 username / password / captcha
 		async accountLoginAction(loginForm: any) {
 			// 响应拦截器已把 AxiosResponse 解包成业务 body，这里显式按 any 收窄
-			const body: any = await http.post('/gateway/endpoint/login', { ...loginForm })
+			const body: any = await http.post('/api/login/account', { ...loginForm })
 			const token = body?.token || body?.data?.token
 			if (token) {
 				this.setToken(token)

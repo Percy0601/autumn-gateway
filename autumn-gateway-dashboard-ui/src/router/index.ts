@@ -79,7 +79,7 @@ const whiteList = ['/login']
 /**
  * Bearer JWT 模式下的路由守卫。
  *
- * <p>判定依据就是本地有没有 token：令牌由网关 starter 的 {@code /gateway/endpoint/login}
+ * <p>判定依据就是本地有没有 token：令牌由 dashboard 服务的 {@code /api/login/account}
  * 签发后存在 localStorage，每个请求由 utils/request.ts 以
  * {@code Authorization: Bearer <jwt>} 带上；有 token 再调 {@code /api/currentUser}
  * 换取用户信息与权限。</p>

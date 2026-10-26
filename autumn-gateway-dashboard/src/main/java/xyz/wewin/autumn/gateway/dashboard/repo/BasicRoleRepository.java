@@ -16,6 +16,20 @@ public interface BasicRoleRepository extends CrudRepository<BasicRole, Long> {
 
     Optional<BasicRole> findByNamespaceIdAndCode(Long namespaceId, String code);
 
+    /**
+     * 登录签发令牌用的角色编码集合：与网关 authz starter 的 roles-query 同一套归属逻辑
+     * （basic_user_role → basic_role，按应用编码过滤）。令牌里的 authorities 仅是参考，
+     * dashboard 的 RBAC 仍由 basic_* 表装配，这里只保证与网关签出的令牌形态一致。
+     */
+    @Query("""
+        SELECT DISTINCT r.code FROM basic_user_role ur
+        JOIN basic_role r ON r.id = ur.role_id
+        WHERE ur.user_id = :userId AND ur.del_flag = 0 AND r.del_flag = 0 AND r.status = 1
+          AND ur.app_id IN (SELECT a.id FROM basic_app a WHERE a.app_code = :appCode)
+        """)
+    List<String> findRoleCodesByUserIdAndAppCode(@Param("userId") Long userId,
+                                                 @Param("appCode") String appCode);
+
     /** 同一命名空间下，角色编码是否重复 */
     @Query("SELECT COUNT(1) FROM basic_role WHERE namespace_id = :namespaceId AND code = :code")
     long countByNamespaceIdAndCode(@Param("namespaceId") Long namespaceId, @Param("code") String code);

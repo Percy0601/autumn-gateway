@@ -179,7 +179,7 @@ const rules = {
 	captcha: [{ required: true, message: '请输入验证码', trigger: 'blur' }]
 }
 
-// 登录：POST /gateway/endpoint/login（由网关 starter 完成校验并签发 JWT），
+// 登录：POST /api/login/account（由 dashboard 服务完成验证码校验并签发 JWT，与网关同契约），
 // 成功后 token 存 localStorage，后续请求统一带 Authorization: Bearer。
 const handleSubmit = () => {
 	formRef.value.validate(async (valid: boolean) => {

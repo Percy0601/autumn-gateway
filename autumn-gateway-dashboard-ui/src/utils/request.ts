@@ -21,7 +21,7 @@ const http = axios.create({
 
 // 请求拦截：附加 JWT（唯一凭据传递方式）。
 //
-// token 由网关 starter 的 POST /gateway/endpoint/login 签发，登录页存进 localStorage。
+// token 由 dashboard 服务的 POST /api/login/account 签发（与网关 starter 同契约），登录页存进 localStorage。
 // 这里每次实时读 localStorage 而不是缓存一份 —— 401 拦截器会清掉它，
 // 缓存副本会让「已过期」的请求继续带着旧 token 重试。
 http.interceptors.request.use((config: any) => {
