@@ -30,6 +30,19 @@ const fallbackMenu = [
 			{ id: 27, name: '用户组管理', url: 'system/group/index', openStyle: 0, icon: 'group' },
 			{ id: 34, name: '日志管理', url: 'system/operLog/index', openStyle: 0, icon: 'file-text' }
 		]
+	},
+	{
+		id: 3,
+		name: '网关配置',
+		url: null,
+		openStyle: 0,
+		icon: 'connection',
+		children: [
+			{ id: 31, name: '网关路由', url: 'gateway/route/index', openStyle: 0, icon: 'guide' },
+			{ id: 32, name: '全局配置', url: 'gateway/config/index', openStyle: 0, icon: 'setting' },
+			{ id: 33, name: '全局过滤器', url: 'gateway/globalFilter/index', openStyle: 0, icon: 'filter' },
+			{ id: 35, name: '配置中心', url: 'gateway/center/index', openStyle: 0, icon: 'link' }
+		]
 	}
 ]
 

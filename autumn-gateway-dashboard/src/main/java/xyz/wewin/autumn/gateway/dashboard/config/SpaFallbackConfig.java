@@ -73,6 +73,8 @@ public class SpaFallbackConfig implements WebMvcConfigurer {
      *   <li>{@code /dashboard/**} —— 首页看板</li>
      *   <li>{@code /system/**} —— 系统管理各页（前端页面路径；
      *       注意后端接口在 {@code /api/system/...}，两者不冲突）</li>
+     *   <li>{@code /gateway/**} —— 网关可视化配置各页（前端页面路径；
+     *       后端接口在 {@code /api/system/gateway/...}，两者不冲突）</li>
      *   <li>{@code /p/**} —— 目录型菜单的占位路由（generateRoutes 生成）</li>
      *   <li>{@code /redirect/**} —— 重定向中转页</li>
      *   <li>{@code /iframe/**} —— 内嵌外链页</li>
@@ -83,6 +85,7 @@ public class SpaFallbackConfig implements WebMvcConfigurer {
             "/404",
             "/dashboard/**",
             "/system/**",
+            "/gateway/**",
             "/p/**",
             "/redirect/**",
             "/iframe/**"

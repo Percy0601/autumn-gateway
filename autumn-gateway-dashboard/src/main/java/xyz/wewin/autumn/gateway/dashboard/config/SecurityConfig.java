@@ -116,7 +116,7 @@ public class SecurityConfig {
                             "/assets/**", "/static/**",
                             "/favicon.ico", "/favicon.svg",
                             "/login", "/404",
-                            "/dashboard/**", "/system/**",
+                            "/dashboard/**", "/system/**", "/gateway/**",
                             "/p/**", "/redirect/**", "/iframe/**",
                             "/error"
                     ).permitAll();
