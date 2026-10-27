@@ -3,6 +3,7 @@ import { onMounted, ref, reactive, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { gatewayRouteApi, gatewayCenterApi, gatewayTemplateApi } from '@/api/gateway'
 import { isConfirmed } from '@/utils/confirm'
+import ArgsForm from '../components/ArgsForm.vue'
 
 const loading = ref(false)
 const rows = ref([])
@@ -13,9 +14,10 @@ const predicateTemplates = ref([])
 async function loadData() {
   loading.value = true
   try {
-    const body = await gatewayRouteApi.list()
-    rows.value = body.data || []
-  } finally { loading.value = false }
+    rows.value = (await gatewayRouteApi.list()).data || []
+  } finally {
+    loading.value = false
+  }
 }
 async function loadDicts() {
   const [c, f, p] = await Promise.all([
@@ -24,264 +26,424 @@ async function loadDicts() {
     gatewayTemplateApi.predicateList(),
   ])
   centers.value = c.data || []
-  filterTemplates.value = (f.data || []).map(t => ({ ...t, schema: safeParse(t.argsSchemaJson) }))
-  predicateTemplates.value = (p.data || []).map(t => ({ ...t, schema: safeParse(t.argsSchemaJson) }))
+  filterTemplates.value = f.data || []
+  predicateTemplates.value = p.data || []
 }
-function safeParse(s) { try { return JSON.parse(s || '[]') } catch { return [] } }
-onMounted(() => { loadData(); loadDicts() })
-
-// ---------- 路由表单 ----------
-const drawerOpen = ref(false)
-const saving = ref(false)
-const currentId = ref(null)
-const form = reactive({
-  routeCode: '', routeName: '', centerId: null, namespace: '',
-  serviceName: '', uri: '', orderNum: 0, remark: '',
+onMounted(() => {
+  loadData()
+  loadDicts()
 })
+
+function safeParse(s) {
+  try {
+    return JSON.parse(s || '[]')
+  } catch {
+    return {}
+  }
+}
+
+// ==================== 左侧：路由列表 / 右侧：当前路由详情 ====================
+const current = ref(null)
+const savingRoute = ref(false)
 const serviceOptions = ref([])
 const loadingServices = ref(false)
 
+function selectRoute(row) {
+  current.value = row
+  serviceOptions.value = []
+  loadSub()
+}
+function openCreate() {
+  current.value = {
+    id: null, routeCode: '', routeName: '', centerId: null, namespace: '',
+    serviceName: '', uri: '', orderNum: 0, status: 1, remark: '',
+  }
+  subRows.value = []
+}
 async function onCenterChange() {
   serviceOptions.value = []
-  if (!form.centerId) return
+  if (!current.value?.centerId) return
   loadingServices.value = true
   try {
-    const r = await gatewayCenterApi.services(form.centerId)
+    const r = await gatewayCenterApi.services(current.value.centerId)
     serviceOptions.value = r.data || []
   } catch (e) {
     ElMessage.warning('拉取服务列表失败：' + (e?.response?.data?.message || e.message))
-  } finally { loadingServices.value = false }
+  } finally {
+    loadingServices.value = false
+  }
 }
 function onServiceChange() {
-  if (form.serviceName) form.uri = 'lb://' + form.serviceName
+  if (current.value?.serviceName) current.value.uri = 'lb://' + current.value.serviceName
 }
-
-function openCreate() {
-  currentId.value = null
-  Object.assign(form, { routeCode: '', routeName: '', centerId: null, namespace: '', serviceName: '', uri: '', orderNum: 0, remark: '' })
-  serviceOptions.value = []
-  drawerOpen.value = true
-}
-function openEdit(row) {
-  currentId.value = row.id
-  Object.assign(form, {
-    routeCode: row.routeCode, routeName: row.routeName,
-    centerId: row.centerId, namespace: row.namespace || '',
-    serviceName: row.serviceName || '', uri: row.uri || '',
-    orderNum: row.orderNum ?? 0, remark: row.remark || '',
-  })
-  serviceOptions.value = []
-  if (row.centerId) onCenterChange()
-  drawerOpen.value = true
-}
-async function save() {
-  if (!form.routeCode || !form.routeName) return ElMessage.warning('路由编码/名称必填')
-  if (!form.uri) return ElMessage.warning('URI 必填（选服务自动填 lb://，或手填 http://...）')
-  saving.value = true
+async function saveRoute() {
+  const r = current.value
+  if (!r) return
+  if (!r.routeCode || !r.routeName) return ElMessage.warning('路由编码/名称必填')
+  if (!r.uri) return ElMessage.warning('URI 必填（选服务自动填 lb://，或手填 http://...）')
+  savingRoute.value = true
   try {
-    const payload = { ...form, orderNum: Number(form.orderNum) || 0 }
-    if (currentId.value) await gatewayRouteApi.update(currentId.value, payload)
+    const payload = { ...r, orderNum: Number(r.orderNum) || 0 }
+    if (r.id) await gatewayRouteApi.update(r.id, payload)
     else await gatewayRouteApi.create(payload)
     ElMessage.success('已保存')
-    drawerOpen.value = false
-    loadData()
-  } finally { saving.value = false }
+    const code = r.routeCode
+    await loadData()
+    const found = rows.value.find((x) => x.routeCode === code)
+    if (found) selectRoute(found)
+  } finally {
+    savingRoute.value = false
+  }
 }
-async function remove(row) {
-  if (!await isConfirmed(`删除路由 ${row.routeCode}？`)) return
-  await gatewayRouteApi.remove(row.id)
+async function removeRoute() {
+  const r = current.value
+  if (!r || !r.id) return
+  if (!await isConfirmed(`删除路由 ${r.routeCode}？`)) return
+  await gatewayRouteApi.remove(r.id)
   ElMessage.success('已删除')
+  current.value = null
   loadData()
 }
 
-// ---------- 断言/过滤器抽屉 ----------
-const subOpen = ref(false)
-const subTab = ref('filter') // filter | predicate
-const subTitle = ref('')
+// ==================== 断言 / 过滤器（右侧 Tab） ====================
+const tab = ref('filter')
 const subRows = ref([])
 const subEditOpen = ref(false)
+const subSaving = ref(false)
 const subForm = reactive({ name: '', sortNum: 0, args: {} })
-const subSchema = computed(() => {
-  const list = subTab.value === 'filter' ? filterTemplates.value : predicateTemplates.value
-  const t = list.find(x => x.filterName === subForm.name || x.predicateName === subForm.name)
-  return t?.schema || []
-})
-const subSelectedTpl = computed(() => {
-  const list = subTab.value === 'filter' ? filterTemplates.value : predicateTemplates.value
-  return list.find(x => x.filterName === subForm.name || x.predicateName === subForm.name)
-})
 
-async function openSub(row, tab) {
-  subTab.value = tab
-  subTitle.value = `${row.routeCode} —— ${tab === 'filter' ? '过滤器' : '断言'}`
-  currentId.value = row.id
-  subOpen.value = true
-  await loadSub()
-}
+const subTemplates = computed(() => (tab.value === 'filter' ? filterTemplates.value : predicateTemplates.value))
+const subSchema = computed(() => {
+  const t = subTemplates.value.find(
+    (x) => (tab.value === 'filter' ? x.filterName === subForm.name : x.predicateName === subForm.name),
+  )
+  return t ? safeParse(t.argsSchemaJson) : []
+})
+const subNameField = () => (tab.value === 'filter' ? 'filterName' : 'predicateName')
+const subApi = () =>
+  tab.value === 'filter'
+    ? { list: gatewayRouteApi.filters, add: gatewayRouteApi.addFilter, update: gatewayRouteApi.updateFilter, remove: gatewayRouteApi.removeFilter }
+    : { list: gatewayRouteApi.predicates, add: gatewayRouteApi.addPredicate, update: gatewayRouteApi.updatePredicate, remove: gatewayRouteApi.removePredicate }
+
 async function loadSub() {
-  const api = subTab.value === 'filter' ? gatewayRouteApi.filters : gatewayRouteApi.predicates
-  const r = await api(currentId.value)
-  subRows.value = (r.data || []).map(x => ({ ...x, args: safeParse(x.argsJson) }))
+  if (!current.value?.id) {
+    subRows.value = []
+    return
+  }
+  const r = await subApi().list(current.value.id)
+  subRows.value = (r.data || []).map((x) => ({ ...x, args: safeParse(x.argsJson) }))
+}
+function onTabChange() {
+  loadSub()
 }
 function openSubCreate() {
   Object.assign(subForm, { name: '', sortNum: subRows.value.length + 1, args: {} })
   subEditOpen.value = true
 }
 function openSubEdit(row) {
-  Object.assign(subForm, { name: row.filterName || row.predicateName, sortNum: row.sortNum, args: { ...row.args } })
+  Object.assign(subForm, {
+    name: row[subNameField()],
+    sortNum: row.sortNum ?? 0,
+    args: { ...(row.args || {}) },
+  })
   subEditOpen.value = true
 }
 function onSubTemplateChange() {
-  // 用模板默认值初始化 args
   subForm.args = {}
   for (const f of subSchema.value) {
     if (f.default !== undefined) subForm.args[f.key] = f.default
   }
 }
 async function saveSub() {
+  if (!current.value?.id) return
   if (!subForm.name) return ElMessage.warning('请选择模板')
-  // 必填校验
   for (const f of subSchema.value) {
     if (f.required && (subForm.args[f.key] === undefined || subForm.args[f.key] === '')) {
       return ElMessage.warning(`参数 ${f.label || f.key} 必填`)
     }
   }
-  const payload = subTab.value === 'filter'
-    ? { filterName: subForm.name, sortNum: Number(subForm.sortNum) || 0, argsJson: JSON.stringify(subForm.args) }
-    : { predicateName: subForm.name, sortNum: Number(subForm.sortNum) || 0, argsJson: JSON.stringify(subForm.args) }
-  await (subTab.value === 'filter' ? gatewayRouteApi.addFilter : gatewayRouteApi.addPredicate)(currentId.value, payload)
-  ElMessage.success('已保存')
-  subEditOpen.value = false
-  loadSub()
+  subSaving.value = true
+  try {
+    const payload = {
+      [subNameField()]: subForm.name,
+      sortNum: Number(subForm.sortNum) || 0,
+      argsJson: JSON.stringify(subForm.args || {}),
+    }
+    await subApi().add(current.value.id, payload)
+    ElMessage.success('已添加')
+    subEditOpen.value = false
+    loadSub()
+  } finally {
+    subSaving.value = false
+  }
+}
+async function saveSubEdit() {
+  // 编辑场景：只改参数与顺序（模板名一般不变，允许改参数）
+  const row = subRows.value.find((x) => x.id === subEditingId.value)
+  if (!row) return
+  for (const f of subSchema.value) {
+    if (f.required && (subForm.args[f.key] === undefined || subForm.args[f.key] === '')) {
+      return ElMessage.warning(`参数 ${f.label || f.key} 必填`)
+    }
+  }
+  subSaving.value = true
+  try {
+    await subApi().update(row.id, {
+      [subNameField()]: subForm.name,
+      sortNum: Number(subForm.sortNum) || 0,
+      argsJson: JSON.stringify(subForm.args || {}),
+    })
+    ElMessage.success('已保存')
+    subEditOpen.value = false
+    loadSub()
+  } finally {
+    subSaving.value = false
+  }
 }
 async function removeSub(row) {
   if (!await isConfirmed('删除该条？')) return
-  const api = subTab.value === 'filter' ? gatewayRouteApi.removeFilter : gatewayRouteApi.removePredicate
-  await api(row.id)
+  await subApi().remove(row.id)
+  ElMessage.success('已删除')
   loadSub()
 }
-
-function tplOptions() {
-  return subTab.value === 'filter' ? filterTemplates.value : predicateTemplates.value
+const subEditingId = ref(null)
+function openSubCreateDialog() {
+  subEditingId.value = null
+  openSubCreate()
 }
+function openSubEditDialog(row) {
+  subEditingId.value = row.id
+  openSubEdit(row)
+}
+function submitSub() {
+  return subEditingId.value ? saveSubEdit() : saveSub()
+}
+
+// ---- 子项排序：上移 / 下移后重排 ----
+async function renumberSub() {
+  const api = subApi().update
+  for (let i = 0; i < subRows.value.length; i++) {
+    const target = i + 1
+    if (subRows.value[i].sortNum !== target) {
+      subRows.value[i].sortNum = target
+      await api(subRows.value[i].id, { sortNum: target })
+    }
+  }
+}
+async function moveSubUp(i) {
+  if (i <= 0) return
+  const arr = subRows.value
+  const tmp = arr[i]
+  arr[i] = arr[i - 1]
+  arr[i - 1] = tmp
+  await renumberSub()
+}
+async function moveSubDown(i) {
+  const arr = subRows.value
+  if (i >= arr.length - 1) return
+  const tmp = arr[i]
+  arr[i] = arr[i + 1]
+  arr[i + 1] = tmp
+  await renumberSub()
+}
+
 function centerName(id) {
-  return centers.value.find(c => c.id === id)?.centerName || id || '—'
+  return centers.value.find((c) => c.id === id)?.centerName || '—'
+}
+function subArgsSummary(row) {
+  const a = safeParse(row.argsJson)
+  const entries = Object.entries(a)
+  if (!entries.length) return '—'
+  return entries.map(([k, v]) => `${k}=${v}`).join('  ')
 }
 </script>
 
 <template>
-  <div class="p-4">
-    <el-card>
-      <div class="mb-3 flex justify-between">
-        <el-button type="primary" @click="openCreate">新增路由</el-button>
+  <div class="p-4 flex gap-3" style="height: calc(100vh - 120px)">
+    <!-- 左侧：路由列表 -->
+    <el-card class="shrink-0" style="width: 340px" shadow="never">
+      <div class="mb-3 flex items-center justify-between">
+        <span class="font-bold">路由列表</span>
+        <el-button type="primary" size="small" @click="openCreate">新增</el-button>
       </div>
-      <el-table v-loading="loading" :data="rows" border>
-        <el-table-column prop="routeCode" label="路由编码" width="160" />
-        <el-table-column prop="routeName" label="名称" />
-        <el-table-column label="配置中心/服务" width="220">
-          <template #default="{ row }">
-            <div v-if="row.centerId">{{ centerName(row.centerId) }} / {{ row.serviceName || '—' }}</div>
-            <div v-else style="color:#999">手填直连</div>
-          </template>
-        </el-table-column>
-        <el-table-column prop="uri" label="URI" />
-        <el-table-column prop="orderNum" label="顺序" width="70" />
-        <el-table-column label="操作" width="260">
-          <template #default="{ row }">
-            <el-button size="small" @click="openSub(row, 'predicate')">断言</el-button>
-            <el-button size="small" @click="openSub(row, 'filter')">过滤器</el-button>
-            <el-button size="small" @click="openEdit(row)">编辑</el-button>
-            <el-button size="small" type="danger" @click="remove(row)">删除</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+      <div v-loading="loading" class="route-list">
+        <div
+          v-for="r in rows"
+          :key="r.id"
+          class="route-item"
+          :class="{ active: current && current.id === r.id }"
+          @click="selectRoute(r)"
+        >
+          <div class="flex items-center justify-between">
+            <span class="font-medium truncate">{{ r.routeName }}</span>
+            <el-tag :type="r.status === 1 ? 'success' : 'info'" size="small">{{ r.status === 1 ? '启用' : '停用' }}</el-tag>
+          </div>
+          <div class="text-xs text-gray-400 mt-1">{{ r.routeCode }}</div>
+          <div class="text-xs text-gray-400 truncate">{{ r.uri }}</div>
+        </div>
+        <el-empty v-if="!rows.length" description="暂无路由，点击右上角新增" :image-size="60" />
+      </div>
     </el-card>
 
-    <!-- 路由抽屉 -->
-    <el-drawer v-model="drawerOpen" title="路由配置" size="520">
-      <el-form label-width="100">
-        <el-form-item label="路由编码" required><el-input v-model="form.routeCode" placeholder="如 route-order" /></el-form-item>
-        <el-form-item label="名称" required><el-input v-model="form.routeName" /></el-form-item>
-        <el-form-item label="配置中心">
-          <el-select v-model="form.centerId" placeholder="选了才能从注册中心拉服务" clearable @change="onCenterChange">
-            <el-option v-for="c in centers" :key="c.id" :label="c.centerName" :value="c.id" />
-          </el-select>
-        </el-form-item>
-        <el-form-item v-if="form.centerId" label="命名空间">
-          <el-input v-model="form.namespace" placeholder="Nacos 用；Consul 留空" />
-        </el-form-item>
-        <el-form-item v-if="form.centerId" label="已注册服务">
-          <el-select v-model="form.serviceName" filterable clearable
-                     :loading="loadingServices" placeholder="从注册中心选；没有就手填 URI"
-                     @change="onServiceChange">
-            <el-option v-for="s in serviceOptions" :key="s" :label="s" :value="s" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="URI" required>
-          <el-input v-model="form.uri" placeholder="选服务后自动填 lb://service，也可手填 http://host:port" />
-        </el-form-item>
-        <el-form-item label="顺序"><el-input-number v-model="form.orderNum" :min="0" /></el-form-item>
-        <el-form-item label="备注"><el-input v-model="form.remark" type="textarea" /></el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="drawerOpen = false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="save">保存</el-button>
-      </template>
-    </el-drawer>
+    <!-- 右侧：路由详情 + 断言/过滤器 -->
+    <el-card class="flex-1" shadow="never">
+      <template v-if="current">
+        <div class="mb-2 font-bold">{{ current.id ? '路由详情' : '新增路由' }}</div>
+        <el-form label-width="90">
+          <el-row :gutter="16">
+            <el-col :span="12">
+              <el-form-item label="路由编码" required><el-input v-model="current.routeCode" placeholder="如 order-service" /></el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="名称" required><el-input v-model="current.routeName" /></el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="配置中心">
+                <el-select v-model="current.centerId" clearable filterable placeholder="选了才能从注册中心拉服务" @change="onCenterChange">
+                  <el-option v-for="c in centers" :key="c.id" :label="c.centerName" :value="c.id" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="已注册服务">
+                <el-select v-model="current.serviceName" clearable filterable :loading="loadingServices" :disabled="!current.centerId" placeholder="选服务自动填 lb://，也可手填 URI" @change="onServiceChange">
+                  <el-option v-for="s in serviceOptions" :key="s" :label="s" :value="s" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col v-if="current.centerId" :span="12">
+              <el-form-item label="命名空间">
+                <el-input v-model="current.namespace" placeholder="Nacos 用；Consul 留空" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="URI" required><el-input v-model="current.uri" placeholder="lb://service 或 http://host:port" /></el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="顺序"><el-input-number v-model="current.orderNum" :min="0" /></el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="状态">
+                <el-switch v-model="current.status" :active-value="1" :inactive-value="0" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="24">
+              <el-form-item label="备注"><el-input v-model="current.remark" type="textarea" :rows="2" /></el-form-item>
+            </el-col>
+          </el-row>
+          <div class="flex justify-end gap-2 mb-3">
+            <el-button type="danger" plain :disabled="!current.id" @click="removeRoute">删除</el-button>
+            <el-button type="primary" :loading="savingRoute" @click="saveRoute">保存路由</el-button>
+          </div>
+        </el-form>
 
-    <!-- 断言/过滤器抽屉 -->
-    <el-drawer v-model="subOpen" :title="subTitle" size="560">
-      <template #header>
-        <div class="flex items-center justify-between">
-          <span>{{ subTitle }}</span>
-          <el-button size="small" type="primary" @click="openSubCreate">添加</el-button>
-        </div>
-      </template>
-      <el-table :data="subRows" border size="small">
-        <el-table-column prop="filterName" label="过滤器" width="160">
-          <template #default="{ row }">{{ row.filterName || row.predicateName }}</template>
-        </el-table-column>
-        <el-table-column label="参数">
-          <template #default="{ row }">
-            <code>{{ row.argsJson }}</code>
-          </template>
-        </el-table-column>
-        <el-table-column prop="sortNum" label="顺序" width="70" />
-        <el-table-column label="操作" width="120">
-          <template #default="{ row }">
-            <el-button size="small" @click="openSubEdit(row)">编辑</el-button>
-            <el-button size="small" type="danger" @click="removeSub(row)">删</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-    </el-drawer>
+        <!-- 断言 / 过滤器 -->
+        <el-tabs v-model="tab" @tab-change="onTabChange">
+          <el-tab-pane label="过滤器" name="filter">
+            <div class="mb-2 flex justify-end">
+              <el-button type="primary" size="small" :disabled="!current.id" @click="openSubCreateDialog">添加过滤器</el-button>
+            </div>
+            <el-table :data="subRows" border size="small">
+              <el-table-column label="顺序" width="110">
+                <template #default="{ $index }">
+                  <el-button-group size="small">
+                    <el-button :disabled="$index === 0" @click="moveSubUp($index)">↑</el-button>
+                    <el-button :disabled="$index === subRows.length - 1" @click="moveSubDown($index)">↓</el-button>
+                  </el-button-group>
+                </template>
+              </el-table-column>
+              <el-table-column prop="filterName" label="过滤器" width="160">
+                <template #default="{ row }"><el-tag>{{ row.filterName }}</el-tag></template>
+              </el-table-column>
+              <el-table-column label="参数" min-width="220">
+                <template #default="{ row }"><span class="text-xs text-gray-600">{{ subArgsSummary(row) }}</span></template>
+              </el-table-column>
+              <el-table-column label="操作" width="150">
+                <template #default="{ row }">
+                  <el-button size="small" @click="openSubEditDialog(row)">编辑</el-button>
+                  <el-button size="small" type="danger" @click="removeSub(row)">删除</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+          </el-tab-pane>
 
-    <!-- 子项编辑弹窗：模板驱动表单 -->
-    <el-dialog v-model="subEditOpen" :title="subTab === 'filter' ? '过滤器参数' : '断言参数'" width="480">
+          <el-tab-pane label="断言" name="predicate">
+            <div class="mb-2 flex justify-end">
+              <el-button type="primary" size="small" :disabled="!current.id" @click="openSubCreateDialog">添加断言</el-button>
+            </div>
+            <el-table :data="subRows" border size="small">
+              <el-table-column label="顺序" width="110">
+                <template #default="{ $index }">
+                  <el-button-group size="small">
+                    <el-button :disabled="$index === 0" @click="moveSubUp($index)">↑</el-button>
+                    <el-button :disabled="$index === subRows.length - 1" @click="moveSubDown($index)">↓</el-button>
+                  </el-button-group>
+                </template>
+              </el-table-column>
+              <el-table-column prop="predicateName" label="断言" width="160">
+                <template #default="{ row }"><el-tag type="warning">{{ row.predicateName }}</el-tag></template>
+              </el-table-column>
+              <el-table-column label="参数" min-width="220">
+                <template #default="{ row }"><span class="text-xs text-gray-600">{{ subArgsSummary(row) }}</span></template>
+              </el-table-column>
+              <el-table-column label="操作" width="150">
+                <template #default="{ row }">
+                  <el-button size="small" @click="openSubEditDialog(row)">编辑</el-button>
+                  <el-button size="small" type="danger" @click="removeSub(row)">删除</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+          </el-tab-pane>
+        </el-tabs>
+      </template>
+      <el-empty v-else description="点击左侧路由查看/配置" />
+    </el-card>
+
+    <!-- 断言/过滤器编辑弹窗（模板驱动） -->
+    <el-dialog v-model="subEditOpen" :title="(tab === 'filter' ? '过滤器' : '断言') + (subEditingId ? '编辑' : '添加')" width="480">
       <el-form label-width="100">
         <el-form-item label="模板" required>
-          <el-select v-model="subForm.name" placeholder="选模板" @change="onSubTemplateChange">
-            <el-option v-for="t in tplOptions()" :key="t.id"
-                       :label="(t.displayName || t.filterName || t.predicateName) + ' (' + (t.filterName || t.predicateName) + ')'"
-                       :value="t.filterName || t.predicateName" />
+          <el-select v-model="subForm.name" filterable placeholder="选择模板" @change="onSubTemplateChange">
+            <el-option
+              v-for="t in subTemplates"
+              :key="t.id"
+              :label="`${t.displayName || t.filterName || t.predicateName}（${t.filterName || t.predicateName}）`"
+              :value="t.filterName || t.predicateName"
+            />
           </el-select>
         </el-form-item>
-        <template v-for="f in subSchema" :key="f.key">
-          <el-form-item :label="f.label || f.key" :required="!!f.required">
-            <el-input v-if="f.type === 'string' || !f.type" v-model="subForm.args[f.key]" :placeholder="f.placeholder || ''" />
-            <el-input-number v-else-if="f.type === 'int' || f.type === 'long'" v-model="subForm.args[f.key]" />
-            <el-select v-else-if="f.type === 'enum'" v-model="subForm.args[f.key]">
-              <el-option v-for="o in (f.options || [])" :key="o" :label="o" :value="o" />
-            </el-select>
-            <el-switch v-else-if="f.type === 'bool'" v-model="subForm.args[f.key]" />
-          </el-form-item>
-        </template>
-        <el-form-item label="顺序"><el-input-number v-model="subForm.sortNum" :min="0" /></el-form-item>
+        <ArgsForm v-model="subForm.args" :schema="subSchema" />
+        <el-form-item label="顺序">
+          <el-input-number v-model="subForm.sortNum" :min="1" />
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="subEditOpen = false">取消</el-button>
-        <el-button type="primary" @click="saveSub">保存</el-button>
+        <el-button type="primary" :loading="subSaving" @click="submitSub">保存</el-button>
       </template>
     </el-dialog>
   </div>
 </template>
+
+<style scoped>
+.route-list {
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+}
+.route-item {
+  padding: 10px 12px;
+  border: 1px solid #ebeef5;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.route-item:hover {
+  border-color: #409eff;
+  background: #f5f9ff;
+}
+.route-item.active {
+  border-color: #409eff;
+  background: #ecf5ff;
+}
+</style>
