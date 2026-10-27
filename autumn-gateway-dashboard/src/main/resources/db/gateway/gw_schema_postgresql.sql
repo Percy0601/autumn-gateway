@@ -174,7 +174,7 @@ COMMENT ON TABLE  gw_filter_template IS '过滤器模板（参数表单定义）
 COMMENT ON COLUMN gw_filter_template.filter_name         IS '过滤器工厂名（唯一）';
 COMMENT ON COLUMN gw_filter_template.scope               IS 'ROUTE=仅路由 GLOBAL=仅全局 BOTH=两者皆可';
 COMMENT ON COLUMN gw_filter_template.singleton_per_route IS '1=同一路由最多挂一次；0=可挂多次';
-COMMENT ON COLUMN gw_filter_template.args_schema_json    IS '参数表单定义数组（JSON），前端据此动态渲染';
+COMMENT ON COLUMN gw_filter_template.args_schema_json    IS '参数表单定义数组（JSON），前端据此动态渲染；每项 type=单值(string/int/long/bool/enum/textarea/sensitive) 或 list(多值,配 itemType)';
 
 
 -- 表 8：断言模板（参数表单定义）
@@ -191,4 +191,4 @@ CREATE TABLE IF NOT EXISTS gw_predicate_template (
 );
 COMMENT ON TABLE  gw_predicate_template IS '断言模板（参数表单定义）';
 COMMENT ON COLUMN gw_predicate_template.predicate_name   IS '断言工厂名（唯一）';
-COMMENT ON COLUMN gw_predicate_template.args_schema_json IS '参数表单定义数组（JSON）';
+COMMENT ON COLUMN gw_predicate_template.args_schema_json IS '参数表单定义数组（JSON），结构同 gw_filter_template（type 支持单值 + list/itemType）';

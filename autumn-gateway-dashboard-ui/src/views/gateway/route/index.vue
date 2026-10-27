@@ -42,6 +42,22 @@ function safeParse(s) {
   }
 }
 
+// 按模板 schema 校验参数：list 类型要求至少填一项，其余必填非空
+function validateArgs(schema, args) {
+  for (const f of schema) {
+    if (!f.required) continue
+    const v = args[f.key]
+    if (f.type === 'list') {
+      if (!Array.isArray(v) || !v.length || v.every((x) => x === '' || x === null || x === undefined)) {
+        return `参数 ${f.label || f.key} 至少填一项`
+      }
+    } else if (v === undefined || v === null || v === '') {
+      return `参数 ${f.label || f.key} 必填`
+    }
+  }
+  return null
+}
+
 // ==================== 左侧：路由列表 / 右侧：当前路由详情 ====================
 const current = ref(null)
 const savingRoute = ref(false)
@@ -119,6 +135,23 @@ const subSchema = computed(() => {
   )
   return t ? safeParse(t.argsSchemaJson) : []
 })
+// singleton 模板已挂载则下拉置灰（编辑自身时不禁用）
+const mountedSingletons = computed(() => {
+  const key = subNameField()
+  const mounted = new Set(subRows.value.map((r) => r[key]).filter(Boolean))
+  const disabled = new Set()
+  for (const t of subTemplates.value) {
+    const name = t.filterName || t.predicateName
+    if (t.singletonPerRoute === 1 && mounted.has(name) && name !== subForm.name) disabled.add(name)
+  }
+  return disabled
+})
+function tplName(t) {
+  return t.filterName || t.predicateName
+}
+function tplLabel(t) {
+  return `${t.displayName || tplName(t)}（${tplName(t)}）`
+}
 const subNameField = () => (tab.value === 'filter' ? 'filterName' : 'predicateName')
 const subApi = () =>
   tab.value === 'filter'
@@ -157,11 +190,12 @@ function onSubTemplateChange() {
 async function saveSub() {
   if (!current.value?.id) return
   if (!subForm.name) return ElMessage.warning('请选择模板')
-  for (const f of subSchema.value) {
-    if (f.required && (subForm.args[f.key] === undefined || subForm.args[f.key] === '')) {
-      return ElMessage.warning(`参数 ${f.label || f.key} 必填`)
-    }
+  const tpl = subTemplates.value.find((t) => tplName(t) === subForm.name)
+  if (tpl?.singletonPerRoute === 1 && subRows.value.some((r) => r[subNameField()] === subForm.name)) {
+    return ElMessage.warning(`${tpl.displayName || tplName(tpl)} 每路由只允许挂一次`)
   }
+  const err = validateArgs(subSchema.value, subForm.args)
+  if (err) return ElMessage.warning(err)
   subSaving.value = true
   try {
     const payload = {
@@ -181,11 +215,8 @@ async function saveSubEdit() {
   // 编辑场景：只改参数与顺序（模板名一般不变，允许改参数）
   const row = subRows.value.find((x) => x.id === subEditingId.value)
   if (!row) return
-  for (const f of subSchema.value) {
-    if (f.required && (subForm.args[f.key] === undefined || subForm.args[f.key] === '')) {
-      return ElMessage.warning(`参数 ${f.label || f.key} 必填`)
-    }
-  }
+  const err = validateArgs(subSchema.value, subForm.args)
+  if (err) return ElMessage.warning(err)
   subSaving.value = true
   try {
     await subApi().update(row.id, {
@@ -254,7 +285,9 @@ function subArgsSummary(row) {
   const a = safeParse(row.argsJson)
   const entries = Object.entries(a)
   if (!entries.length) return '—'
-  return entries.map(([k, v]) => `${k}=${v}`).join('  ')
+  return entries
+    .map(([k, v]) => `${k}=${Array.isArray(v) ? `[${v.join(', ')}]` : v}`)
+    .join('  ')
 }
 </script>
 
@@ -400,17 +433,21 @@ function subArgsSummary(row) {
     </el-card>
 
     <!-- 断言/过滤器编辑弹窗（模板驱动） -->
-    <el-dialog v-model="subEditOpen" :title="(tab === 'filter' ? '过滤器' : '断言') + (subEditingId ? '编辑' : '添加')" width="480">
+    <el-dialog v-model="subEditOpen" :title="(tab === 'filter' ? '过滤器' : '断言') + (subEditingId ? '编辑' : '添加')" width="580">
       <el-form label-width="100">
         <el-form-item label="模板" required>
           <el-select v-model="subForm.name" filterable placeholder="选择模板" @change="onSubTemplateChange">
             <el-option
               v-for="t in subTemplates"
               :key="t.id"
-              :label="`${t.displayName || t.filterName || t.predicateName}（${t.filterName || t.predicateName}）`"
-              :value="t.filterName || t.predicateName"
+              :label="tplLabel(t)"
+              :value="tplName(t)"
+              :disabled="mountedSingletons.has(tplName(t))"
             />
           </el-select>
+          <div v-if="mountedSingletons.size" class="text-xs text-gray-400 mt-1">
+            已置灰项为「每路由一次」且已挂载的模板
+          </div>
         </el-form-item>
         <ArgsForm v-model="subForm.args" :schema="subSchema" />
         <el-form-item label="顺序">

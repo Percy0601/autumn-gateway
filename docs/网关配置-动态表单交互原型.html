@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>网关配置 · 模板驱动动态表单交互原型</title>
+<style>
+  :root{
+    --line:#e5e7eb; --bg:#f6f8fa; --card:#fff; --brand:#4f46e5; --brand-bg:#eef2ff;
+    --ok:#059669; --ok-bg:#ecfdf5; --warn:#d97706; --warn-bg:#fffbeb;
+    --danger:#dc2626; --danger-bg:#fef2f2; --txt:#1f2937; --sub:#6b7280;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;background:var(--bg);color:var(--txt);font-size:14px;line-height:1.6;}
+  .wrap{max-width:1280px;margin:0 auto;padding:20px 16px 48px;}
+  header h1{font-size:20px;font-weight:700;}
+  header .sub{color:var(--sub);font-size:13px;margin-top:4px;}
+  header .sub code{background:#eef2ff;color:#4338ca;padding:1px 6px;border-radius:4px;font-size:12px;}
+  .layout{display:flex;gap:14px;margin-top:16px;align-items:flex-start;flex-wrap:wrap;}
+  .col{background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden;}
+  .col-head{padding:10px 14px;font-weight:600;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;}
+  .col-head .hint{font-weight:400;font-size:12px;color:var(--sub);}
+  /* 左栏模板列表 */
+  .col-tpl{flex:0 0 240px;}
+  .tpl-group{padding:8px 10px;}
+  .tpl-group h3{font-size:12px;color:var(--sub);font-weight:600;margin:4px 4px 6px;}
+  .tpl{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;margin-bottom:6px;cursor:pointer;background:#fff;transition:all .12s;}
+  .tpl:hover{border-color:var(--brand);}
+  .tpl.active{border-color:var(--brand);background:var(--brand-bg);}
+  .tpl.disabled{opacity:.45;cursor:not-allowed;background:#f3f4f6;}
+  .tpl .nm{font-size:13px;font-weight:500;}
+  .tpl .dn{font-size:11px;color:var(--sub);}
+  .badge{font-size:10px;padding:1px 6px;border-radius:10px;white-space:nowrap;}
+  .badge.single{background:var(--warn-bg);color:var(--warn);border:1px solid #fcd34d;}
+  .badge.multi{background:#f3f4f6;color:var(--sub);border:1px solid #e5e7eb;}
+  .badge.scope{background:var(--ok-bg);color:var(--ok);border:1px solid #a7f3d0;}
+  /* 中栏表单 */
+  .col-form{flex:1 1 420px;min-width:320px;}
+  .form-body{padding:14px 16px;}
+  .empty-tip{color:var(--sub);text-align:center;padding:48px 0;font-size:13px;}
+  .field{margin-bottom:14px;}
+  .field .lab{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:500;margin-bottom:6px;}
+  .field .lab .req{color:var(--danger);font-weight:700;}
+  .field .lab .meta{font-size:11px;color:var(--sub);font-weight:400;}
+  input[type=text],input[type=number],select,textarea{width:100%;border:1px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:13px;font-family:inherit;background:#fff;}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 2px rgba(79,70,229,.15);}
+  textarea{min-height:72px;resize:vertical;}
+  .switch{position:relative;width:42px;height:22px;display:inline-block;}
+  .switch input{opacity:0;width:0;height:0;}
+  .slider{position:absolute;inset:0;background:#d1d5db;border-radius:22px;cursor:pointer;transition:.15s;}
+  .slider::before{content:"";position:absolute;width:16px;height:16px;border-radius:50%;background:#fff;top:3px;left:3px;transition:.15s;}
+  .switch input:checked + .slider{background:var(--brand);}
+  .switch input:checked + .slider::before{transform:translateX(20px);}
+  /* list 动态行 */
+  .list-box{border:1px dashed #d1d5db;border-radius:8px;padding:8px 10px;background:#fafbfc;}
+  .list-row{display:flex;gap:6px;margin-bottom:6px;align-items:center;}
+  .list-row input,.list-row select{flex:1;}
+  .list-row .rm{flex:0 0 26px;height:30px;border:1px solid #fecaca;background:var(--danger-bg);color:var(--danger);border-radius:6px;cursor:pointer;font-size:15px;line-height:1;}
+  .list-row .rm:hover{background:#fee2e2;}
+  .btn-add{display:inline-flex;align-items:center;gap:4px;border:1px dashed var(--brand);color:var(--brand);background:var(--brand-bg);border-radius:6px;padding:4px 12px;font-size:12px;cursor:pointer;}
+  .btn-add:hover{background:#e0e7ff;}
+  /* 右栏预览 */
+  .col-prev{flex:0 0 380px;}
+  .prev-body{padding:12px 14px;}
+  .prev-block{margin-bottom:12px;}
+  .prev-block h4{font-size:12px;color:var(--sub);font-weight:600;margin-bottom:6px;}
+  pre{background:#0f172a;color:#e2e8f0;border-radius:8px;padding:10px 12px;font-size:12px;line-height:1.55;overflow:auto;max-height:280px;font-family:'SF Mono',Menlo,Consolas,monospace;}
+  pre .k{color:#93c5fd;} pre .s{color:#a7f3d0;} pre .n{color:#fde68a;}
+  .tag-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px;}
+  .tag{display:inline-flex;align-items:center;gap:4px;background:var(--brand-bg);color:#4338ca;border:1px solid #c7d2fe;border-radius:6px;padding:2px 8px;font-size:12px;}
+  .tag button{border:none;background:none;color:#6366f1;cursor:pointer;font-size:13px;line-height:1;}
+  .tag button:hover{color:var(--danger);}
+  .note{font-size:12px;color:var(--sub);margin-top:4px;}
+  .err{color:var(--danger);font-size:12px;margin-top:4px;}
+  .btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--brand);color:#fff;background:var(--brand);border-radius:8px;padding:6px 16px;font-size:13px;cursor:pointer;font-weight:500;}
+  .btn:hover{background:#4338ca;}
+  .btn.ghost{background:#fff;color:var(--brand);}
+  footer{margin-top:24px;color:var(--sub);font-size:12px;border-top:1px solid var(--line);padding-top:12px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>网关配置 · 模板驱动动态表单（交互原型）</h1>
+    <div class="sub">数据源：<code>gw_filter_template</code> / <code>gw_predicate_template</code> 的 <code>args_schema_json</code> —— 选模板 → 按 schema 渲染表单（单键值 + <b>list 多值动态行</b>）→ 实时生成 args_json 与导出文本</div>
+  </header>
+
+  <div class="layout">
+    <!-- 左：模板列表 -->
+    <div class="col col-tpl">
+      <div class="col-head">模板列表 <span class="hint">来自模板表</span></div>
+      <div class="tpl-group" id="tplFilters"></div>
+      <div class="tpl-group" id="tplPredicates"></div>
+    </div>
+
+    <!-- 中：动态表单 -->
+    <div class="col col-form">
+      <div class="col-head" id="formTitle">参数表单 <span class="hint" id="formMeta"></span></div>
+      <div class="form-body" id="formBody">
+        <div class="empty-tip">← 左侧选择一个过滤器 / 断言模板<br>按模板 args_schema_json 动态渲染表单</div>
+      </div>
+    </div>
+
+    <!-- 右：预览 -->
+    <div class="col col-prev">
+      <div class="col-head">实时预览 <span class="hint" id="previewMeta"></span></div>
+      <div class="prev-body">
+        <div class="prev-block">
+          <h4>① 已挂载（模拟路由过滤器链 / 断言链）</h4>
+          <div class="tag-row" id="mountedRow"></div>
+          <div class="note">singleton 模板已挂载后，左侧自动置灰不可重复选择。</div>
+        </div>
+        <div class="prev-block">
+          <h4>② args_json（落库 gw_route_filter / gw_route_predicate）</h4>
+          <pre id="argsJson">{}（暂未选择模板）</pre>
+        </div>
+        <div class="prev-block">
+          <h4>③ 导出文本（长写 name= + args.，list 逗号分隔）</h4>
+          <pre id="exportText">—</pre>
+        </div>
+        <button class="btn ghost" id="btnClear">清空已挂载</button>
+      </div>
+    </div>
+  </div>
+
+  <footer>原型演示数据与 <code>GwDataInitializer</code> 种子一致；list 参数（Path.patterns / Method.methods / Retry.statuses / RemoteAddr.sources）为本次新增的 <code>type:"list" + itemType</code> 规范。</footer>
+</div>
+
+<script>
+(function(){
+  'use strict';
+  // ============ 模板表数据（与 GwDataInitializer 种子一致，list 为新规范） ============
+  const FILTERS = [
+    {name:'Authz', displayName:'网关鉴权', scope:'ROUTE', singleton:true, schema:[
+      {key:'mode', label:'模式', type:'enum', required:true, options:['authenticate','authorize'], default:'authenticate'},
+      {key:'appCode', label:'应用编码', type:'string', required:true, placeholder:'如 order-service'},
+      {key:'permitAll', label:'匿名放行路径', type:'list', itemType:'string', required:false, placeholder:'/api/public/**'},
+      {key:'failOpen', label:'鉴权失败放行', type:'bool', required:false, default:false}
+    ]},
+    {name:'MemoryRateLimiter', displayName:'内存限流', scope:'BOTH', singleton:true, schema:[
+      {key:'keyType', label:'限流键', type:'enum', required:true, options:['IP','HEADER','PATH'], default:'IP'},
+      {key:'headerName', label:'Header 键名', type:'string', required:false},
+      {key:'replenishRate', label:'令牌补充/秒', type:'int', required:true, default:1},
+      {key:'burstCapacity', label:'桶容量', type:'int', required:true, default:2},
+      {key:'timeWindowSeconds', label:'时间窗口(秒)', type:'long', required:false, default:10}
+    ]},
+    {name:'AddRequestHeader', displayName:'添加请求头', scope:'ROUTE', singleton:false, schema:[
+      {key:'name', label:'Header 名', type:'string', required:true, placeholder:'X-Trace-Id'},
+      {key:'value', label:'Header 值', type:'string', required:true, placeholder:'{segment}'}
+    ]},
+    {name:'StripPrefix', displayName:'剥离前缀', scope:'ROUTE', singleton:true, schema:[
+      {key:'parts', label:'剥离段数', type:'int', required:true, default:1}
+    ]},
+    {name:'RewritePath', displayName:'重写路径', scope:'ROUTE', singleton:true, schema:[
+      {key:'regexp', label:'正则', type:'string', required:true, placeholder:'/api/(?<seg>.*)'},
+      {key:'replacement', label:'替换', type:'string', required:true, placeholder:'/${seg}'}
+    ]},
+    {name:'Retry', displayName:'重试', scope:'ROUTE', singleton:true, schema:[
+      {key:'retries', label:'次数', type:'int', required:false, default:3},
+      {key:'statuses', label:'重试状态码', type:'list', itemType:'int', required:false, placeholder:'500'}
+    ]},
+    {name:'RedirectTo', displayName:'重定向', scope:'ROUTE', singleton:true, schema:[
+      {key:'status', label:'状态码', type:'int', required:true, default:302},
+      {key:'url', label:'跳转地址', type:'string', required:true, placeholder:'https://example.org/login'}
+    ]}
+  ];
+  const PREDICATES = [
+    {name:'Path', displayName:'路径匹配', singleton:false, schema:[
+      {key:'patterns', label:'路径模式', type:'list', itemType:'string', required:true, placeholder:'/api/order/**'}
+    ]},
+    {name:'Method', displayName:'请求方法', singleton:false, schema:[
+      {key:'methods', label:'HTTP 方法', type:'list', itemType:'enum', itemOptions:['GET','POST','PUT','DELETE','PATCH','OPTIONS','HEAD'], required:true}
+    ]},
+    {name:'Host', displayName:'Host 匹配', singleton:false, schema:[
+      {key:'patterns', label:'Host 模式', type:'list', itemType:'string', required:true, placeholder:'**.somehost.org'}
+    ]},
+    {name:'Header', displayName:'请求头匹配', singleton:false, schema:[
+      {key:'name', label:'Header 名', type:'string', required:true, placeholder:'X-Request-Id'},
+      {key:'regexp', label:'正则', type:'string', required:false, placeholder:'\\d+'}
+    ]},
+    {name:'RemoteAddr', displayName:'来源 IP', singleton:false, schema:[
+      {key:'sources', label:'CIDR 段', type:'list', itemType:'string', required:true, placeholder:'192.168.1.1/24'}
+    ]}
+  ];
+
+  // ============ 状态 ============
+  let current = null;            // 当前编辑的模板 {kind, tpl}
+  let mounted = [];              // 已挂载 [{kind, name, displayName, args}]
+  const listState = {};          // 当前表单 list 字段的值（编辑中）
+
+  // ============ 渲染模板列表 ============
+  function tplItem(tpl, kind){
+    const isMounted = mounted.some(m => m.kind===kind && m.name===tpl.name);
+    const div = document.createElement('div');
+    div.className = 'tpl' + (isMounted ? ' disabled' : '');
+    div.dataset.kind = kind;
+    div.dataset.name = tpl.name;
+    div.innerHTML = '<div><div class="nm">'+tpl.name+'</div><div class="dn">'+tpl.displayName+'</div></div>'
+      + '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;">'
+      + (tpl.singleton ? '<span class="badge single">每路由一次</span>' : '<span class="badge multi">可挂多次</span>')
+      + '</div>';
+    div.title = isMounted ? '已挂载（singleton），不可重复添加' : tpl.displayName;
+    return div;
+  }
+  function renderTplList(){
+    const f = document.getElementById('tplFilters');
+    const p = document.getElementById('tplPredicates');
+    f.innerHTML = '<h3>过滤器（gw_filter_template）</h3>';
+    p.innerHTML = '<h3>断言（gw_predicate_template）</h3>';
+    FILTERS.forEach(t => f.appendChild(tplItem(t,'filter')));
+    PREDICATES.forEach(t => p.appendChild(tplItem(t,'predicate')));
+  }
+
+  // ============ 动态表单渲染 ============
+  function renderForm(){
+    const body = document.getElementById('formBody');
+    const title = document.getElementById('formTitle');
+    const meta = document.getElementById('formMeta');
+    if(!current){
+      body.innerHTML = '<div class="empty-tip">← 左侧选择一个过滤器 / 断言模板<br>按模板 args_schema_json 动态渲染表单</div>';
+      title.firstChild.textContent = '参数表单 ';
+      meta.textContent = '';
+      return;
+    }
+    const {kind, tpl} = current;
+    title.firstChild.textContent = tpl.name + '（' + tpl.displayName + '） ';
+    meta.textContent = (kind==='filter' ? '过滤器模板' : '断言模板')
+      + (tpl.singleton ? ' · singleton' : ' · repeatable');
+    body.innerHTML = '';
+    tpl.schema.forEach(f => body.appendChild(fieldEl(f)));
+    // 初始化 listState（保留已有输入）
+    tpl.schema.forEach(f => {
+      if(f.type==='list' && !listState[f.key]) listState[f.key] = [''];
+    });
+  }
+
+  function fieldEl(f){
+    const wrap = document.createElement('div');
+    wrap.className = 'field';
+    const lab = document.createElement('div');
+    lab.className = 'lab';
+    lab.innerHTML = (f.required ? '<span class="req">*</span>' : '') + '<span>'+(f.label||f.key)+'</span>'
+      + '<span class="meta">'+(f.type==='list' ? 'list · itemType='+f.itemType : f.type)+'</span>';
+    wrap.appendChild(lab);
+
+    if(f.type==='list'){
+      const box = document.createElement('div');
+      box.className = 'list-box';
+      box.dataset.key = f.key;
+      box.appendChild(renderListRows(f));
+      const add = document.createElement('button');
+      add.className = 'btn-add';
+      add.textContent = '+ 添加一行';
+      add.type = 'button';
+      add.onclick = () => { listState[f.key].push(''); rebuildListBox(f); };
+      box.appendChild(add);
+      wrap.appendChild(box);
+      return wrap;
+    }
+    if(f.type==='bool'){
+      const sw = document.createElement('label');
+      sw.className = 'switch';
+      sw.innerHTML = '<input type="checkbox" ' + (f.default?'checked':'') + '><span class="slider"></span>';
+      sw.querySelector('input').addEventListener('change', e => {
+        const args = current.args || (current.args = {});
+        args[f.key] = e.target.checked;
+        refreshPreview();
+      });
+      wrap.appendChild(sw);
+      return wrap;
+    }
+    if(f.type==='enum'){
+      const sel = document.createElement('select');
+      (f.options||[]).forEach(o => {
+        const op = document.createElement('option'); op.value=o; op.textContent=o; sel.appendChild(op);
+      });
+      sel.value = f.default || '';
+      sel.addEventListener('change', () => setScalar(f.key, sel.value, f));
+      wrap.appendChild(sel);
+      return wrap;
+    }
+    if(f.type==='textarea'){
+      const ta = document.createElement('textarea');
+      ta.placeholder = f.placeholder||'';
+      ta.addEventListener('input', () => setScalar(f.key, ta.value, f));
+      wrap.appendChild(ta);
+      return wrap;
+    }
+    // string / int / long
+    const isNum = f.type==='int' || f.type==='long';
+    const inp = document.createElement('input');
+    inp.type = isNum ? 'number' : 'text';
+    inp.placeholder = f.placeholder || '';
+    inp.value = f.default != null ? f.default : '';
+    inp.addEventListener('input', () => setScalar(f.key, inp.value, f));
+    wrap.appendChild(inp);
+    return wrap;
+  }
+
+  function renderListRows(f){
+    const values = listState[f.key] || (listState[f.key]=['']);
+    const frag = document.createDocumentFragment();
+    values.forEach((v, i) => {
+      const row = document.createElement('div');
+      row.className = 'list-row';
+      let ctl;
+      if(f.itemType==='enum'){
+        ctl = document.createElement('select');
+        (f.itemOptions||[]).forEach(o => {
+          const op = document.createElement('option'); op.value=o; op.textContent=o; ctl.appendChild(op);
+        });
+        ctl.value = v || f.itemOptions[0];
+      } else if(f.itemType==='int'){
+        ctl = document.createElement('input');
+        ctl.type = 'number';
+        ctl.placeholder = f.placeholder||'';
+        ctl.value = v;
+      } else {
+        ctl = document.createElement('input');
+        ctl.type = 'text';
+        ctl.placeholder = f.placeholder||'';
+        ctl.value = v;
+      }
+      ctl.addEventListener('input', () => { listState[f.key][i] = ctl.value; refreshPreview(); });
+      const rm = document.createElement('button');
+      rm.className = 'rm'; rm.textContent = '×'; rm.type = 'button';
+      rm.onclick = () => {
+        listState[f.key].splice(i,1);
+        if(!listState[f.key].length) listState[f.key] = [''];
+        rebuildListBox(f);
+      };
+      row.appendChild(ctl);
+      row.appendChild(rm);
+      frag.appendChild(row);
+    });
+    return frag;
+  }
+  function rebuildListBox(f){
+    const box = document.querySelector('.list-box[data-key="'+f.key+'"]');
+    if(!box) return;
+    box.innerHTML = '';
+    box.appendChild(renderListRows(f));
+    const add = document.createElement('button');
+    add.className = 'btn-add'; add.textContent = '+ 添加一行'; add.type = 'button';
+    add.onclick = () => { listState[f.key].push(''); rebuildListBox(f); refreshPreview(); };
+    box.appendChild(add);
+    refreshPreview();
+  }
+
+  function setScalar(key, val, f){
+    current.args = current.args || {};
+    if(f.type==='int'||f.type==='long') current.args[key] = val === '' ? '' : val;
+    else current.args[key] = val;
+    refreshPreview();
+  }
+
+  // ============ 预览 ============
+  function collectArgs(){
+    const args = {};
+    if(!current) return args;
+    current.tpl.schema.forEach(f => {
+      if(f.type==='list'){
+        const vals = (listState[f.key]||[]).map(v => v.trim()).filter(Boolean);
+        if(vals.length) args[f.key] = vals;
+      } else {
+        const v = current.args ? current.args[f.key] : null;
+        if(v !== undefined && v !== null && v !== '') args[f.key] = v;
+      }
+    });
+    return args;
+  }
+  function validate(args){
+    if(!current) return [];
+    const errs = [];
+    current.tpl.schema.forEach(f => {
+      if(f.required){
+        if(f.type==='list'){
+          if(!(args[f.key]||[]).length) errs.push(f.label+' 至少填一项');
+        } else if(args[f.key] === undefined || args[f.key] === ''){
+          errs.push(f.label+' 必填');
+        }
+      }
+    });
+    return errs;
+  }
+  function escapeHtml(s){
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  function fmtJson(args){
+    const s = escapeHtml(JSON.stringify(args, null, 2));
+    return s.replace(/&quot;([^&]+)&quot;:(?=\s)/g, '<span class="k">&quot;$1&quot;</span>:');
+  }
+  function fmtExport(kind, tpl, args){
+    const idx = mounted.length - 1;
+    const base = kind==='filter'
+      ? 'spring.cloud.gateway.server.webflux.routes[0].filters['+idx+']'
+      : 'spring.cloud.gateway.server.webflux.routes[0].predicates['+idx+']';
+    const lines = [];
+    lines.push(base+'.name='+tpl.name);
+    Object.keys(args).forEach(k => {
+      const v = args[k];
+      if(Array.isArray(v)) lines.push(base+'.args.'+k+'='+v.join(','));
+      else lines.push(base+'.args.'+k+'='+v);
+    });
+    return lines.join('\n');
+  }
+  function refreshPreview(){
+    const argsEl = document.getElementById('argsJson');
+    const expEl = document.getElementById('exportText');
+    const meta = document.getElementById('previewMeta');
+    if(!current){
+      argsEl.innerHTML = '{}（暂未选择模板）';
+      expEl.textContent = '—';
+      meta.textContent = '';
+      return;
+    }
+    const args = collectArgs();
+    const errs = validate(args);
+    meta.textContent = errs.length ? ('⚠ ' + errs.join('；')) : '✔ 校验通过';
+    meta.style.color = errs.length ? 'var(--danger)' : 'var(--ok)';
+    argsEl.innerHTML = fmtJson(args);
+    expEl.textContent = errs.length ? '请先补全必填项：' + errs.join('；') : fmtExport(current.kind, current.tpl, args);
+  }
+  function refreshMounted(){
+    const row = document.getElementById('mountedRow');
+    row.innerHTML = '';
+    if(!mounted.length){
+      row.innerHTML = '<span class="note">暂无（左侧点模板 → 填写参数 → 「添加」）</span>';
+      return;
+    }
+    mounted.forEach((m,i) => {
+      const tag = document.createElement('span');
+      tag.className = 'tag';
+      const sum = Object.keys(m.args||{}).map(k => k+'='+JSON.stringify(m.args[k])).join(', ');
+      tag.innerHTML = '<b>'+(m.kind==='filter'?'F':'P')+'</b> '+m.displayName
+        + '<span style="opacity:.6">'+(sum? ' · '+escapeHtml(sum):'')+'</span>'
+        + '<button title="移除">×</button>';
+      tag.querySelector('button').onclick = () => { mounted.splice(i,1); renderTplList(); refreshMounted(); refreshPreview(); };
+      row.appendChild(tag);
+    });
+  }
+
+  // ============ 事件绑定 ============
+  document.getElementById('tplFilters').addEventListener('click', onTplClick);
+  document.getElementById('tplPredicates').addEventListener('click', onTplClick);
+  function onTplClick(e){
+    const el = e.target.closest('.tpl');
+    if(!el || el.classList.contains('disabled')) return;
+    const kind = el.dataset.kind;
+    const name = el.dataset.name;
+    const tpl = (kind==='filter' ? FILTERS : PREDICATES).find(t => t.name === name);
+    current = {kind, tpl, args: {}};
+    Object.keys(listState).forEach(k => delete listState[k]);
+    // 预填默认值
+    tpl.schema.forEach(f => {
+      if(f.default !== undefined && f.type !== 'list') current.args[f.key] = f.default;
+      if(f.type==='list') listState[f.key] = [''];
+    });
+    // 高亮
+    document.querySelectorAll('.tpl').forEach(x => x.classList.remove('active'));
+    el.classList.add('active');
+    renderForm();
+    refreshPreview();
+  }
+  document.getElementById('btnClear').addEventListener('click', () => {
+    mounted = [];
+    renderTplList();
+    refreshMounted();
+    refreshPreview();
+  });
+  // 「添加当前到已挂载」按钮（挂在表单标题右侧）
+  const addBtn = document.createElement('button');
+  addBtn.className = 'btn'; addBtn.textContent = '＋ 添加';
+  addBtn.style.marginLeft = '10px';
+  addBtn.onclick = () => {
+    if(!current){ alert('先选择一个模板'); return; }
+    const args = collectArgs();
+    const errs = validate(args);
+    if(errs.length){ alert('必填校验：' + errs.join('；')); return; }
+    if(current.tpl.singleton && mounted.some(m => m.kind===current.kind && m.name===current.tpl.name)){
+      alert('该模板为 singleton，已挂载，不可重复添加');
+      return;
+    }
+    mounted.push({kind:current.kind, name:current.tpl.name, displayName:current.tpl.displayName, args});
+    renderTplList();
+    refreshMounted();
+    refreshPreview();
+  };
+  document.querySelector('.col-form .col-head').appendChild(addBtn);
+
+  renderTplList();
+  refreshMounted();
+})();
+</script>
+</body>
+</html>

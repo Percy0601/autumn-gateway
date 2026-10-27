@@ -189,8 +189,12 @@ CREATE TABLE IF NOT EXISTS `gw_global_filter` (
 --     {"key":"mode","label":"模式","type":"enum","required":true,"options":["authenticate","authorize"],"default":"authenticate"},
 --     {"key":"appCode","label":"应用编码","type":"string","required":true}
 --   ]
---   字段说明：key=参数名  label=中文名  type=string/int/long/bool/enum/duration
+--   字段说明：key=参数名  label=中文名
+--            type=单键值(string/int/long/bool/enum/textarea/sensitive) 或多值 list
 --            required=true 必填  options=enum 候选项  default=默认值  placeholder=占位提示
+--   list 多值参数（如 Path.patterns / Method.methods / Header 多模式）：
+--     {"key":"methods","label":"HTTP 方法","type":"list","itemType":"string","required":true}
+--     前端渲染为可增删的动态行；导出时 list 拼成逗号分隔字符串（SCG 参数 Map<String,String> 限制）。
 -- ----------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `gw_filter_template` (
     `id`                  BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
@@ -198,7 +202,7 @@ CREATE TABLE IF NOT EXISTS `gw_filter_template` (
     `display_name`        VARCHAR(64)  NOT NULL COMMENT '页面显示名，如「网关鉴权」',
     `scope`               VARCHAR(16)  NOT NULL DEFAULT 'ROUTE' COMMENT '适用范围：ROUTE=仅路由 GLOBAL=仅全局 BOTH=两者皆可',
     `singleton_per_route` TINYINT      NOT NULL DEFAULT 0 COMMENT '1=同一路由最多挂一次（一次）；0=可挂多次（多次）',
-    `args_schema_json`    TEXT         NULL     COMMENT '参数表单定义数组（JSON），前端据此动态渲染',
+    `args_schema_json`    TEXT         NULL     COMMENT '参数表单定义数组（JSON），前端据此动态渲染；每项 type=单值(string/int/long/bool/enum/textarea/sensitive) 或 list(多值,配 itemType)',
     `status`              TINYINT      NOT NULL DEFAULT 1 COMMENT '1=启用 0=停用（停用后添加时不再列出）',
     `remark`              VARCHAR(512) NULL     COMMENT '备注',
     `created_at`          DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -216,7 +220,7 @@ CREATE TABLE IF NOT EXISTS `gw_predicate_template` (
     `id`                BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
     `predicate_name`    VARCHAR(64)  NOT NULL COMMENT '断言工厂名（唯一），如 Path / Method / Header',
     `display_name`      VARCHAR(64)  NOT NULL COMMENT '页面显示名，如「路径匹配」',
-    `args_schema_json`  TEXT         NULL     COMMENT '参数表单定义数组（JSON）',
+    `args_schema_json`  TEXT         NULL     COMMENT '参数表单定义数组（JSON），结构同 gw_filter_template（type 支持单值 + list/itemType）',
     `status`            TINYINT      NOT NULL DEFAULT 1 COMMENT '1=启用 0=停用',
     `remark`            VARCHAR(512) NULL     COMMENT '备注',
     `created_at`        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',

@@ -117,9 +117,9 @@ public class GwDataInitializer implements ApplicationRunner {
         seedFilter("Retry", "重试", "ROUTE", 1,
                 """
                 [{"key":"retries","label":"次数","type":"int","required":false,"default":3},
-                 {"key":"statuses","label":"重试状态码","type":"string","required":false}]
+                 {"key":"statuses","label":"重试状态码","type":"list","itemType":"int","required":false,"placeholder":"500"}]
                 """,
-                "按状态码重试");
+                "按状态码重试，可配多个（如 500,502,503）");
         seedFilter("RequestSize", "请求体大小限制", "ROUTE", 1,
                 """
                 [{"key":"maxSize","label":"最大字节数","type":"string","required":true}]
@@ -145,19 +145,19 @@ public class GwDataInitializer implements ApplicationRunner {
     private void seedPredicateTemplates() {
         seedPredicate("Path", "路径匹配",
                 """
-                [{"key":"pattern","label":"路径模式","type":"string","required":true,"placeholder":"/api/order/**"}]
+                [{"key":"patterns","label":"路径模式","type":"list","itemType":"string","required":true,"placeholder":"/api/order/**"}]
                 """,
-                "Ant 风格路径匹配");
+                "Ant 风格路径匹配，可配多个模式（多条断言间 AND，通常一条足够）");
         seedPredicate("Method", "请求方法",
                 """
-                [{"key":"methods","label":"HTTP 方法","type":"string","required":true,"placeholder":"GET,POST"}]
+                [{"key":"methods","label":"HTTP 方法","type":"list","itemType":"enum","itemOptions":["GET","POST","PUT","DELETE","PATCH","OPTIONS","HEAD"],"required":true}]
                 """,
-                "逗号分隔的方法列表");
+                "匹配的 HTTP 方法，可配多个（OR 关系）");
         seedPredicate("Host", "Host 匹配",
                 """
-                [{"key":"patterns","label":"Host 模式","type":"string","required":true}]
+                [{"key":"patterns","label":"Host 模式","type":"list","itemType":"string","required":true,"placeholder":"**.somehost.org"}]
                 """,
-                "按 Host 头匹配");
+                "按 Host 头匹配，可配多个模式");
         seedPredicate("Header", "请求头匹配",
                 """
                 [{"key":"name","label":"Header 名","type":"string","required":true},
@@ -178,9 +178,9 @@ public class GwDataInitializer implements ApplicationRunner {
                 "按 Cookie 匹配");
         seedPredicate("RemoteAddr", "来源 IP",
                 """
-                [{"key":"cidrs","label":"CIDR 列表","type":"string","required":true}]
+                [{"key":"sources","label":"CIDR 段","type":"list","itemType":"string","required":true,"placeholder":"192.168.1.1/24"}]
                 """,
-                "按来源 IP 段匹配");
+                "按来源 IP 段匹配，可配多个 CIDR");
         seedPredicate("After", "在时间之后",
                 """
                 [{"key":"datetime","label":"时间","type":"string","required":true,"placeholder":"2026-01-01T00:00:00+08:00"}]
