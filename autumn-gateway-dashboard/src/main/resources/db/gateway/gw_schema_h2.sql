@@ -156,3 +156,140 @@ CREATE TABLE IF NOT EXISTS `gw_predicate_template` (
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_gw_predicate_tpl` (`predicate_name`)
 ) COMMENT='断言模板（参数表单定义）';
+
+
+-- ================================================================
+-- v2 模板系统（设计文档：docs/gateway/网关可视化配置-模板系统设计.md）
+--   gw_tpl_definition / gw_tpl_field / gw_value_type / gw_value_type_field
+--   构成「模板 + 配置项 + 递归类型目录」：支持标量 / list / map / 嵌套 object，
+--   模板可自定义（builtin 区分内置），实例化落 route/global。
+--   gw_config_struct 是 STRUCT 模板（globalcors 等带前缀的全局结构化配置）的实例落点。
+--   种子数据见 db/gateway/gw_template_seed.sql（MySQL / H2 MODE=MySQL 两用）。
+--   ※ 旧表 gw_filter_template / gw_predicate_template 保留不删（v1 代码仍引用），
+--     前端切版到 v2 后再由迁移脚本停用。
+-- ================================================================
+
+-- 表 9：值类型目录（BASIC/LIST/OBJECT，递归）
+CREATE TABLE IF NOT EXISTS `gw_value_type` (
+    `id`           BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+    `name`         VARCHAR(64)  NOT NULL COMMENT '类型唯一名，如 STRING / LIST_HTTP_METHOD / OBJECT_CORS',
+    `display_name` VARCHAR(64)  NOT NULL COMMENT '显示名',
+    `kind`         VARCHAR(16)  NOT NULL COMMENT 'BASIC=标量叶子 LIST=列表 OBJECT=对象',
+    `builtin`      TINYINT      NOT NULL DEFAULT 1 COMMENT '1=内置类型（前端只读）0=用户自定义',
+    `sort_num`     INT          NOT NULL DEFAULT 0 COMMENT '类型选择器内排序',
+    `status`       TINYINT      NOT NULL DEFAULT 1 COMMENT '1=启用 0=停用',
+    `remark`       VARCHAR(512) NULL     COMMENT '备注',
+    `created_at`   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_at`   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_gw_vt_name` (`name`)
+) COMMENT='值类型目录（BASIC/LIST/OBJECT，递归）';
+
+
+-- 表 10：复合类型结构（LIST 元素 / OBJECT 字段，递归自引用）
+CREATE TABLE IF NOT EXISTS `gw_value_type_field` (
+    `id`                BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+    `type_id`           BIGINT       NOT NULL COMMENT '所属复合类型 gw_value_type.id',
+    `role`              VARCHAR(16)  NOT NULL COMMENT 'ITEM=list元素 FIELD=object字段',
+    `key_name`          VARCHAR(64)  NOT NULL COMMENT 'ITEM 时固定 ITEM；FIELD 时为字段名',
+    `label`             VARCHAR(64)  NULL     COMMENT '中文名',
+    `value_type_id`     BIGINT       NOT NULL COMMENT '该位置的类型（递归引用 gw_value_type.id）',
+    `required`          TINYINT      NOT NULL DEFAULT 0 COMMENT '1=必填',
+    `default_value`     VARCHAR(255) NULL     COMMENT '默认值',
+    `options_json`      TEXT         NULL     COMMENT 'ENUM 候选项 JSON 数组；map 键固定集合时也用它',
+    `placeholder`       VARCHAR(255) NULL     COMMENT '占位提示',
+    `validator`         VARCHAR(255) NULL     COMMENT '值正则',
+    `sensitive`         TINYINT      NOT NULL DEFAULT 0 COMMENT '1=敏感',
+    `is_map_key`        TINYINT      NOT NULL DEFAULT 0 COMMENT '1=该位置实例值为 Map，键由用户输入，值类型=value_type_id',
+    `map_key_validator` VARCHAR(255) NULL     COMMENT 'map 键正则（options_json 非空时忽略）',
+    `export_key`        VARCHAR(128) NULL     COMMENT '导出路径段，默认=key_name',
+    `sort_num`          INT          NOT NULL DEFAULT 0 COMMENT '字段顺序',
+    `remark`            VARCHAR(512) NULL     COMMENT '说明',
+    `created_at`        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_at`        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (`id`),
+    INDEX `idx_gw_vtf_type` (`type_id`, `sort_num`),
+    CONSTRAINT `fk_gw_vtf_type` FOREIGN KEY (`type_id`) REFERENCES `gw_value_type` (`id`),
+    CONSTRAINT `fk_gw_vtf_valtype` FOREIGN KEY (`value_type_id`) REFERENCES `gw_value_type` (`id`)
+) COMMENT='复合类型结构（LIST 元素 / OBJECT 字段，递归）';
+
+
+-- 表 11：模板定义（过滤器/断言/结构化全局，v2）
+CREATE TABLE IF NOT EXISTS `gw_tpl_definition` (
+    `id`                  BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+    `kind`                VARCHAR(16)  NOT NULL COMMENT 'FILTER=过滤器 PREDICATE=断言 STRUCT=结构化全局配置',
+    `name`                VARCHAR(64)  NOT NULL COMMENT 'FILTER/PREDICATE 为工厂短名；STRUCT 为逻辑名（globalcors）',
+    `display_name`        VARCHAR(64)  NOT NULL COMMENT '页面显示名',
+    `category`            VARCHAR(32)  NOT NULL DEFAULT '其他' COMMENT '选择器分组：鉴权/限流/路径/头操作/重写/重试熔断/安全/结构化全局/其他',
+    `scope`               VARCHAR(16)  NOT NULL DEFAULT 'ROUTE' COMMENT 'ROUTE=仅路由 GLOBAL=仅全局 BOTH=两者皆可（STRUCT 恒 GLOBAL）',
+    `singleton_per_route` TINYINT      NOT NULL DEFAULT 0 COMMENT '1=同路由最多挂一次；0=可挂多次（仅 FILTER 有意义）',
+    `builtin`             TINYINT      NOT NULL DEFAULT 1 COMMENT '1=内置模板（只读/复制）0=用户自定义',
+    `sort_num`            INT          NOT NULL DEFAULT 0 COMMENT '选择器内排序',
+    `status`              TINYINT      NOT NULL DEFAULT 1 COMMENT '1=启用 0=停用',
+    `remark`              VARCHAR(512) NULL     COMMENT '模板说明（含依赖提示）',
+    `created_at`          DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_at`          DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_gw_tpl_kind_name` (`kind`, `name`)
+) COMMENT='模板定义（过滤器/断言/结构化全局）';
+
+
+-- 表 12：模板配置项（一个模板 1..N 个配置项）
+CREATE TABLE IF NOT EXISTS `gw_tpl_field` (
+    `id`                BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+    `tpl_id`            BIGINT       NOT NULL COMMENT '所属模板 gw_tpl_definition.id',
+    `key_name`          VARCHAR(64)  NOT NULL COMMENT '配置项 key：FILTER/PREDICATE 为 args key；STRUCT 为属性段',
+    `label`             VARCHAR(64)  NOT NULL COMMENT '中文提示，表单 label',
+    `value_type_id`     BIGINT       NOT NULL COMMENT '值类型 gw_value_type.id（标量/list/object，递归）',
+    `required`          TINYINT      NOT NULL DEFAULT 0 COMMENT '1=必填，实例化校验',
+    `default_value`     VARCHAR(255) NULL     COMMENT '默认值（前端预填）',
+    `options_json`      TEXT         NULL     COMMENT 'ENUM 候选项 JSON 数组；map 键固定集合时渲染为下拉',
+    `placeholder`       VARCHAR(255) NULL     COMMENT '输入占位提示',
+    `validator`         VARCHAR(255) NULL     COMMENT '值正则（如 CIDR / ISO8601）',
+    `sensitive`         TINYINT      NOT NULL DEFAULT 0 COMMENT '1=敏感（掩码显示）',
+    `is_map_key`        TINYINT      NOT NULL DEFAULT 0 COMMENT '1=该配置项实例值为 Map：键用户输入，值类型=value_type_id',
+    `map_key_validator` VARCHAR(255) NULL     COMMENT 'map 键正则；options_json 非空时忽略',
+    `export_key`        VARCHAR(128) NULL     COMMENT '导出路径段，默认=key_name',
+    `sort_num`          INT          NOT NULL DEFAULT 0 COMMENT '表单内顺序',
+    `remark`            VARCHAR(512) NULL     COMMENT '该项说明（tooltip）',
+    `created_at`        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_at`        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (`id`),
+    INDEX `idx_gw_tpl_field_tpl` (`tpl_id`, `sort_num`),
+    CONSTRAINT `fk_gw_tpl_field_tpl` FOREIGN KEY (`tpl_id`) REFERENCES `gw_tpl_definition` (`id`),
+    CONSTRAINT `fk_gw_tpl_field_valtype` FOREIGN KEY (`value_type_id`) REFERENCES `gw_value_type` (`id`)
+) COMMENT='模板配置项（标量/list/map/嵌套 object）';
+
+
+-- 表 13：结构化全局配置实例（STRUCT 模板落点）
+CREATE TABLE IF NOT EXISTS `gw_config_struct` (
+    `id`            BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+    `profile_code`  VARCHAR(32)  NOT NULL DEFAULT 'dev' COMMENT '环境编码：dev/test/prod',
+    `struct_name`   VARCHAR(64)  NOT NULL COMMENT 'STRUCT 模板名（如 globalcors）',
+    `instance_name` VARCHAR(128) NULL     COMMENT '实例显示名',
+    `value_json`    TEXT         NULL     COMMENT '树形 JSON（含 map 键、嵌套 object/list），按模板校验',
+    `sort_num`      INT          NOT NULL DEFAULT 0 COMMENT '同模板多实例排序',
+    `status`        TINYINT      NOT NULL DEFAULT 1 COMMENT '1=启用（导出）0=停用',
+    `del_flag`      TINYINT      NOT NULL DEFAULT 0 COMMENT '软删：1=已删',
+    `remark`        VARCHAR(512) NULL     COMMENT '备注',
+    `created_at`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_at`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (`id`),
+    INDEX `idx_gw_struct_profile` (`profile_code`, `struct_name`, `status`)
+) COMMENT='结构化全局配置实例（STRUCT 模板落点）';
+
+
+-- 自检（只读，确认 13 张表均存在）
+SELECT 'gw_config_center'       AS table_name, COUNT(*) AS rows_cnt FROM `gw_config_center`
+UNION ALL SELECT 'gw_config_item',       COUNT(*) FROM `gw_config_item`
+UNION ALL SELECT 'gw_route',             COUNT(*) FROM `gw_route`
+UNION ALL SELECT 'gw_route_predicate',   COUNT(*) FROM `gw_route_predicate`
+UNION ALL SELECT 'gw_route_filter',      COUNT(*) FROM `gw_route_filter`
+UNION ALL SELECT 'gw_global_filter',     COUNT(*) FROM `gw_global_filter`
+UNION ALL SELECT 'gw_filter_template',   COUNT(*) FROM `gw_filter_template`
+UNION ALL SELECT 'gw_predicate_template',COUNT(*) FROM `gw_predicate_template`
+UNION ALL SELECT 'gw_value_type',        COUNT(*) FROM `gw_value_type`
+UNION ALL SELECT 'gw_value_type_field',  COUNT(*) FROM `gw_value_type_field`
+UNION ALL SELECT 'gw_tpl_definition',    COUNT(*) FROM `gw_tpl_definition`
+UNION ALL SELECT 'gw_tpl_field',         COUNT(*) FROM `gw_tpl_field`
+UNION ALL SELECT 'gw_config_struct',     COUNT(*) FROM `gw_config_struct`;
