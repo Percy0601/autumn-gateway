@@ -6,9 +6,13 @@ import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.support.EncodedResource;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.init.ScriptUtils;
 import org.springframework.stereotype.Component;
 
+import java.sql.Connection;
 import java.time.LocalDateTime;
 
 /**
@@ -45,7 +49,8 @@ public class GwDataInitializer implements ApplicationRunner {
             seedPredicateTemplates();
             seedConfigItems();
             seedGatewayMenus();
-            log.info("网关配置种子数据就绪（过滤器/断言模板、常用配置项、网关菜单）");
+            seedTemplateV2();
+            log.info("网关配置种子数据就绪（过滤器/断言模板、常用配置项、网关菜单、模板系统 v2）");
         } catch (DataAccessException e) {
             log.warn("网关种子数据写入失败：{}。大概率是 gw_* 表未创建，"
                             + "请确认 spring.sql.init.schema-locations 已包含 db/gateway/gw_schema_*.sql",
@@ -125,6 +130,77 @@ public class GwDataInitializer implements ApplicationRunner {
                 [{"key":"maxSize","label":"最大字节数","type":"string","required":true}]
                 """,
                 "限制请求体大小");
+
+        // ---- 头 / 状态类（常用） ----
+        seedFilter("AddRequestParameter", "添加请求参数", "ROUTE", 0,
+                """
+                [{"key":"name","label":"参数名","type":"string","required":true},
+                 {"key":"value","label":"参数值","type":"string","required":true}]
+                """,
+                "向下游追加查询参数");
+        seedFilter("RemoveRequestHeader", "移除请求头", "ROUTE", 0,
+                """
+                [{"key":"name","label":"Header 名","type":"string","required":true}]
+                """,
+                "转发前移除指定请求头");
+        seedFilter("SetRequestHeader", "设置请求头", "ROUTE", 0,
+                """
+                [{"key":"name","label":"Header 名","type":"string","required":true},
+                 {"key":"value","label":"Header 值","type":"string","required":true}]
+                """,
+                "覆盖/设置请求头（支持 {uri} {host} 等占位）");
+        seedFilter("SetResponseHeader", "设置响应头", "BOTH", 0,
+                """
+                [{"key":"name","label":"Header 名","type":"string","required":true},
+                 {"key":"value","label":"Header 值","type":"string","required":true}]
+                """,
+                "覆盖/设置响应头，路由级或全局默认均可");
+        seedFilter("RemoveResponseHeader", "移除响应头", "BOTH", 0,
+                """
+                [{"key":"name","label":"Header 名","type":"string","required":true}]
+                """,
+                "向客户端返回前移除指定响应头");
+        seedFilter("SetStatus", "设置响应状态码", "ROUTE", 0,
+                """
+                [{"key":"status","label":"状态码","type":"string","required":true,"placeholder":"200 / NOT_FOUND / :400"},
+                 {"key":"reason","label":"原因短语","type":"string","required":false}]
+                """,
+                "改写响应状态码，可为数字/枚举名/:前缀");
+        seedFilter("DedupeResponseHeader", "去重响应头", "BOTH", 0,
+                """
+                [{"key":"name","label":"Header 名","type":"string","required":true},
+                 {"key":"strategy","label":"去重策略","type":"enum","required":false,"options":["RETAIN_FIRST","RETAIN_LAST","RETAIN_UNIQUE"],"default":"RETAIN_LAST"}]
+                """,
+                "去掉重复响应头，常用于 Access-Control-Allow-*");
+        seedFilter("RewriteResponseHeader", "重写响应头", "ROUTE", 0,
+                """
+                [{"key":"name","label":"Header 名","type":"string","required":true},
+                 {"key":"regexp","label":"正则","type":"string","required":true},
+                 {"key":"replacement","label":"替换","type":"string","required":true}]
+                """,
+                "按正则改写响应头值");
+        seedFilter("RequestHeaderToRequestUri", "请求头转 URI", "ROUTE", 1,
+                """
+                [{"key":"name","label":"Header 名","type":"string","required":true},
+                 {"key":"expression","label":"表达式","type":"string","required":false,"placeholder":"如 headers['X-Forwarded-Prefix'] + '/xxx'"}]
+                """,
+                "把某请求头拼进请求 URI（灰度/上下文路径）");
+        seedFilter("SaveSession", "保存 Session", "ROUTE", 1,
+                "[]",
+                "确保 WebSession 被保存（如 OAuth2 登录后），无参数");
+        seedFilter("SecureHeaders", "安全响应头", "BOTH", 0,
+                "[]",
+                "统一追加 X-Content-Type-Options / X-Frame-Options 等安全头，无参数");
+
+        // ---- 跨域 CORS：复杂 Map 类型示例（flat map 直接作为过滤器 args） ----
+        seedFilter("Cors", "跨域 CORS", "BOTH", 0,
+                """
+                [{"key":"corsConfiguration","label":"CORS 配置","type":"map","flat":true,
+                  "keyOptions":["allowedOrigins","allowedMethods","allowedHeaders","exposedHeaders","allowedOriginPatterns","allowCredentials","maxAge","allowPrivateNetwork"],
+                  "valueType":"list","itemType":"string","required":false,
+                  "desc":"Spring Cloud Gateway CorsGatewayFilterFactory 参数；键值可增删，值可为 列表/布尔/数字"}]
+                """,
+                "跨域过滤器，按 allowedOrigins/allowedMethods 等配置（复杂 Map 类型示例）");
     }
 
     private void seedFilter(String filterName, String displayName, String scope, int singleton,
@@ -251,6 +327,16 @@ public class GwDataInitializer implements ApplicationRunner {
         seedConfig("DISCOVERY", "consul.scheme", "http", "STRING", 0, 0, 3, "Consul 协议");
         seedConfig("DISCOVERY", "consul.token", "", "STRING", 0, 1, 4, "Consul ACL Token（敏感）");
         seedConfig("DISCOVERY", "consul.timeout", "3s", "DURATION", 0, 0, 5, "Consul 请求超时");
+
+        // SCG 路由 / 转发 / 指标
+        seedConfig("SCG", "spring.cloud.gateway.discovery.locator.enabled", "false", "BOOL", 0, 0, 6, "开启后按注册中心服务名自动建路由（如 /service-name/**）");
+        seedConfig("SCG", "spring.cloud.gateway.forwarded.enabled", "true", "BOOL", 0, 0, 7, "是否处理 Forwarded 头");
+        seedConfig("SCG", "spring.cloud.gateway.metrics.enabled", "true", "BOOL", 0, 0, 8, "暴露网关指标（actuator gateway metrics）");
+        // CORS 全局开关（配合 Cors 过滤器）
+        seedConfig("CORS", "spring.cloud.gateway.globalcors.add-to-simple-url-handler-mapping", "true", "BOOL", 0, 0, 1, "让 OPTIONS 预检等直接走 CORS 处理（配合 Cors 过滤器）");
+        seedConfig("CORS", "spring.cloud.gateway.globalcors.cors-configurations.[/**].allowedOrigins", "*", "LIST", 0, 0, 2, "全局 CORS：允许的来源（** 匹配全部路径）");
+        seedConfig("CORS", "spring.cloud.gateway.globalcors.cors-configurations.[/**].allowedMethods", "GET,POST,PUT,DELETE,OPTIONS", "LIST", 0, 0, 3, "全局 CORS：允许的 HTTP 方法");
+        seedConfig("CORS", "spring.cloud.gateway.globalcors.cors-configurations.[/**].allowCredentials", "true", "BOOL", 0, 0, 4, "全局 CORS：是否允许凭证");
     }
 
     private void seedConfig(String group, String key, String value, String valueType,
@@ -275,6 +361,7 @@ public class GwDataInitializer implements ApplicationRunner {
         ensureMenu(appId, "gateway:config", "全局配置", "gateway/config/index", 2, dirId, "setting", "网关全局配置项");
         ensureMenu(appId, "gateway:globalFilter", "全局过滤器", "gateway/globalFilter/index", 2, dirId, "filter", "default-filters");
         ensureMenu(appId, "gateway:center", "配置中心", "gateway/center/index", 2, dirId, "link", "Consul/Nacos 连接管理");
+        ensureMenu(appId, "gateway:template", "模板管理", "gateway/template/index", 2, dirId, "collection", "模板化可视化配置（v2）：过滤器/断言/结构化模板 + 值类型目录");
     }
 
     /** 网关菜单挂到 admin 应用下；找不到 admin 时退回任意启用应用，再退回 app_id=0（findAll 仍可见） */
@@ -305,6 +392,46 @@ public class GwDataInitializer implements ApplicationRunner {
         return queryForLongOrNull(
                 "SELECT id FROM basic_menu WHERE menu_identification = ? AND parent_id = ?",
                 identification, parentId);
+    }
+
+    // ==================== 5. 模板系统 v2 种子 ====================
+
+    /**
+     * 模板系统 v2 种子：仅在 5 张新表（gw_tpl_definition 等）完全为空时导入
+     * classpath:db/gateway/gw_template_seed.sql（与 schema 同源的唯一数据源）。
+     *
+     * <p>幂等：表一旦有数据（含用户自定义模板）即跳过，绝不覆盖。
+     * PostgreSQL 因 GENERATED ALWAYS AS IDENTITY 不接受显式 id，跳过并提示按设计文档 §5.4 手动适配。</p>
+     */
+    private void seedTemplateV2() {
+        try {
+            if (count("SELECT COUNT(1) FROM gw_tpl_definition") > 0) {
+                log.debug("模板系统 v2 已初始化（gw_tpl_definition 非空），跳过种子导入");
+                return;
+            }
+        } catch (DataAccessException e) {
+            log.warn("模板系统 v2 表未创建（gw_tpl_definition 不存在），跳过种子导入。请确认 gw_schema 已含 5 张新表");
+            return;
+        }
+        String dbProduct = "";
+        try (Connection c = jdbcTemplate.getDataSource().getConnection()) {
+            dbProduct = String.valueOf(c.getMetaData().getDatabaseProductName()).toLowerCase();
+        } catch (Exception ignored) {
+            // 拿不到产品名就按通用流程执行，MySQL/H2 均可
+        }
+        if (dbProduct.contains("postgresql")) {
+            log.warn("模板系统 v2 种子：当前库为 PostgreSQL，种子 SQL（显式 id）不适用，"
+                    + "请按 docs/gateway/网关可视化配置-模板系统设计.md §5.4 手动导入 gw_template_seed.sql");
+            return;
+        }
+        try (Connection c = jdbcTemplate.getDataSource().getConnection()) {
+            ScriptUtils.executeSqlScript(c, new EncodedResource(new ClassPathResource("db/gateway/gw_template_seed.sql")));
+            log.info("模板系统 v2 种子已导入（gw_tpl_definition {} 条、gw_value_type {} 条）",
+                    count("SELECT COUNT(1) FROM gw_tpl_definition"),
+                    count("SELECT COUNT(1) FROM gw_value_type"));
+        } catch (Exception e) {
+            log.warn("模板系统 v2 种子导入失败：{}", e.getMessage());
+        }
     }
 
     // ==================== 工具 ====================

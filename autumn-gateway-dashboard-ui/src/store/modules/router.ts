@@ -41,7 +41,8 @@ const fallbackMenu = [
 			{ id: 31, name: '网关路由', url: 'gateway/route/index', openStyle: 0, icon: 'guide' },
 			{ id: 32, name: '全局配置', url: 'gateway/config/index', openStyle: 0, icon: 'setting' },
 			{ id: 33, name: '全局过滤器', url: 'gateway/globalFilter/index', openStyle: 0, icon: 'filter' },
-			{ id: 35, name: '配置中心', url: 'gateway/center/index', openStyle: 0, icon: 'link' }
+			{ id: 35, name: '配置中心', url: 'gateway/center/index', openStyle: 0, icon: 'link' },
+			{ id: 36, name: '模板管理', url: 'gateway/template/index', openStyle: 0, icon: 'collection' }
 		]
 	}
 ]

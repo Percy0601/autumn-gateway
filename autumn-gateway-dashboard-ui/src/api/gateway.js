@@ -45,8 +45,32 @@ export const gatewayCenterApi = {
   services: (id) => service.get(`${BASE}/center/${id}/services`),
 }
 
-// 过滤器/断言模板
+// 过滤器/断言模板（v1）
 export const gatewayTemplateApi = {
   filterList: () => service.get(`${BASE}/template/filter`),
   predicateList: () => service.get(`${BASE}/template/predicate`),
+}
+
+// 模板系统 v2（模板化可视化配置）：值类型目录 / 模板定义 / 结构化实例 / 校验导出
+export const gatewayTemplateV2Api = {
+  // 值类型目录
+  valueTypes: (status) => service.get(`${BASE}/template-v2/value-types`, { params: { status } }),
+  createValueType: (data) => service.post(`${BASE}/template-v2/value-types`, data),
+  updateValueType: (id, data) => service.put(`${BASE}/template-v2/value-types/${id}`, data),
+  removeValueType: (id) => service.delete(`${BASE}/template-v2/value-types/${id}`),
+  saveTypeFields: (id, fields) => service.put(`${BASE}/template-v2/value-types/${id}/fields`, fields),
+  // 模板定义
+  templates: (kind) => service.get(`${BASE}/template-v2/templates`, { params: { kind } }),
+  templateTree: (id) => service.get(`${BASE}/template-v2/templates/${id}/tree`),
+  createTemplate: (data) => service.post(`${BASE}/template-v2/templates`, data),
+  updateTemplate: (id, data) => service.put(`${BASE}/template-v2/templates/${id}`, data),
+  removeTemplate: (id) => service.delete(`${BASE}/template-v2/templates/${id}`),
+  // STRUCT 实例
+  structs: (profile) => service.get(`${BASE}/template-v2/structs`, { params: { profile } }),
+  createStruct: (data) => service.post(`${BASE}/template-v2/structs`, data),
+  updateStruct: (id, data) => service.put(`${BASE}/template-v2/structs/${id}`, data),
+  removeStruct: (id) => service.delete(`${BASE}/template-v2/structs/${id}`),
+  structPreview: (id) => service.get(`${BASE}/template-v2/structs/${id}/preview`),
+  // 校验与导出预览（FILTER/PREDICATE → args 扁平键；STRUCT → properties 行）
+  validate: (data) => service.post(`${BASE}/template-v2/validate`, data),
 }
