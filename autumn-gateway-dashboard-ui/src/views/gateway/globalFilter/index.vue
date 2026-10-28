@@ -1,13 +1,14 @@
 <script setup>
 import { onMounted, ref, reactive, computed } from 'vue'
 import { ElMessage } from 'element-plus'
-import { gatewayGlobalFilterApi, gatewayTemplateApi } from '@/api/gateway'
+import { gatewayGlobalFilterApi, gatewayTemplateV2Api } from '@/api/gateway'
 import { isConfirmed } from '@/utils/confirm'
-import ArgsForm from '../components/ArgsForm.vue'
+import ValueTreeForm from '../components/ValueTreeForm.vue'
+import { defaultOf } from '../components/slotDefaults'
 
 const loading = ref(false)
 const rows = ref([])
-// 只列出能当「全局默认过滤器」用的模板：scope 为 GLOBAL 或 BOTH
+// 只列出能当「全局默认过滤器」用的模板：scope 为 GLOBAL 或 BOTH（v2 模板，限制可填项）
 const templates = ref([])
 
 async function loadData() {
@@ -19,8 +20,8 @@ async function loadData() {
   }
 }
 async function loadTemplates() {
-  const r = await gatewayTemplateApi.filterList()
-  templates.value = (r.data || []).filter((t) => t.scope === 'GLOBAL' || t.scope === 'BOTH')
+  const r = await gatewayTemplateV2Api.templates('FILTER')
+  templates.value = (r.data || []).filter((t) => t.status === 1 && (t.scope === 'GLOBAL' || t.scope === 'BOTH'))
 }
 onMounted(() => {
   loadData()
@@ -38,16 +39,50 @@ function safeParse(s) {
 const dlg = ref(false)
 const saving = ref(false)
 const currentId = ref(null)
+const tree = ref(null)
 const form = reactive({ filterName: '', args: {}, argsJsonRaw: '', sortNum: 0, enabled: 1, remark: '' })
 
-const currentSchema = computed(() => {
-  const t = templates.value.find((x) => x.filterName === form.filterName)
-  return t ? safeParse(t.argsSchemaJson) : []
-})
+const useV2 = computed(() => templates.value.some((t) => t.name === form.filterName))
+const slots = computed(() => tree.value?.fields || [])
+
+function mergeWithDefaults(slots, existing, target) {
+  for (const slot of slots || []) {
+    const k = slot.keyName
+    const t = slot.valueType || {}
+    if (!existing || !(k in existing) || existing[k] === undefined || existing[k] === null) {
+      target[k] = defaultOf(slot)
+      continue
+    }
+    const v = existing[k]
+    if (t.kind === 'OBJECT' && v && typeof v === 'object' && !Array.isArray(v)) {
+      target[k] = {}
+      mergeWithDefaults(t.fields?.filter((f) => f.role === 'FIELD' || !f.role), v, target[k])
+    } else {
+      target[k] = v
+    }
+  }
+  for (const k of Object.keys(existing || {})) {
+    if (!(k in target)) target[k] = existing[k]
+  }
+}
+
+async function loadTreeFor(name, existing) {
+  const t = templates.value.find((x) => x.name === name)
+  if (!t) {
+    tree.value = null
+    return
+  }
+  const r = await gatewayTemplateV2Api.templateTree(t.id)
+  tree.value = r.data || null
+  const next = {}
+  mergeWithDefaults(tree.value?.fields || [], existing, next)
+  form.args = next
+}
 
 function openCreate() {
   currentId.value = null
   Object.assign(form, { filterName: '', args: {}, argsJsonRaw: '', sortNum: rows.value.length + 1, enabled: 1, remark: '' })
+  tree.value = null
   dlg.value = true
 }
 function openEdit(row) {
@@ -61,23 +96,34 @@ function openEdit(row) {
     remark: row.remark || '',
   })
   dlg.value = true
+  if (templates.value.some((t) => t.name === form.filterName)) {
+    loadTreeFor(form.filterName, form.args)
+  } else {
+    tree.value = null
+  }
 }
 function onTemplateChange() {
-  // 用户主动切换模板时，用模板默认值重置参数
-  form.args = {}
-  for (const f of currentSchema.value) {
-    if (f.default !== undefined) form.args[f.key] = f.default
+  loadTreeFor(form.filterName)
+}
+async function serverValidate() {
+  if (!useV2.value) return null
+  const { data } = await gatewayTemplateV2Api.validate({
+    kind: 'FILTER',
+    name: form.filterName,
+    valueJson: JSON.stringify(form.args || {}),
+  })
+  if (!data?.ok) {
+    const errs = data?.errors || ['校验未通过']
+    return Array.isArray(errs) ? errs[0] : String(errs)
   }
+  return null
 }
 async function save() {
   if (!form.filterName) return ElMessage.warning('请选择过滤器模板')
-  for (const f of currentSchema.value) {
-    if (f.required && (form.args[f.key] === undefined || form.args[f.key] === '')) {
-      return ElMessage.warning(`参数 ${f.label || f.key} 必填`)
-    }
-  }
-  // 有模板走参数表单，找不到模板（历史手填数据）退回原始 JSON 编辑
-  const argsJson = currentSchema.value.length ? JSON.stringify(form.args || {}) : (form.argsJsonRaw || '{}')
+  const err = await serverValidate()
+  if (err) return ElMessage.warning(err)
+  // 有 v2 模板走受限表单；找不到模板（历史手填数据）退回原始 JSON 编辑
+  const argsJson = useV2.value ? JSON.stringify(form.args || {}) : (form.argsJsonRaw || '{}')
   saving.value = true
   try {
     const payload = {
@@ -145,7 +191,7 @@ function argsSummary(row) {
 <template>
   <div class="p-4">
     <el-card shadow="never">
-      <div class="mb-3 flex items-center justify-between">
+      <div class="mb-4 flex items-center justify-between">
         <div>
           <span class="text-base font-bold">全局默认过滤器（default-filters）</span>
           <div class="text-xs text-gray-400 mt-1">自动挂到每条路由上；上移/下移调整执行顺序</div>
@@ -187,15 +233,24 @@ function argsSummary(row) {
       </el-table>
     </el-card>
 
-    <el-dialog v-model="dlg" :title="currentId ? '编辑全局过滤器' : '添加全局过滤器'" width="520">
+    <el-dialog v-model="dlg" :title="currentId ? '编辑全局过滤器' : '添加全局过滤器'" width="640">
       <el-form label-width="100">
         <el-form-item label="过滤器" required>
           <el-select v-model="form.filterName" filterable placeholder="选择过滤器模板" @change="onTemplateChange">
-            <el-option v-for="t in templates" :key="t.id" :label="`${t.displayName}（${t.filterName}）`" :value="t.filterName" />
+            <el-option v-for="t in templates" :key="t.id" :label="`${t.displayName}（${t.name}）`" :value="t.name" />
           </el-select>
         </el-form-item>
 
-        <ArgsForm v-if="currentSchema.length" v-model="form.args" :schema="currentSchema" />
+        <!-- v2 模板 → 受限表单（list/map/嵌套 object 均可，含提示与校验正则） -->
+        <el-form-item v-if="useV2" label="参数">
+          <div class="w-full">
+            <div v-if="tree?.remark" class="text-xs text-gray-400 mb-2">{{ tree.remark }}</div>
+            <ValueTreeForm v-model="form.args" :slots="slots" />
+            <div class="text-xs text-gray-400 mt-1">保存时按模板做服务端校验（必填/正则/枚举/类型）</div>
+          </div>
+        </el-form-item>
+
+        <!-- 无 v2 模板（历史手填数据）→ 直接编辑 JSON 兜底 -->
         <el-form-item v-else label="参数 JSON">
           <el-input v-model="form.argsJsonRaw" type="textarea" :rows="4" placeholder='{"name":"X-Request-Id"}' />
         </el-form-item>

@@ -356,12 +356,13 @@ public class GwDataInitializer implements ApplicationRunner {
 
     private void seedGatewayMenus() {
         long appId = resolveAdminAppId();
-        long dirId = ensureMenu(appId, "gateway", "网关配置", "", 1, 0L, "connection", "网关可视化配置目录");
-        ensureMenu(appId, "gateway:route", "网关路由", "gateway/route/index", 2, dirId, "guide", "路由/断言/过滤器管理");
+        long dirId = ensureMenu(appId, "gateway", "网关配置", "", 1, 0L, "gateway", "网关可视化配置目录");
+        ensureMenu(appId, "gateway:route", "网关路由", "gateway/route/index", 2, dirId, "branches", "路由/断言/过滤器管理");
         ensureMenu(appId, "gateway:config", "全局配置", "gateway/config/index", 2, dirId, "setting", "网关全局配置项");
         ensureMenu(appId, "gateway:globalFilter", "全局过滤器", "gateway/globalFilter/index", 2, dirId, "filter", "default-filters");
         ensureMenu(appId, "gateway:center", "配置中心", "gateway/center/index", 2, dirId, "link", "Consul/Nacos 连接管理");
-        ensureMenu(appId, "gateway:template", "模板管理", "gateway/template/index", 2, dirId, "collection", "模板化可视化配置（v2）：过滤器/断言/结构化模板 + 值类型目录");
+        ensureMenu(appId, "gateway:template", "模板管理", "gateway/template/index", 2, dirId, "block", "模板化可视化配置（v2）：过滤器/断言/结构化模板 + 值类型目录");
+        ensureMenu(appId, "gateway:sync", "配置同步", "gateway/sync/index", 2, dirId, "cloud-sync", "聚合预览全部网关配置，推送到配置中心或下载");
     }
 
     /** 网关菜单挂到 admin 应用下；找不到 admin 时退回任意启用应用，再退回 app_id=0（findAll 仍可见） */
@@ -373,13 +374,20 @@ public class GwDataInitializer implements ApplicationRunner {
         return id == null ? 0L : id;
     }
 
-    /** 幂等写入菜单：不存在则插入并返回 id；已存在则返回其 id */
+    /** 幂等写入菜单：不存在则插入并返回 id；已存在则回填缺失/不一致的 icon（图标名必须在 iconfont 精灵图里存在） */
     private long ensureMenu(long appId, String identification, String name, String url,
                             int menuType, long parentId, String icon, String remark) {
         Long id = queryForLongOrNull(
                 "SELECT id FROM basic_menu WHERE menu_identification = ? AND parent_id = ?",
                 identification, parentId);
         if (id != null) {
+            // 旧种子曾用过 iconfont 里不存在的图标名（connection/guide/collection），
+            // 这里以当前种子为准回填 icon，保证新老库一致（不覆盖用户自行改的 name/url/排序）。
+            String curIcon = queryForStringOrNull("SELECT menu_icon FROM basic_menu WHERE id = ?", id);
+            if (curIcon == null || !curIcon.equals(icon)) {
+                jdbcTemplate.update("UPDATE basic_menu SET menu_icon = ?, update_time = ? WHERE id = ?",
+                        icon, LocalDateTime.now(), id);
+            }
             return id;
         }
         LocalDateTime now = LocalDateTime.now();
@@ -439,6 +447,14 @@ public class GwDataInitializer implements ApplicationRunner {
     private Long queryForLongOrNull(String sql, Object... args) {
         try {
             return jdbcTemplate.queryForObject(sql, Long.class, args);
+        } catch (EmptyResultDataAccessException e) {
+            return null;
+        }
+    }
+
+    private String queryForStringOrNull(String sql, Object... args) {
+        try {
+            return jdbcTemplate.queryForObject(sql, String.class, args);
         } catch (EmptyResultDataAccessException e) {
             return null;
         }

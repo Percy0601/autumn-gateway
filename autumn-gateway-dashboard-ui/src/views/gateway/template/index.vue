@@ -333,7 +333,7 @@ async function showPreview(row) {
 <template>
   <div class="p-4">
     <el-card shadow="never">
-      <div class="mb-3 flex items-center justify-between">
+      <div class="mb-4 flex items-center justify-between">
         <div>
           <span class="text-base font-bold">模板管理（v2）</span>
           <div class="text-xs text-gray-400 mt-1">
@@ -364,7 +364,7 @@ async function showPreview(row) {
           <TemplateTable :rows="currentRows" @copy="openTplCopy" @edit="openTplEdit" @remove="removeTpl" />
 
           <!-- 实例 -->
-          <div class="mb-2 text-sm font-semibold">结构化全局配置实例（profile: dev）</div>
+          <div class="mb-3 mt-2 text-sm font-semibold">结构化全局配置实例（profile: dev）</div>
           <el-table :data="filteredStructs" border size="small">
             <el-table-column prop="instanceName" label="实例名" min-width="140">
               <template #default="{ row }">

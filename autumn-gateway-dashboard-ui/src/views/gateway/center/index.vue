@@ -56,9 +56,14 @@ async function testServices(r) {
 
 <template>
   <el-card>
-    <div class="mb-3 flex justify-between">
-      <span class="text-gray-500">维护 Consul/Nacos 连接；加路由时从这里选，再拉注册中心的服务列表</span>
-      <el-button type="primary" @click="openCreate">新增连接</el-button>
+    <div class="mb-4">
+      <div class="flex justify-between items-center">
+        <span class="text-base font-bold">配置中心</span>
+        <el-button type="primary" @click="openCreate">新增连接</el-button>
+      </div>
+      <div class="text-xs text-gray-400 mt-2">
+        维护 Consul/Nacos 连接；加路由时从这里选，再拉注册中心的服务列表。「配置同步」可把聚合配置推送到这里（Consul KV / Nacos 配置）
+      </div>
     </div>
     <el-table v-loading="loading" :data="rows" border>
       <el-table-column prop="centerCode" label="编码" width="160" />

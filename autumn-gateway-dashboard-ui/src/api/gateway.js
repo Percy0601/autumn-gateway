@@ -74,3 +74,9 @@ export const gatewayTemplateV2Api = {
   // 校验与导出预览（FILTER/PREDICATE → args 扁平键；STRUCT → properties 行）
   validate: (data) => service.post(`${BASE}/template-v2/validate`, data),
 }
+
+// 配置同步：聚合预览全部网关配置 / 推送到配置中心
+export const gatewaySyncApi = {
+  preview: (profile = 'dev') => service.get(`${BASE}/sync/preview`, { params: { profile } }),
+  publish: (profile, centerId) => service.post(`${BASE}/sync/publish`, { profile, centerId }),
+}

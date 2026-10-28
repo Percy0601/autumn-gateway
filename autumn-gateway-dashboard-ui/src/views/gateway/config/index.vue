@@ -94,20 +94,25 @@ async function remove(row) {
 <template>
   <div class="p-4">
     <el-card shadow="never">
-      <div class="mb-3 flex items-center justify-between">
-        <div class="flex items-center gap-2">
-          <span class="text-base font-bold">网关全局配置</span>
-          <el-select v-model="profile" size="small" style="width:120px" @change="loadData">
-            <el-option label="dev" value="dev" />
-            <el-option label="test" value="test" />
-            <el-option label="prod" value="prod" />
-          </el-select>
+      <div class="mb-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="text-base font-bold">网关全局配置</span>
+            <el-select v-model="profile" size="small" style="width:120px" @change="loadData">
+              <el-option label="dev" value="dev" />
+              <el-option label="test" value="test" />
+              <el-option label="prod" value="prod" />
+            </el-select>
+          </div>
+          <el-button type="primary" size="small" @click="openCreate">新增配置项</el-button>
         </div>
-        <el-button type="primary" size="small" @click="openCreate">新增配置项</el-button>
+        <div class="text-xs text-gray-400 mt-2">
+          配置项按组折叠展示；SCG/CORS 组里旧前缀 spring.cloud.gateway.* 在「配置同步」导出时会自动归一化为 spring.cloud.gateway.server.webflux.*（SCG 5.0.3 绑定前缀）
+        </div>
       </div>
 
-      <div v-loading="loading">
-        <el-collapse v-for="g in groups" :key="g.group" class="mb-2">
+      <div v-loading="loading" class="mt-4">
+        <el-collapse v-for="g in groups" :key="g.group" class="mb-3">
           <el-collapse-item :title="`${g.group}（${g.items.length}）`" :name="g.group">
             <el-table :data="g.items" border size="small">
               <el-table-column prop="configKey" label="配置 Key" min-width="260" />
@@ -147,7 +152,7 @@ async function remove(row) {
           <el-input v-model="form.configKey" placeholder="如 autumn.authz.jwt.secret" />
         </el-form-item>
         <el-form-item label="值">
-          <el-input v-model="form.configValue" :type="form.isEncrypted ? 'password' : 'text'" type="textarea" :rows="3" />
+          <el-input v-model="form.configValue" :type="form.isEncrypted ? 'password' : 'textarea'" :rows="3" />
         </el-form-item>
         <el-form-item label="值类型">
           <el-select v-model="form.valueType">
