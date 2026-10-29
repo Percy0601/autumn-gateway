@@ -17,7 +17,7 @@ const keyword = ref('')
 
 // ---------- 数据 ----------
 const types = ref([]) // 值类型目录
-const tpls = reactive({ FILTER: [], PREDICATE: [], STRUCT: [] })
+const tpls = reactive({ FILTER: [], PREDICATE: [], STRUCT: [], CONFIG: [] })
 const structs = ref([])
 const profile = ref('dev')
 
@@ -25,6 +25,7 @@ const KIND_SCOPE = {
   FILTER: ['ROUTE', 'GLOBAL', 'BOTH'],
   PREDICATE: ['ROUTE'],
   STRUCT: ['GLOBAL'],
+  CONFIG: ['GLOBAL'],
 }
 const SCOPE_TEXT = { ROUTE: '路由级', GLOBAL: '全局', BOTH: '两者' }
 
@@ -43,7 +44,7 @@ async function loadStructs() {
 onMounted(async () => {
   loading.value = true
   try {
-    await Promise.all([loadTypes(), loadTemplates('FILTER'), loadTemplates('PREDICATE'), loadTemplates('STRUCT'), loadStructs()])
+    await Promise.all([loadTypes(), loadTemplates('FILTER'), loadTemplates('PREDICATE'), loadTemplates('STRUCT'), loadTemplates('CONFIG'), loadStructs()])
   } finally {
     loading.value = false
   }
@@ -72,7 +73,7 @@ const tplDlg = ref(false)
 const tplSaving = ref(false)
 const tplMode = ref('create') // create | edit | copy
 const tplForm = reactive({
-  kind: 'FILTER', name: '', displayName: '', category: '', scope: 'ROUTE',
+  kind: 'FILTER', name: '', displayName: '', category: '', scope: 'ROUTE', configGroup: '',
   singletonPerRoute: 0, sortNum: 1, status: 1, remark: '',
 })
 const tplFields = ref([])
@@ -81,7 +82,7 @@ const tplEditId = ref(null)
 function openTplCreate(kind) {
   tplMode.value = 'create'
   tplEditId.value = null
-  Object.assign(tplForm, { kind, name: '', displayName: '', category: '', scope: kind === 'PREDICATE' ? 'ROUTE' : kind === 'STRUCT' ? 'GLOBAL' : 'ROUTE', singletonPerRoute: 0, sortNum: nextSort(kind), status: 1, remark: '' })
+  Object.assign(tplForm, { kind, name: '', displayName: '', category: '', scope: kind === 'PREDICATE' ? 'ROUTE' : (kind === 'STRUCT' || kind === 'CONFIG') ? 'GLOBAL' : 'ROUTE', configGroup: kind === 'CONFIG' ? '' : '', singletonPerRoute: 0, sortNum: nextSort(kind), status: 1, remark: '' })
   tplFields.value = []
   tplDlg.value = true
 }
@@ -105,7 +106,7 @@ async function openTplCopy(row) {
 }
 const pickDef = (t) => ({
   kind: t.kind, name: t.name, displayName: t.displayName, category: t.category || '',
-  scope: t.scope, singletonPerRoute: t.singletonPerRoute ?? 0,
+  scope: t.scope, configGroup: t.configGroup || '', singletonPerRoute: t.singletonPerRoute ?? 0,
   sortNum: t.sortNum ?? 1, status: t.status ?? 1, remark: t.remark || '',
 })
 const stripMeta = (f) => ({
@@ -120,6 +121,7 @@ const nextSort = (kind) => (tpls[kind].length || 0) + 1
 async function saveTpl() {
   if (!tplForm.name.trim()) return ElMessage.warning('模板名不能为空')
   if (!tplForm.displayName.trim()) return ElMessage.warning('显示名不能为空')
+  if (tplForm.kind === 'CONFIG' && !tplForm.configGroup) return ElMessage.warning('全局配置模板需要选择配置分组')
   if (!tplFields.value.length) return ElMessage.warning('至少配置 1 个配置项')
   if (tplFields.value.some((f) => !f.keyName?.trim())) return ElMessage.warning('存在未填写 Key 的配置项')
   if (tplFields.value.some((f) => !f.valueTypeId)) return ElMessage.warning('存在未选择值类型的配置项')
@@ -342,7 +344,7 @@ async function showPreview(row) {
         </div>
         <div class="flex items-center gap-2">
           <el-input v-model="keyword" placeholder="搜索名称" clearable style="width: 200px" />
-          <el-button v-if="activeTab === 'FILTER' || activeTab === 'PREDICATE'" type="primary" @click="openTplCreate(activeTab)">新建模板</el-button>
+          <el-button v-if="activeTab === 'FILTER' || activeTab === 'PREDICATE' || activeTab === 'CONFIG'" type="primary" @click="openTplCreate(activeTab)">新建模板</el-button>
           <el-button v-else-if="activeTab === 'STRUCT'" type="primary" @click="openStructCreate">新建实例</el-button>
           <el-button v-else type="primary" @click="openTypeCreate">新建值类型</el-button>
         </div>
@@ -387,6 +389,15 @@ async function showPreview(row) {
               </template>
             </el-table-column>
           </el-table>
+        </el-tab-pane>
+
+        <!-- ============ 全局 KV 配置组模板 ============ -->
+        <el-tab-pane label="全局配置模板" name="CONFIG">
+          <div class="mb-3 text-xs text-gray-400">
+            全局 KV 配置组模板：name=配置前缀（如 autumn.authn），配置项 export_key 可为点号多段相对路径，
+            在「网关全局配置」页可从模板添加生成 key/value；敏感项自动加密；只支持标量/列表值类型（嵌套对象走结构化模板）。
+          </div>
+          <TemplateTable :rows="currentRows" @copy="openTplCopy" @edit="openTplEdit" @remove="removeTpl" />
         </el-tab-pane>
 
         <!-- ============ 值类型目录 ============ -->
@@ -440,6 +451,11 @@ async function showPreview(row) {
             <el-form-item label="作用域">
               <el-select v-model="tplForm.scope" class="w-full" :disabled="tplForm.kind !== 'FILTER'">
                 <el-option v-for="s in KIND_SCOPE[tplForm.kind]" :key="s" :label="SCOPE_TEXT[s]" :value="s" />
+              </el-select>
+            </el-form-item>
+            <el-form-item v-if="tplForm.kind === 'CONFIG'" label="配置分组" required>
+              <el-select v-model="tplForm.configGroup" class="w-full" placeholder="落 gw_config_item 的分组">
+                <el-option v-for="g in ['SERVER','DISCOVERY','AUTHN','AUTHZ','LIMIT','SCG','CORS','CUSTOM']" :key="g" :label="g" :value="g" />
               </el-select>
             </el-form-item>
             <el-form-item label="每路由单例">

@@ -47,6 +47,7 @@ public class GwTemplateV2Service {
     private static final String KIND_FILTER = "FILTER";
     private static final String KIND_PREDICATE = "PREDICATE";
     private static final String KIND_STRUCT = "STRUCT";
+    private static final String KIND_CONFIG = "CONFIG";
     private static final String KIND_BASIC = "BASIC";
     private static final String KIND_LIST = "LIST";
     private static final String KIND_OBJECT = "OBJECT";
@@ -181,6 +182,20 @@ public class GwTemplateV2Service {
         return out;
     }
 
+    /** 按 config_key 前缀匹配 CONFIG 模板（最长前缀优先；无匹配返回空） */
+    public Optional<GwTplDefinition> matchConfigTemplate(String configKey) {
+        if (!StringUtils.hasText(configKey)) return Optional.empty();
+        List<GwTplDefinition> defs = tplRepo.findByKindOrderBySortNum(KIND_CONFIG);
+        GwTplDefinition best = null;
+        for (GwTplDefinition d : defs) {
+            String prefix = d.getName() + ".";
+            if (configKey.startsWith(prefix) && (best == null || d.getName().length() > best.getName().length())) {
+                best = d;
+            }
+        }
+        return Optional.ofNullable(best);
+    }
+
     /** 模板详情树：定义 + 字段 + 字段引用类型的完整递归结构（供表单渲染与校验） */
     public Map<String, Object> templateTree(Long id) {
         GwTplDefinition d = mustTpl(id);
@@ -313,6 +328,8 @@ public class GwTemplateV2Service {
         out.put("errors", errors);
         if (KIND_STRUCT.equals(kind)) {
             out.put("properties", flattenStruct(tree, valueJson));
+        } else if (KIND_CONFIG.equals(kind)) {
+            out.put("configRows", flattenConfig(tree, valueJson));
         } else {
             out.put("args", flattenArgs(tree, valueJson));
         }
@@ -377,10 +394,10 @@ public class GwTemplateV2Service {
         if (!StringUtils.hasText(req.getKind())) throw new IllegalArgumentException("kind 不能为空");
         String kind = req.getKind().toUpperCase();
         req.setKind(kind);
-        if (!Set.of(KIND_FILTER, KIND_PREDICATE, KIND_STRUCT).contains(kind))
-            throw new IllegalArgumentException("kind 仅支持 FILTER/PREDICATE/STRUCT");
+        if (!Set.of(KIND_FILTER, KIND_PREDICATE, KIND_STRUCT, KIND_CONFIG).contains(kind))
+            throw new IllegalArgumentException("kind 仅支持 FILTER/PREDICATE/STRUCT/CONFIG");
         String scope = req.getScope() == null ? "" : req.getScope().toUpperCase();
-        if (KIND_STRUCT.equals(kind)) {
+        if (KIND_STRUCT.equals(kind) || KIND_CONFIG.equals(kind)) {
             if (!KIND_GLOBAL_SCOPE.equals(scope)) req.setScope(KIND_GLOBAL_SCOPE);
         } else if (KIND_PREDICATE.equals(kind)) {
             if (!KIND_ROUTE_SCOPE.equals(scope)) req.setScope(KIND_ROUTE_SCOPE);
@@ -401,7 +418,14 @@ public class GwTemplateV2Service {
             if (!StringUtils.hasText(f.getKeyName())) throw new IllegalArgumentException("配置项 key 不能为空");
             if (!keys.add(f.getKeyName())) throw new IllegalArgumentException("配置项重复: " + f.getKeyName());
             if (f.getValueTypeId() == null) throw new IllegalArgumentException("配置项 " + f.getKeyName() + " 未指定值类型");
-            mustType(f.getValueTypeId());
+            GwValueType t = mustType(f.getValueTypeId());
+            if (KIND_CONFIG.equals(def.getKind())) {
+                // CONFIG=全局 KV 配置组：导出为扁平 key=value，只允许标量/列表，禁止嵌套对象与 map 键（那些走 STRUCT）
+                if (!Set.of(KIND_BASIC, KIND_LIST).contains(t.getKind()))
+                    throw new IllegalArgumentException("全局配置模板（CONFIG）配置项仅支持标量/列表值类型: " + f.getKeyName());
+                if (intVal(f.getIsMapKey()) == 1)
+                    throw new IllegalArgumentException("全局配置模板（CONFIG）配置项不支持 map 键（请使用 STRUCT 模板）: " + f.getKeyName());
+            }
         }
     }
 
@@ -539,7 +563,7 @@ public class GwTemplateV2Service {
                 } else if (StringUtils.hasText(mkValidator) && !k.matches(mkValidator)) {
                     errors.add(child + " 键不满足规则（正则: " + mkValidator + "）");
                 }
-                validateSlot(vt, m.get(ko), child, errors);
+                validateValue(vt, m.get(ko), child, errors);
             }
             return;
         }
@@ -580,6 +604,44 @@ public class GwTemplateV2Service {
         if (StringUtils.hasText(validator) && !String.valueOf(value).matches(validator)) {
             errors.add(path + "（" + label + "）不满足校验规则: " + validator);
         }
+    }
+
+    /**
+     * 按「类型树」校验值：map 值等非 slot 位置的值类型是 resolveTypeTree 的根（无 valueType 键），
+     * 不能当作 slot 递归（会误报「值类型缺失」）。LIST/OBJECT 内部字段仍是完整 slot（带元数据），走 validateSlot。
+     */
+    private void validateValue(Map<String, Object> vt, Object value, String path, List<String> errors) {
+        if (vt == null) {
+            errors.add(path + " 值类型缺失");
+            return;
+        }
+        String kind = str(vt.get("kind"));
+        if (KIND_LIST.equals(kind)) {
+            if (!(value instanceof List)) {
+                errors.add(path + " 应为列表");
+                return;
+            }
+            List<?> l = (List<?>) value;
+            Map<String, Object> itemSlot = firstItemSlot(vt);
+            for (int i = 0; i < l.size(); i++) {
+                validateSlot(itemSlot, l.get(i), path + "[" + i + "]", errors);
+            }
+            return;
+        }
+        if (KIND_OBJECT.equals(kind)) {
+            if (!(value instanceof Map)) {
+                errors.add(path + " 应为对象");
+                return;
+            }
+            Map<?, ?> m = (Map<?, ?>) value;
+            for (Map<String, Object> f : fieldSlotsOf(vt)) {
+                String fk = str(f.get("keyName"));
+                validateSlot(f, m.get(fk), path + "." + fk, errors);
+            }
+            return;
+        }
+        // BASIC 叶子：类型树无 validator/options 元数据（ENUM 候选项在引用处），传空 slot 跳过枚举校验
+        validateBasic(str(vt.get("name")), Map.of(), value, path, errors);
     }
 
     private void validateBasic(String typeName, Map<String, Object> slot, Object value, String path,
@@ -650,12 +712,36 @@ public class GwTemplateV2Service {
             Map<?, ?> m = (Map<?, ?>) value;
             Map<String, Object> vt = asMap(slot.get("valueType"));
             for (Object ko : m.keySet()) {
-                flattenArgsSlot(path + "." + ko, vt, m.get(ko), out);
+                flattenArgsValue(path + "." + ko, vt, m.get(ko), out);
             }
             return;
         }
         Map<String, Object> vt = asMap(slot.get("valueType"));
         if (vt == null) return;
+        String kind = str(vt.get("kind"));
+        if (KIND_LIST.equals(kind)) {
+            if (value instanceof List l) {
+                List<String> items = new ArrayList<>();
+                for (Object o : l) items.add(String.valueOf(o));
+                out.put(path, String.join(",", items));
+            }
+            return;
+        }
+        if (KIND_OBJECT.equals(kind)) {
+            if (!(value instanceof Map)) return;
+            Map<?, ?> m = (Map<?, ?>) value;
+            for (Map<String, Object> f : fieldSlotsOf(vt)) {
+                String fk = str(f.get("keyName"));
+                if (m.containsKey(fk)) flattenArgsSlot(path + "." + exportKeyOf(f), f, m.get(fk), out);
+            }
+            return;
+        }
+        out.put(path, String.valueOf(value));
+    }
+
+    /** 按类型树展开 args 值（map 值等非 slot 位置）：LIST 逗号拼接、OBJECT 点号展开、BASIC 直出 */
+    private void flattenArgsValue(String path, Map<String, Object> vt, Object value, Map<String, String> out) {
+        if (vt == null || value == null) return;
         String kind = str(vt.get("kind"));
         if (KIND_LIST.equals(kind)) {
             if (value instanceof List l) {
@@ -709,7 +795,7 @@ public class GwTemplateV2Service {
             Map<?, ?> m = (Map<?, ?>) value;
             Map<String, Object> vt = asMap(slot.get("valueType"));
             for (Object ko : m.keySet()) {
-                flattenStructSlot(path + "['" + ko + "']", vt, m.get(ko), lines);
+                flattenStructValue(path + "['" + ko + "']", vt, m.get(ko), lines);
             }
             return;
         }
@@ -735,6 +821,81 @@ public class GwTemplateV2Service {
             return;
         }
         lines.add(path + "=" + String.valueOf(value));
+    }
+
+    /** 按类型树展开 STRUCT 值（map 值等非 slot 位置）：LIST 逐项 [i]、OBJECT 点号展开、BASIC 直出 */
+    private void flattenStructValue(String path, Map<String, Object> vt, Object value, List<String> lines) {
+        if (vt == null || value == null) return;
+        String kind = str(vt.get("kind"));
+        if (KIND_LIST.equals(kind)) {
+            if (value instanceof List l) {
+                Map<String, Object> item = firstItemSlot(vt);
+                for (int i = 0; i < l.size(); i++) {
+                    flattenStructSlot(path + "[" + i + "]", item, l.get(i), lines);
+                }
+            }
+            return;
+        }
+        if (KIND_OBJECT.equals(kind)) {
+            if (!(value instanceof Map)) return;
+            Map<?, ?> m = (Map<?, ?>) value;
+            for (Map<String, Object> f : fieldSlotsOf(vt)) {
+                String fk = str(f.get("keyName"));
+                if (m.containsKey(fk)) flattenStructSlot(path + "." + exportKeyOf(f), f, m.get(fk), lines);
+            }
+            return;
+        }
+        lines.add(path + "=" + String.valueOf(value));
+    }
+
+    /**
+     * CONFIG：全局 KV 配置行。key = 模板前缀 + exportKey（exportKey 可为点号多段相对路径）。
+     * 返回 [{key, value, label, valueType, sensitive}]，供全局配置「从模板添加」落库与导出。
+     */
+    private List<Map<String, Object>> flattenConfig(Map<String, Object> tree, String valueJson) {
+        List<Map<String, Object>> rows = new ArrayList<>();
+        Object value;
+        try {
+            value = om.readValue(valueJson == null || valueJson.isBlank() ? "{}" : valueJson,
+                    new TypeReference<Object>() {});
+        } catch (Exception e) {
+            return rows;
+        }
+        if (!(value instanceof Map)) return rows;
+        Map<?, ?> m = (Map<?, ?>) value;
+        String prefix = str(tree.get("name"));
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> slots = (List<Map<String, Object>>) tree.get("fields");
+        for (Map<String, Object> slot : slots) {
+            String key = str(slot.get("keyName"));
+            if (!m.containsKey(key) || m.get(key) == null) continue;
+            Object v = m.get(key);
+            if (v instanceof String s && s.isBlank()) continue;
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("key", prefix + "." + exportKeyOf(slot));
+            row.put("label", slot.get("label") == null ? key : slot.get("label"));
+            Map<String, Object> vt = asMap(slot.get("valueType"));
+            row.put("valueType", vt == null ? "STRING" : str(vt.get("name")));
+            row.put("sensitive", intVal(slot.get("sensitive")) == 1 ? 1 : 0);
+            row.put("required", intVal(slot.get("required")) == 1 ? 1 : 0);
+            row.put("value", scalarValue(slot, v));
+            rows.add(row);
+        }
+        return rows;
+    }
+
+    /** CONFIG 值序列化：LIST 逗号拼接；布尔原样；其他字符串化 */
+    private static String scalarValue(Map<String, Object> slot, Object v) {
+        Map<String, Object> vt = asMap(slot.get("valueType"));
+        if (vt != null && KIND_LIST.equals(str(vt.get("kind")))) {
+            if (v instanceof List l) {
+                List<String> items = new ArrayList<>();
+                for (Object o : l) items.add(String.valueOf(o));
+                return String.join(",", items);
+            }
+        }
+        if (v instanceof Boolean b) return String.valueOf(b);
+        return String.valueOf(v);
     }
 
     // =====================================================================
@@ -786,6 +947,7 @@ public class GwTemplateV2Service {
         m.put("displayName", d.getDisplayName());
         m.put("category", d.getCategory());
         m.put("scope", d.getScope());
+        m.put("configGroup", d.getConfigGroup());
         m.put("singletonPerRoute", d.getSingletonPerRoute());
         m.put("builtin", d.getBuiltin());
         m.put("sortNum", d.getSortNum());
@@ -850,6 +1012,7 @@ public class GwTemplateV2Service {
         dst.setDisplayName(src.getDisplayName());
         dst.setCategory(src.getCategory());
         dst.setScope(src.getScope());
+        dst.setConfigGroup(src.getConfigGroup());
         dst.setSingletonPerRoute(src.getSingletonPerRoute());
         dst.setSortNum(src.getSortNum());
         dst.setStatus(src.getStatus());

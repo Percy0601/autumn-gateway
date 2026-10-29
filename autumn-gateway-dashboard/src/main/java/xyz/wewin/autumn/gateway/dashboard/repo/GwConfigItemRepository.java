@@ -18,4 +18,7 @@ public interface GwConfigItemRepository extends CrudRepository<GwConfigItem, Lon
     long countByIdNotAndKey(@Param("id") Long id,
                             @Param("profileCode") String profileCode,
                             @Param("configKey") String configKey);
+
+    @Query("SELECT COUNT(1) FROM gw_config_item WHERE profile_code = :profileCode AND config_key = :configKey")
+    long countByKey(@Param("profileCode") String profileCode, @Param("configKey") String configKey);
 }

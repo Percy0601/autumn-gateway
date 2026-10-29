@@ -256,7 +256,7 @@ COMMENT ON COLUMN gw_value_type_field.value_type_id IS '该位置的类型（递
 COMMENT ON COLUMN gw_value_type_field.is_map_key IS '1=该位置实例值为 Map，键由用户输入，值类型=value_type_id';
 
 
--- 表 11：模板定义（过滤器/断言/结构化全局，v2）
+-- 表 11：模板定义（过滤器/断言/结构化全局/全局配置组，v2）
 CREATE TABLE IF NOT EXISTS gw_tpl_definition (
     id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     kind                VARCHAR(16)  NOT NULL,
@@ -264,6 +264,7 @@ CREATE TABLE IF NOT EXISTS gw_tpl_definition (
     display_name        VARCHAR(64)  NOT NULL,
     category            VARCHAR(32)  NOT NULL DEFAULT '其他',
     scope               VARCHAR(16)  NOT NULL DEFAULT 'ROUTE',
+    config_group        VARCHAR(32),
     singleton_per_route SMALLINT     NOT NULL DEFAULT 0,
     builtin             SMALLINT     NOT NULL DEFAULT 1,
     sort_num            INT          NOT NULL DEFAULT 0,
@@ -273,9 +274,10 @@ CREATE TABLE IF NOT EXISTS gw_tpl_definition (
     updated_at          TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT uk_gw_tpl_kind_name UNIQUE (kind, name)
 );
-COMMENT ON TABLE  gw_tpl_definition IS '模板定义（过滤器/断言/结构化全局）';
-COMMENT ON COLUMN gw_tpl_definition.kind   IS 'FILTER=过滤器 PREDICATE=断言 STRUCT=结构化全局配置';
-COMMENT ON COLUMN gw_tpl_definition.scope  IS 'ROUTE=仅路由 GLOBAL=仅全局 BOTH=两者皆可（STRUCT 恒 GLOBAL）';
+COMMENT ON TABLE  gw_tpl_definition IS '模板定义（过滤器/断言/结构化全局/全局配置组）';
+COMMENT ON COLUMN gw_tpl_definition.kind   IS 'FILTER=过滤器 PREDICATE=断言 STRUCT=结构化全局配置 CONFIG=全局KV配置组';
+COMMENT ON COLUMN gw_tpl_definition.scope  IS 'ROUTE=仅路由 GLOBAL=仅全局 BOTH=两者皆可（STRUCT/CONFIG 恒 GLOBAL）';
+COMMENT ON COLUMN gw_tpl_definition.config_group IS '仅 CONFIG 模板：该组配置落 gw_config_item.config_group 的值（如 AUTHN/SCG）';
 COMMENT ON COLUMN gw_tpl_definition.builtin IS '1=内置模板（只读/复制）0=用户自定义';
 
 

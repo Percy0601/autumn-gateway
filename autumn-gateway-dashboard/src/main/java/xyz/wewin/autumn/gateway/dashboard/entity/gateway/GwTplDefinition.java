@@ -8,18 +8,21 @@ import java.time.LocalDateTime;
 
 /**
  * 模板定义（v2），对应表 gw_tpl_definition。
- * kind=FILTER/PREDICATE/STRUCT；builtin=1 为内置模板（前端只读，编辑=复制）。
+ * kind=FILTER/PREDICATE/STRUCT/CONFIG；builtin=1 为内置模板（前端只读，编辑=复制）。
+ * config_group 仅 CONFIG（全局 KV 配置组）模板使用：该组配置落 gw_config_item.config_group 的值。
  */
 @Table("gw_tpl_definition")
 public class GwTplDefinition {
     @Id
     private Long id;
-    private String kind;      // FILTER / PREDICATE / STRUCT
-    private String name;      // 工厂短名（FILTER/PREDICATE）或逻辑名（STRUCT）
+    private String kind;      // FILTER / PREDICATE / STRUCT / CONFIG
+    private String name;      // 工厂短名（FILTER/PREDICATE）、逻辑名（STRUCT）或配置组前缀（CONFIG）
     @Column("display_name")
     private String displayName;
     private String category;  // 选择器分组
-    private String scope;     // ROUTE / GLOBAL / BOTH（STRUCT 恒 GLOBAL）
+    private String scope;     // ROUTE / GLOBAL / BOTH（STRUCT/CONFIG 恒 GLOBAL）
+    @Column("config_group")
+    private String configGroup; // 仅 CONFIG：落 gw_config_item.config_group 的值（如 AUTHN/SCG）
     @Column("singleton_per_route")
     private Integer singletonPerRoute;
     private Integer builtin;
@@ -44,6 +47,8 @@ public class GwTplDefinition {
     public void setCategory(String category) { this.category = category; }
     public String getScope() { return scope; }
     public void setScope(String scope) { this.scope = scope; }
+    public String getConfigGroup() { return configGroup; }
+    public void setConfigGroup(String configGroup) { this.configGroup = configGroup; }
     public Integer getSingletonPerRoute() { return singletonPerRoute; }
     public void setSingletonPerRoute(Integer singletonPerRoute) { this.singletonPerRoute = singletonPerRoute; }
     public Integer getBuiltin() { return builtin; }

@@ -230,7 +230,7 @@ INSERT INTO `gw_tpl_field`
 (93,135,'throwOnLimit','限流抛异常',5,0,'false',NULL,NULL,NULL,0,0,NULL,'throwOnLimit',6,NULL,NOW(),NOW()),
 (94,136,'bodyClass','请求体类型',1,1,NULL,NULL,'com.example.Order',NULL,0,0,NULL,'bodyClass',1,'需自定义类型',NOW(),NOW()),
 -- ---------- STRUCT：globalcors ----------
-(95,201,'corsConfigurations','跨域规则(路径→规则)',17,1,NULL,NULL,NULL,'^/[\\w*/{}.()-]*$',0,1,'^/[\\w*/{}.()-]*$','cors-configurations',1,'键=路径模式(如 /**、/api/**)，值=规则对象；map 键示例',NOW(),NOW()),
+(95,201,'corsConfigurations','跨域规则(路径→规则)',17,1,NULL,NULL,NULL,'^/[\w*/{}.()-]*$',0,1,'^/[\w*/{}.()-]*$','cors-configurations',1,'键=路径模式(如 /**、/api/**)，值=规则对象；map 键示例',NOW(),NOW()),
 (96,201,'addToSimpleUrlHandlerMapping','预检直通',5,0,'false',NULL,NULL,NULL,0,0,NULL,'add-to-simple-url-handler-mapping',2,'true=未匹配路由的请求也套 CORS（preflight 需要）',NOW(),NOW());
 
 -- ================================================================
@@ -241,6 +241,58 @@ INSERT INTO `gw_config_struct`
 (1,'dev','globalcors','全局跨域示例',
 '{"corsConfigurations":{"/**":{"allowedOrigins":["https://docs.spring.io"],"allowedMethods":["GET","POST"],"allowCredentials":true,"maxAge":30},"/api/**":{"allowedHeaders":["*"]}},"addToSimpleUrlHandlerMapping":true}',
 1,1,0,'导出示例：spring.cloud.gateway.server.webflux.globalcors.cors-configurations[...]（见设计文档 §4.1）',NOW(),NOW());
+
+-- ================================================================
+-- 4.5 全局 KV 配置组模板（kind=CONFIG）
+--   scope 恒 GLOBAL；name=配置前缀（如 autumn.authn）；配置项 export_key 可为点号多段相对路径，
+--   导出/落库 key = 模板前缀 + '.' + export_key；config_group 决定落 gw_config_item 的分组。
+-- ================================================================
+INSERT INTO `gw_tpl_definition`
+(`id`,`kind`,`name`,`display_name`,`category`,`scope`,`config_group`,`singleton_per_route`,`builtin`,`sort_num`,`status`,`remark`,`created_at`,`updated_at`) VALUES
+(301,'CONFIG','server','服务基础(server.*)','服务基础','GLOBAL','SERVER',0,1,1,1,'server.port 等服务端口配置',NOW(),NOW()),
+(302,'CONFIG','spring.application','应用名(spring.application.*)','服务基础','GLOBAL','SERVER',0,1,2,1,'spring.application.name 应用名',NOW(),NOW()),
+(303,'CONFIG','consul','注册发现(consul.*)','注册发现','GLOBAL','DISCOVERY',0,1,3,1,'Consul 连接配置：host/port/scheme/token/timeout',NOW(),NOW()),
+(304,'CONFIG','autumn.authn','认证(autumn.authn.*)','认证授权','GLOBAL','AUTHN',0,1,4,1,'OAuth2 认证配置：issuer/client 等',NOW(),NOW()),
+(305,'CONFIG','autumn.authz','鉴权(autumn.authz.*)','认证授权','GLOBAL','AUTHZ',0,1,5,1,'JWT 鉴权配置：签发/校验/登录限制',NOW(),NOW()),
+(306,'CONFIG','limit.autumn-gateway','限流(limit.autumn-gateway.*)','限流','GLOBAL','LIMIT',0,1,6,1,'内存限流（Bucket4j）参数',NOW(),NOW()),
+(307,'CONFIG','spring.cloud.gateway.server.webflux','网关引擎(SCG)','网关引擎','GLOBAL','SCG',0,1,7,1,'SCG 5.0.3 运行时：httpclient 连接池/超时、discovery、forwarded、metrics',NOW(),NOW());
+
+INSERT INTO `gw_tpl_field`
+(`id`,`tpl_id`,`key_name`,`label`,`value_type_id`,`required`,`default_value`,`options_json`,`placeholder`,`validator`,`sensitive`,`is_map_key`,`map_key_validator`,`export_key`,`sort_num`,`remark`,`created_at`,`updated_at`) VALUES
+-- CONFIG：server / spring.application
+(100,301,'port','服务端口',2,1,NULL,NULL,'8080',NULL,0,0,NULL,'port',1,'server.port',NOW(),NOW()),
+(101,302,'name','应用名',1,1,NULL,NULL,'autumn-gateway',NULL,0,0,NULL,'name',1,'spring.application.name',NOW(),NOW()),
+-- CONFIG：consul
+(102,303,'host','Consul 地址',1,1,NULL,NULL,'localhost',NULL,0,0,NULL,'host',1,NULL,NOW(),NOW()),
+(103,303,'port','Consul 端口',2,1,NULL,NULL,'8500',NULL,0,0,NULL,'port',2,NULL,NOW(),NOW()),
+(104,303,'scheme','协议',8,0,'http','["http","https"]','http',NULL,0,0,NULL,'scheme',3,NULL,NOW(),NOW()),
+(105,303,'token','Token(敏感)',11,0,NULL,NULL,NULL,NULL,1,0,NULL,'token',4,'consul.token，敏感不回显',NOW(),NOW()),
+(106,303,'timeout','超时',6,0,NULL,NULL,'3s',NULL,0,0,NULL,'timeout',5,NULL,NOW(),NOW()),
+-- CONFIG：autumn.authn
+(107,304,'enabled','启用认证',5,0,'true',NULL,NULL,NULL,0,0,NULL,'enabled',1,NULL,NOW(),NOW()),
+(108,304,'issuer-uri','Issuer URI',1,1,NULL,NULL,'http://localhost:9000',NULL,0,0,NULL,'issuer-uri',2,'授权服务器地址',NOW(),NOW()),
+(109,304,'client-id','Client ID',1,1,NULL,NULL,'web-client',NULL,0,0,NULL,'client-id',3,NULL,NOW(),NOW()),
+-- CONFIG：autumn.authz
+(110,305,'enabled','启用鉴权',5,0,'true',NULL,NULL,NULL,0,0,NULL,'enabled',1,NULL,NOW(),NOW()),
+(111,305,'jwt.secret','JWT 密钥(敏感)',11,1,NULL,NULL,NULL,NULL,1,0,NULL,'jwt.secret',2,'签发与校验共用同一密钥，敏感不回显',NOW(),NOW()),
+(112,305,'jwt.issuer','JWT Issuer',1,0,NULL,NULL,'autumn-gateway',NULL,0,0,NULL,'jwt.issuer',3,NULL,NOW(),NOW()),
+(113,305,'jwt.ttl-seconds','Token 有效期(秒)',3,0,'86400',NULL,NULL,NULL,0,0,NULL,'jwt.ttl-seconds',4,'默认 86400=1 天',NOW(),NOW()),
+(114,305,'max-login-attempts','最大登录尝试',2,0,'5',NULL,NULL,NULL,0,0,NULL,'max-login-attempts',5,'超过则锁定',NOW(),NOW()),
+(115,305,'login-app-code','登录应用编码',1,0,NULL,NULL,'dashboard',NULL,0,0,NULL,'login-app-code',6,NULL,NOW(),NOW()),
+-- CONFIG：limit.autumn-gateway
+(116,306,'enabled','启用限流',5,0,'true',NULL,NULL,NULL,0,0,NULL,'enabled',1,NULL,NOW(),NOW()),
+(117,306,'replenish-rate','令牌补充/秒',2,0,'1',NULL,NULL,NULL,0,0,NULL,'replenish-rate',2,NULL,NOW(),NOW()),
+(118,306,'burst-capacity','桶容量',2,0,'2',NULL,NULL,NULL,0,0,NULL,'burst-capacity',3,NULL,NOW(),NOW()),
+(119,306,'time-window-seconds','时间窗口(秒)',3,0,'10',NULL,NULL,NULL,0,0,NULL,'time-window-seconds',4,'Bucket4j 窗口',NOW(),NOW()),
+-- CONFIG：spring.cloud.gateway.server.webflux
+(120,307,'httpclient.connect-timeout','连接超时',6,0,NULL,NULL,'2000ms',NULL,0,0,NULL,'httpclient.connect-timeout',1,NULL,NOW(),NOW()),
+(121,307,'httpclient.response-timeout','响应超时',6,0,NULL,NULL,'30s',NULL,0,0,NULL,'httpclient.response-timeout',2,NULL,NOW(),NOW()),
+(122,307,'httpclient.pool.max-connections','连接池上限',2,0,NULL,NULL,'1000',NULL,0,0,NULL,'httpclient.pool.max-connections',3,NULL,NOW(),NOW()),
+(123,307,'httpclient.pool.max-idle-time','空闲回收',6,0,NULL,NULL,'30s',NULL,0,0,NULL,'httpclient.pool.max-idle-time',4,NULL,NOW(),NOW()),
+(124,307,'httpclient.pool.acquire-timeout','取连接超时',6,0,NULL,NULL,'45s',NULL,0,0,NULL,'httpclient.pool.acquire-timeout',5,NULL,NOW(),NOW()),
+(125,307,'discovery.locator.enabled','服务发现自动路由',5,0,'false',NULL,NULL,NULL,0,0,NULL,'discovery.locator.enabled',6,'开启后按注册中心服务名自动建路由',NOW(),NOW()),
+(126,307,'forwarded.enabled','Forwarded 头',5,0,'true',NULL,NULL,NULL,0,0,NULL,'forwarded.enabled',7,NULL,NOW(),NOW()),
+(127,307,'metrics.enabled','网关指标',5,0,'true',NULL,NULL,NULL,0,0,NULL,'metrics.enabled',8,'actuator gateway metrics',NOW(),NOW());
 
 -- ================================================================
 -- 6. 自检（只读）

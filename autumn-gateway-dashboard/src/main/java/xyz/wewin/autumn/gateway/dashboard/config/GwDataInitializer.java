@@ -328,15 +328,12 @@ public class GwDataInitializer implements ApplicationRunner {
         seedConfig("DISCOVERY", "consul.token", "", "STRING", 0, 1, 4, "Consul ACL Token（敏感）");
         seedConfig("DISCOVERY", "consul.timeout", "3s", "DURATION", 0, 0, 5, "Consul 请求超时");
 
-        // SCG 路由 / 转发 / 指标
-        seedConfig("SCG", "spring.cloud.gateway.discovery.locator.enabled", "false", "BOOL", 0, 0, 6, "开启后按注册中心服务名自动建路由（如 /service-name/**）");
-        seedConfig("SCG", "spring.cloud.gateway.forwarded.enabled", "true", "BOOL", 0, 0, 7, "是否处理 Forwarded 头");
-        seedConfig("SCG", "spring.cloud.gateway.metrics.enabled", "true", "BOOL", 0, 0, 8, "暴露网关指标（actuator gateway metrics）");
-        // CORS 全局开关（配合 Cors 过滤器）
-        seedConfig("CORS", "spring.cloud.gateway.globalcors.add-to-simple-url-handler-mapping", "true", "BOOL", 0, 0, 1, "让 OPTIONS 预检等直接走 CORS 处理（配合 Cors 过滤器）");
-        seedConfig("CORS", "spring.cloud.gateway.globalcors.cors-configurations.[/**].allowedOrigins", "*", "LIST", 0, 0, 2, "全局 CORS：允许的来源（** 匹配全部路径）");
-        seedConfig("CORS", "spring.cloud.gateway.globalcors.cors-configurations.[/**].allowedMethods", "GET,POST,PUT,DELETE,OPTIONS", "LIST", 0, 0, 3, "全局 CORS：允许的 HTTP 方法");
-        seedConfig("CORS", "spring.cloud.gateway.globalcors.cors-configurations.[/**].allowCredentials", "true", "BOOL", 0, 0, 4, "全局 CORS：是否允许凭证");
+        // SCG 路由 / 转发 / 指标（5.0.3 前缀，旧 4.x 前缀由 seedConfig 幂等迁移）
+        seedConfig("SCG", "spring.cloud.gateway.server.webflux.discovery.locator.enabled", "false", "BOOL", 0, 0, 6, "开启后按注册中心服务名自动建路由（如 /service-name/**）");
+        seedConfig("SCG", "spring.cloud.gateway.server.webflux.forwarded.enabled", "true", "BOOL", 0, 0, 7, "是否处理 Forwarded 头");
+        seedConfig("SCG", "spring.cloud.gateway.server.webflux.metrics.enabled", "true", "BOOL", 0, 0, 8, "暴露网关指标（actuator gateway metrics）");
+        // 注：CORS 全局配置不再播种 gw_config_item KV —— 由结构化模板实例 globalcors（gw_config_struct）统一管理，
+        //     存量库遗留的 CORS 组 KV 在导出时自动跳过（见 GwConfigSyncService）。
     }
 
     private void seedConfig(String group, String key, String value, String valueType,
@@ -344,12 +341,35 @@ public class GwDataInitializer implements ApplicationRunner {
         if (count("SELECT COUNT(1) FROM gw_config_item WHERE profile_code = 'dev' AND config_key = ?", key) > 0) {
             return;
         }
+        // 兼容迁移：新 5.0.3 前缀 key 播种时，若库里存在旧 4.x 前缀行，原地改为新 key（避免新增重复行、导出双重）
+        String oldKey = legacyKeyOf(key);
+        if (oldKey != null) {
+            int moved = jdbcTemplate.update(
+                    "UPDATE gw_config_item SET config_key = ?, config_group = ?, sort_num = ?, updated_at = ?"
+                            + " WHERE profile_code = 'dev' AND config_key = ?",
+                    key, group, sortNum, LocalDateTime.now(), oldKey);
+            if (moved > 0) {
+                log.info("全局配置项 {} 已按 5.0.3 前缀迁移为 {}", oldKey, key);
+                return;
+            }
+        }
         LocalDateTime now = LocalDateTime.now();
         jdbcTemplate.update(
                 "INSERT INTO gw_config_item (profile_code, config_group, config_key, config_value, value_type,"
                         + " is_required, is_encrypted, sort_num, remark, created_at, updated_at)"
                         + " VALUES ('dev', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 group, key, value, valueType, required, encrypted, sortNum, remark, now, now);
+    }
+
+    /** 5.0.3 前缀 → 旧 4.x 前缀；仅当旧行存在时返回（用于幂等迁移） */
+    private String legacyKeyOf(String key) {
+        if (key != null && key.startsWith("spring.cloud.gateway.server.webflux.")) {
+            String old = "spring.cloud.gateway." + key.substring("spring.cloud.gateway.server.webflux.".length());
+            if (count("SELECT COUNT(1) FROM gw_config_item WHERE profile_code = 'dev' AND config_key = ?", old) > 0) {
+                return old;
+            }
+        }
+        return null;
     }
 
     // ==================== 4. 网关菜单 ====================

@@ -48,6 +48,30 @@ public class GwConfigSyncService {
     private static final String PREFIX = "spring.cloud.gateway.server.webflux";
     private static final ObjectMapper om = new ObjectMapper();
 
+    /** 全局配置组展示顺序：同项目集中、组间固定次序（未知组排最后） */
+    private static final String[] CONFIG_GROUP_ORDER = {"SERVER", "DISCOVERY", "AUTHN", "AUTHZ", "LIMIT", "SCG", "CORS", "CUSTOM"};
+    private static final Map<String, String> CONFIG_GROUP_DISPLAY = Map.of(
+            "SERVER", "服务基础",
+            "DISCOVERY", "注册发现（Consul）",
+            "AUTHN", "认证（OAuth2）",
+            "AUTHZ", "鉴权（JWT）",
+            "LIMIT", "限流",
+            "SCG", "网关引擎（SCG）",
+            "CORS", "跨域 CORS",
+            "CUSTOM", "自定义");
+
+    private static int groupOrder(String group) {
+        String g = group == null ? "CUSTOM" : group;
+        for (int i = 0; i < CONFIG_GROUP_ORDER.length; i++) {
+            if (CONFIG_GROUP_ORDER[i].equals(g)) return i;
+        }
+        return CONFIG_GROUP_ORDER.length;
+    }
+
+    private static String groupDisplay(String group) {
+        return CONFIG_GROUP_DISPLAY.getOrDefault(group == null ? "CUSTOM" : group, group);
+    }
+
     private final GwRouteRepository routeRepo;
     private final GwRoutePredicateRepository predicateRepo;
     private final GwRouteFilterRepository routeFilterRepo;
@@ -86,12 +110,33 @@ public class GwConfigSyncService {
 
         // ---------- 1. 网关全局配置项（gw_config_item） ----------
         List<GwConfigItem> items = new ArrayList<>(configItemRepo.findByProfile(p));
-        items.sort(Comparator.comparing(GwConfigItem::getSortNum, Comparator.nullsLast(Comparator.naturalOrder())));
+        // 排序三要素：组顺序 → 组内 sort_num → key。同项目配置集中连续输出，杜绝交错乱序
+        items.sort(Comparator.comparing((GwConfigItem it) -> groupOrder(it.getConfigGroup()))
+                .thenComparing(GwConfigItem::getSortNum, Comparator.nullsLast(Comparator.naturalOrder()))
+                .thenComparing(GwConfigItem::getConfigKey, Comparator.nullsLast(Comparator.naturalOrder())));
+        List<GwConfigStruct> structs = structRepo.findByProfileCodeAndDelFlagOrderBySortNum(p, 0);
+        // CORS 组旧 KV 与 STRUCT 实例（globalcors）语义重叠：实例启用时跳过 KV，避免同一前缀重复导出
+        boolean structCorsActive = structs.stream().anyMatch(s ->
+                "globalcors".equals(s.getStructName()) && (s.getStatus() == null || s.getStatus() == 1));
         lines.add("# ============================================================");
         lines.add("# 网关全局配置项（gw_config_item · profile=" + p + "）");
         lines.add("# ============================================================");
         int ci = 0;
+        String curGroup = null;
+        boolean corsSkipped = false;
         for (GwConfigItem it : items) {
+            String group = it.getConfigGroup() == null ? "CUSTOM" : it.getConfigGroup();
+            if (structCorsActive && "CORS".equals(group)) {
+                if (!corsSkipped) {
+                    warn.add("CORS 组配置项已由结构化模板实例（globalcors）接管，导出时跳过；可在全局配置页手动删除旧 KV");
+                    corsSkipped = true;
+                }
+                continue;
+            }
+            if (!group.equals(curGroup)) {
+                lines.add("# ---- " + groupDisplay(group) + "（" + group + "） ----");
+                curGroup = group;
+            }
             if (it.getIsEncrypted() != null && it.getIsEncrypted() == 1) {
                 lines.add("# " + normalizePrefix(it.getConfigKey()) + "=<加密值，不导出>");
                 continue;
@@ -111,7 +156,7 @@ public class GwConfigSyncService {
         lines.add("# 结构化全局配置（gw_config_struct · profile=" + p + "）");
         lines.add("# ============================================================");
         int sc = 0;
-        for (GwConfigStruct s : structRepo.findByProfileCodeAndDelFlagOrderBySortNum(p, 0)) {
+        for (GwConfigStruct s : structs) {
             if (s.getStatus() != null && s.getStatus() == 0) {
                 lines.add("# [停用] " + s.getInstanceName() + "（" + s.getStructName() + "）");
                 continue;

@@ -26,6 +26,8 @@ export const gatewayConfigApi = {
   create: (data) => service.post(`${BASE}/config`, data),
   update: (id, data) => service.put(`${BASE}/config/${id}`, data),
   remove: (id) => service.delete(`${BASE}/config/${id}`),
+  // 从 CONFIG（全局配置组）模板添加：{ profileCode?, tplId, values:{keyName: value} } → 服务端校验/拼 key/落库
+  createFromTemplate: (data) => service.post(`${BASE}/config/from-template`, data),
 }
 
 // 全局默认过滤器

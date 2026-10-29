@@ -302,14 +302,16 @@ CREATE TABLE IF NOT EXISTS `gw_value_type_field` (
 --   kind=FILTER  过滤器工厂模板（挂 gw_route_filter / gw_global_filter）
 --   kind=PREDICATE 断言工厂模板（挂 gw_route_predicate；scope 恒 ROUTE）
 --   kind=STRUCT  结构化全局配置模板（globalcors/httpclient...；scope 恒 GLOBAL，实例落 gw_config_struct）
+--   kind=CONFIG  全局KV配置组模板（autumn.authn/consul...；scope 恒 GLOBAL，配置落 gw_config_item）
 -- ----------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `gw_tpl_definition` (
     `id`                  BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
-    `kind`                VARCHAR(16)  NOT NULL COMMENT 'FILTER=过滤器 PREDICATE=断言 STRUCT=结构化全局配置',
-    `name`                VARCHAR(64)  NOT NULL COMMENT 'FILTER/PREDICATE 为工厂短名（Retry/Path）；STRUCT 为逻辑名（globalcors）',
+    `kind`                VARCHAR(16)  NOT NULL COMMENT 'FILTER=过滤器 PREDICATE=断言 STRUCT=结构化全局配置 CONFIG=全局KV配置组',
+    `name`                VARCHAR(64)  NOT NULL COMMENT 'FILTER/PREDICATE 为工厂短名（Retry/Path）；STRUCT 为逻辑名（globalcors）；CONFIG 为配置前缀（autumn.authn）',
     `display_name`        VARCHAR(64)  NOT NULL COMMENT '页面显示名，如「重试」「跨域 CORS」',
     `category`            VARCHAR(32)  NOT NULL DEFAULT '其他' COMMENT '选择器分组：鉴权/限流/路径/头操作/重写/重试熔断/安全/结构化全局/其他',
-    `scope`               VARCHAR(16)  NOT NULL DEFAULT 'ROUTE' COMMENT 'ROUTE=仅路由 GLOBAL=仅全局 BOTH=两者皆可（STRUCT 恒 GLOBAL）',
+    `scope`               VARCHAR(16)  NOT NULL DEFAULT 'ROUTE' COMMENT 'ROUTE=仅路由 GLOBAL=仅全局 BOTH=两者皆可（STRUCT/CONFIG 恒 GLOBAL）',
+    `config_group`        VARCHAR(32)  NULL     COMMENT '仅 CONFIG 模板：该组配置落 gw_config_item.config_group 的值（如 AUTHN/SCG）',
     `singleton_per_route` TINYINT      NOT NULL DEFAULT 0 COMMENT '1=同路由最多挂一次；0=可挂多次（仅 FILTER 有意义）',
     `builtin`             TINYINT      NOT NULL DEFAULT 1 COMMENT '1=内置模板（只读/复制，不可删改）0=用户自定义',
     `sort_num`            INT          NOT NULL DEFAULT 0 COMMENT '选择器内排序',
@@ -319,7 +321,7 @@ CREATE TABLE IF NOT EXISTS `gw_tpl_definition` (
     `updated_at`          DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_gw_tpl_kind_name` (`kind`, `name`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='模板定义（过滤器/断言/结构化全局）';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='模板定义（过滤器/断言/结构化全局/全局配置组）';
 
 
 -- ----------------------------------------------------------------
