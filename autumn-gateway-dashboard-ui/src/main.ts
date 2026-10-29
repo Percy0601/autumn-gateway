@@ -11,6 +11,7 @@ import 'virtual:svg-icons-register'
 import '@/icons/iconfont/iconfont'
 import 'element-plus/dist/index.css'
 import '@/styles/index.scss'
+import '@/styles/utils.scss'
 
 import MaComponent from '@/components/index'
 

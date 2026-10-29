@@ -147,7 +147,7 @@ onMounted(async () => {
 
 <style scoped>
 .gw-sync-page {
-  padding: 4px 4px 24px;
+  padding: 16px 16px 24px;
 }
 .gw-sync-header {
   margin-bottom: 16px;
