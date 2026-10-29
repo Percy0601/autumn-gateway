@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, ref, reactive, watch } from 'vue'
+import { onMounted, ref, reactive, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { gatewayConfigApi, gatewayTemplateV2Api } from '@/api/gateway'
 import { isConfirmed } from '@/utils/confirm'
@@ -29,10 +29,19 @@ const GROUP_LABEL = {
 const groupLabel = (g) => GROUP_LABEL[g] || g
 
 // 按组折叠展示（组按业务顺序，组内按后端返回的 sort_num）
-const groups = ref([])
-function rebuildGroups() {
+const keyword = ref('')
+const filteredRows = computed(() => {
+  const kw = keyword.value.trim().toLowerCase()
+  if (!kw) return rows.value
+  return rows.value.filter(
+    (r) =>
+      (r.configKey || '').toLowerCase().includes(kw) ||
+      (r.remark || '').toLowerCase().includes(kw),
+  )
+})
+const groups = computed(() => {
   const map = {}
-  rows.value.forEach((r) => {
+  filteredRows.value.forEach((r) => {
     const g = r.configGroup || 'CUSTOM'
     if (!map[g]) map[g] = []
     map[g].push(r)
@@ -41,9 +50,24 @@ function rebuildGroups() {
     const ia = GROUP_ORDER.indexOf(a); const ib = GROUP_ORDER.indexOf(b)
     return (ia < 0 ? GROUP_ORDER.length : ia) - (ib < 0 ? GROUP_ORDER.length : ib)
   })
-  groups.value = ordered.map((g) => ({ group: g, items: map[g] }))
+  return ordered.map((g) => ({ group: g, items: map[g] }))
+})
+
+// 折叠：默认展开全部有内容的分组，支持一键展开/收起
+const activeGroups = ref([...GROUP_ORDER])
+const allExpanded = computed(
+  () => groups.value.length > 0 && activeGroups.value.length >= groups.value.length,
+)
+function toggleExpand() {
+  activeGroups.value = allExpanded.value ? [] : [...GROUP_ORDER]
 }
-watch(rows, rebuildGroups, { deep: true })
+
+// 值类型中文映射（原英文枚举不直观）
+const VALUE_TYPE_LABEL = {
+  STRING: '字符串', INT: '整数', LONG: '长整型', BOOL: '布尔',
+  DURATION: '时长', LIST: '列表', JSON: 'JSON', TEXTAREA: '长文本',
+}
+const valueTypeLabel = (t) => VALUE_TYPE_LABEL[t] || t
 
 const drawerOpen = ref(false)
 const saving = ref(false)
@@ -158,15 +182,15 @@ async function submitTpl() {
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-2">
             <span class="text-base font-bold">网关全局配置</span>
-            <el-select v-model="profile" size="small" style="width:120px" @change="loadData">
+            <el-select v-model="profile" style="width:120px" @change="loadData">
               <el-option label="dev" value="dev" />
               <el-option label="test" value="test" />
               <el-option label="prod" value="prod" />
             </el-select>
           </div>
           <div class="flex gap-2">
-            <el-button type="primary" size="small" @click="openTplCreate">从模板添加</el-button>
-            <el-button size="small" @click="openCreate">手填配置项</el-button>
+            <el-button type="primary" @click="openTplCreate">从模板添加</el-button>
+            <el-button @click="openCreate">手填配置项</el-button>
           </div>
         </div>
         <div class="text-xs text-gray-400 mt-2">
@@ -175,11 +199,16 @@ async function submitTpl() {
           SCG/CORS 旧前缀 spring.cloud.gateway.* 在「配置同步」导出时自动归一化为 spring.cloud.gateway.server.webflux.*；
           CORS 组旧 KV 在结构化实例 globalcors 启用时由导出自动跳过（建议后续删除，统一走 STRUCT）。
         </div>
+        <div class="flex items-center gap-2 mb-3">
+          <el-input v-model="keyword" placeholder="搜索配置 Key / 说明" clearable style="width: 280px" />
+          <el-button @click="toggleExpand">{{ allExpanded ? '全部收起' : '全部展开' }}</el-button>
+          <span v-if="keyword" class="text-xs text-gray-400">匹配 {{ filteredRows.length }} 项</span>
+        </div>
       </div>
 
       <div v-loading="loading" class="mt-4">
-        <el-collapse v-for="g in groups" :key="g.group" class="mb-3">
-          <el-collapse-item :title="`${groupLabel(g.group)}（${g.group}）· ${g.items.length} 项`" :name="g.group">
+        <el-collapse v-model="activeGroups" class="mb-3">
+          <el-collapse-item v-for="g in groups" :key="g.group" :title="`${groupLabel(g.group)}（${g.group}）· ${g.items.length} 项`" :name="g.group">
             <el-table :data="g.items" border>
               <el-table-column prop="configKey" label="配置 Key" min-width="260" />
               <el-table-column label="值" min-width="200">
@@ -188,17 +217,19 @@ async function submitTpl() {
                   <span v-else>{{ row.configValue }}</span>
                 </template>
               </el-table-column>
-              <el-table-column prop="valueType" label="类型" width="90" />
-              <el-table-column label="必填" width="60">
+              <el-table-column label="类型" width="90">
+                <template #default="{ row }">{{ valueTypeLabel(row.valueType) }}</template>
+              </el-table-column>
+              <el-table-column label="必填" width="72">
                 <template #default="{ row }">
-                  <el-tag v-if="row.isRequired === 1" type="danger" size="small">必填</el-tag>
+                  <el-tag v-if="row.isRequired === 1" type="danger">必填</el-tag>
                 </template>
               </el-table-column>
               <el-table-column prop="remark" label="说明" min-width="160" show-overflow-tooltip />
-              <el-table-column label="操作" width="140">
+              <el-table-column label="操作" width="160">
                 <template #default="{ row }">
-                  <el-button size="small" @click="openEdit(row)">编辑</el-button>
-                  <el-button size="small" type="danger" @click="remove(row)">删</el-button>
+                  <el-button @click="openEdit(row)">编辑</el-button>
+                  <el-button type="danger" @click="remove(row)">删</el-button>
                 </template>
               </el-table-column>
             </el-table>

@@ -1,3 +1,10 @@
+// 统一字号：缩小 size="small" 与默认字号的落差，缓解“按钮/标签比正文小一号”的忽大忽小观感
+:root {
+  --el-font-size-extra-small: 13px; // Element Plus 默认 12px
+  --el-font-size-small: 13px;       // Element Plus 默认 12px
+  --el-font-size-base: 14px;        // 显式声明，确保正文与控件字号一致
+}
+
 // 列表页统一约定：查询区下方操作条 + 操作列链接间距
 // 对齐 maku-admin 原生布局（查询栏 -> 操作栏 -> 表格）
 

@@ -44,6 +44,22 @@ function safeParse(s) {
   }
 }
 
+// 左侧列表搜索 / 状态筛选
+const routeKeyword = ref('')
+const routeStatusFilter = ref('all')
+const filteredRoutes = computed(() => {
+  const kw = routeKeyword.value.trim().toLowerCase()
+  return rows.value.filter((r) => {
+    if (routeStatusFilter.value !== 'all' && String(r.status) !== routeStatusFilter.value) return false
+    if (!kw) return true
+    return (
+      (r.routeName || '').toLowerCase().includes(kw) ||
+      (r.routeCode || '').toLowerCase().includes(kw) ||
+      (r.uri || '').toLowerCase().includes(kw)
+    )
+  })
+})
+
 // ==================== 左侧：路由列表 / 右侧：当前路由详情 ====================
 const current = ref(null)
 const savingRoute = ref(false)
@@ -313,13 +329,18 @@ async function moveSubDown(i) {
 function centerName(id) {
   return centers.value.find((c) => c.id === id)?.centerName || '—'
 }
-function subArgsSummary(row) {
+function subArgsEntries(row) {
   const a = safeParse(row.argsJson)
   const entries = Object.entries(a)
-  if (!entries.length) return '—'
-  return entries
-    .map(([k, v]) => `${k}=${Array.isArray(v) ? `[${v.join(', ')}]` : v}`)
-    .join('  ')
+  if (!entries.length) return []
+  return entries.map(([k, v]) => {
+    let s
+    if (Array.isArray(v)) s = `[${v.join(', ')}]`
+    else if (v && typeof v === 'object') s = JSON.stringify(v)
+    else s = String(v)
+    const disp = s.length > 40 ? s.slice(0, 40) + '…' : s
+    return { k, v: s, disp }
+  })
 }
 </script>
 
@@ -327,13 +348,19 @@ function subArgsSummary(row) {
   <div class="p-4 flex gap-3" style="height: calc(100vh - 120px)">
     <!-- 左侧：路由列表 -->
     <el-card class="shrink-0" style="width: 340px" shadow="never">
-      <div class="mb-4 flex items-center justify-between">
+      <div class="mb-3 flex items-center justify-between">
         <span class="font-bold">路由列表</span>
-        <el-button type="primary" size="small" @click="openCreate">新增</el-button>
+        <el-button type="primary" @click="openCreate">新增</el-button>
       </div>
+      <el-input v-model="routeKeyword" placeholder="搜索名称/编码/URI" clearable class="mb-2" />
+      <el-select v-model="routeStatusFilter" style="width: 100%" class="mb-2">
+        <el-option label="全部状态" value="all" />
+        <el-option label="启用" value="1" />
+        <el-option label="停用" value="0" />
+      </el-select>
       <div v-loading="loading" class="route-list">
         <div
-          v-for="r in rows"
+          v-for="r in filteredRoutes"
           :key="r.id"
           class="route-item"
           :class="{ active: current && current.id === r.id }"
@@ -341,7 +368,7 @@ function subArgsSummary(row) {
         >
           <div class="flex items-center justify-between">
             <span class="font-medium truncate">{{ r.routeName }}</span>
-            <el-tag :type="r.status === 1 ? 'success' : 'info'" size="small">{{ r.status === 1 ? '启用' : '停用' }}</el-tag>
+            <el-tag :type="r.status === 1 ? 'success' : 'info'">{{ r.status === 1 ? '启用' : '停用' }}</el-tag>
           </div>
           <div class="text-xs text-gray-400 mt-1">{{ r.routeCode }}</div>
           <div class="text-xs text-gray-400 truncate">{{ r.uri }}</div>
@@ -406,12 +433,12 @@ function subArgsSummary(row) {
         <el-tabs v-model="tab" class="mt-4" @tab-change="onTabChange">
           <el-tab-pane label="过滤器" name="filter">
             <div class="mb-3 flex justify-end">
-              <el-button type="primary" size="small" :disabled="!current.id" @click="openSubCreateDialog">添加过滤器</el-button>
+              <el-button type="primary" :disabled="!current.id" @click="openSubCreateDialog">添加过滤器</el-button>
             </div>
             <el-table :data="subRows" border>
               <el-table-column label="顺序" width="110">
                 <template #default="{ $index }">
-                  <el-button-group size="small">
+                  <el-button-group>
                     <el-button :disabled="$index === 0" @click="moveSubUp($index)">↑</el-button>
                     <el-button :disabled="$index === subRows.length - 1" @click="moveSubDown($index)">↓</el-button>
                   </el-button-group>
@@ -421,12 +448,19 @@ function subArgsSummary(row) {
                 <template #default="{ row }"><el-tag>{{ row.filterName }}</el-tag></template>
               </el-table-column>
               <el-table-column label="参数" min-width="220">
-                <template #default="{ row }"><span class="text-xs text-gray-600">{{ subArgsSummary(row) }}</span></template>
-              </el-table-column>
-              <el-table-column label="操作" width="150">
                 <template #default="{ row }">
-                  <el-button size="small" @click="openSubEditDialog(row)">编辑</el-button>
-                  <el-button size="small" type="danger" @click="removeSub(row)">删除</el-button>
+                  <div v-if="subArgsEntries(row).length" class="flex flex-wrap gap-1">
+                    <el-tooltip v-for="e in subArgsEntries(row)" :key="e.k" :content="`${e.k} = ${e.v}`" placement="top">
+                      <el-tag type="info" class="mr-1 mb-1">{{ e.k }}={{ e.disp }}</el-tag>
+                    </el-tooltip>
+                  </div>
+                  <span v-else class="text-xs text-gray-400">—</span>
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="170">
+                <template #default="{ row }">
+                  <el-button @click="openSubEditDialog(row)">编辑</el-button>
+                  <el-button type="danger" @click="removeSub(row)">删除</el-button>
                 </template>
               </el-table-column>
             </el-table>
@@ -434,12 +468,12 @@ function subArgsSummary(row) {
 
           <el-tab-pane label="断言" name="predicate">
             <div class="mb-3 flex justify-end">
-              <el-button type="primary" size="small" :disabled="!current.id" @click="openSubCreateDialog">添加断言</el-button>
+              <el-button type="primary" :disabled="!current.id" @click="openSubCreateDialog">添加断言</el-button>
             </div>
             <el-table :data="subRows" border>
               <el-table-column label="顺序" width="110">
                 <template #default="{ $index }">
-                  <el-button-group size="small">
+                  <el-button-group>
                     <el-button :disabled="$index === 0" @click="moveSubUp($index)">↑</el-button>
                     <el-button :disabled="$index === subRows.length - 1" @click="moveSubDown($index)">↓</el-button>
                   </el-button-group>
@@ -449,12 +483,19 @@ function subArgsSummary(row) {
                 <template #default="{ row }"><el-tag type="warning">{{ row.predicateName }}</el-tag></template>
               </el-table-column>
               <el-table-column label="参数" min-width="220">
-                <template #default="{ row }"><span class="text-xs text-gray-600">{{ subArgsSummary(row) }}</span></template>
-              </el-table-column>
-              <el-table-column label="操作" width="150">
                 <template #default="{ row }">
-                  <el-button size="small" @click="openSubEditDialog(row)">编辑</el-button>
-                  <el-button size="small" type="danger" @click="removeSub(row)">删除</el-button>
+                  <div v-if="subArgsEntries(row).length" class="flex flex-wrap gap-1">
+                    <el-tooltip v-for="e in subArgsEntries(row)" :key="e.k" :content="`${e.k} = ${e.v}`" placement="top">
+                      <el-tag type="info" class="mr-1 mb-1">{{ e.k }}={{ e.disp }}</el-tag>
+                    </el-tooltip>
+                  </div>
+                  <span v-else class="text-xs text-gray-400">—</span>
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="170">
+                <template #default="{ row }">
+                  <el-button @click="openSubEditDialog(row)">编辑</el-button>
+                  <el-button type="danger" @click="removeSub(row)">删除</el-button>
                 </template>
               </el-table-column>
             </el-table>
