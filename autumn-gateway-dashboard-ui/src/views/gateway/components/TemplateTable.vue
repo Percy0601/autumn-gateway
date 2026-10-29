@@ -10,7 +10,7 @@ const builtinTag = (b) => (b === 1 ? { text: '内置', type: 'info' } : { text: 
 </script>
 
 <template>
-  <el-table :data="rows" border size="small">
+  <el-table :data="rows" border>
     <el-table-column prop="displayName" label="显示名" min-width="130">
       <template #default="{ row }">
         <span class="font-semibold">{{ row.displayName }}</span>

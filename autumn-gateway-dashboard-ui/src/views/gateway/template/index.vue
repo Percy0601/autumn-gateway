@@ -366,8 +366,8 @@ async function showPreview(row) {
           <TemplateTable :rows="currentRows" @copy="openTplCopy" @edit="openTplEdit" @remove="removeTpl" />
 
           <!-- 实例 -->
-          <div class="mb-3 mt-2 text-sm font-semibold">结构化全局配置实例（profile: dev）</div>
-          <el-table :data="filteredStructs" border size="small">
+          <div class="mb-4 mt-2 text-sm font-semibold">结构化全局配置实例（profile: dev）</div>
+          <el-table :data="filteredStructs" border>
             <el-table-column prop="instanceName" label="实例名" min-width="140">
               <template #default="{ row }">
                 <span class="font-semibold">{{ row.instanceName }}</span>
@@ -393,7 +393,7 @@ async function showPreview(row) {
 
         <!-- ============ 全局 KV 配置组模板 ============ -->
         <el-tab-pane label="全局配置模板" name="CONFIG">
-          <div class="mb-3 text-xs text-gray-400">
+          <div class="mb-4 text-xs text-gray-400">
             全局 KV 配置组模板：name=配置前缀（如 autumn.authn），配置项 export_key 可为点号多段相对路径，
             在「网关全局配置」页可从模板添加生成 key/value；敏感项自动加密；只支持标量/列表值类型（嵌套对象走结构化模板）。
           </div>
@@ -402,7 +402,7 @@ async function showPreview(row) {
 
         <!-- ============ 值类型目录 ============ -->
         <el-tab-pane label="值类型目录" name="TYPE">
-          <el-table :data="types" border size="small">
+          <el-table :data="types" border>
             <el-table-column prop="id" label="ID" width="60" />
             <el-table-column prop="displayName" label="显示名" min-width="130">
               <template #default="{ row }">

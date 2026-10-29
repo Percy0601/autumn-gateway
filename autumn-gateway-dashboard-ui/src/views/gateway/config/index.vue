@@ -180,7 +180,7 @@ async function submitTpl() {
       <div v-loading="loading" class="mt-4">
         <el-collapse v-for="g in groups" :key="g.group" class="mb-3">
           <el-collapse-item :title="`${groupLabel(g.group)}（${g.group}）· ${g.items.length} 项`" :name="g.group">
-            <el-table :data="g.items" border size="small">
+            <el-table :data="g.items" border>
               <el-table-column prop="configKey" label="配置 Key" min-width="260" />
               <el-table-column label="值" min-width="200">
                 <template #default="{ row }">

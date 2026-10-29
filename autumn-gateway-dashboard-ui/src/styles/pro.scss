@@ -19,6 +19,12 @@
 // 全局：所有表格增加内部边框（网格线）+ 外框，对齐 maku-admin
 // index.scss 在 element-plus 之后导入，所以这里可以覆盖 EP 的默认变量
 .el-table {
+  // 表格字号与页面正文保持一致（14px）：页面不再依赖 size="small" 的 12px，
+  // 即使个别地方仍写了 size="small" 也不会再出现“表格字比页面字小一号”的不协调
+  --el-table-font-size: 14px;
+  --el-table-header-font-size: 14px;
+  --el-table-cell-padding: 10px 0;
+
   // EP 默认 --el-table-border-color(#ebeef5) 太浅几乎看不见，调深让网格线清晰
   --el-table-border-color: #dcdfe6;
 
@@ -71,4 +77,9 @@
   background: #fff;
   padding: 12px 16px;
   border-radius: 2px;
+}
+
+// 页签内容与页签头之间留出垂直间隙：避免表格/表单直接贴住 tab 头
+.el-tabs__content {
+  padding-top: 10px;
 }

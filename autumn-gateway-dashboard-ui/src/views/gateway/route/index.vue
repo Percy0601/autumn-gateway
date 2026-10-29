@@ -403,12 +403,12 @@ function subArgsSummary(row) {
         </el-form>
 
         <!-- 断言 / 过滤器 -->
-        <el-tabs v-model="tab" class="mt-3" @tab-change="onTabChange">
+        <el-tabs v-model="tab" class="mt-4" @tab-change="onTabChange">
           <el-tab-pane label="过滤器" name="filter">
             <div class="mb-3 flex justify-end">
               <el-button type="primary" size="small" :disabled="!current.id" @click="openSubCreateDialog">添加过滤器</el-button>
             </div>
-            <el-table :data="subRows" border size="small">
+            <el-table :data="subRows" border>
               <el-table-column label="顺序" width="110">
                 <template #default="{ $index }">
                   <el-button-group size="small">
@@ -436,7 +436,7 @@ function subArgsSummary(row) {
             <div class="mb-3 flex justify-end">
               <el-button type="primary" size="small" :disabled="!current.id" @click="openSubCreateDialog">添加断言</el-button>
             </div>
-            <el-table :data="subRows" border size="small">
+            <el-table :data="subRows" border>
               <el-table-column label="顺序" width="110">
                 <template #default="{ $index }">
                   <el-button-group size="small">
@@ -517,7 +517,7 @@ function subArgsSummary(row) {
   padding: 10px 12px;
   border: 1px solid #ebeef5;
   border-radius: 6px;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
   cursor: pointer;
   transition: all 0.15s;
 }
