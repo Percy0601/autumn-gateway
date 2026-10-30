@@ -178,7 +178,7 @@ async function submitTpl() {
 <template>
   <div class="p-4">
     <el-card shadow="never">
-      <div class="mb-4">
+      <div>
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-2">
             <span class="text-base font-bold">网关全局配置</span>
@@ -193,13 +193,13 @@ async function submitTpl() {
             <el-button @click="openCreate">手填配置项</el-button>
           </div>
         </div>
-        <div class="text-xs text-gray-400 mt-2">
+        <div class="text-xs text-gray-400 mt-3">
           按业务组展示：服务基础 → 注册发现 → 认证 → 鉴权 → 限流 → 网关引擎 → 跨域 → 自定义；
           「从模板添加」由 CONFIG 模板表单生成 key/value，模板可自定义不发版；sensitive 项自动加密存储。
           SCG/CORS 旧前缀 spring.cloud.gateway.* 在「配置同步」导出时自动归一化为 spring.cloud.gateway.server.webflux.*；
           CORS 组旧 KV 在结构化实例 globalcors 启用时由导出自动跳过（建议后续删除，统一走 STRUCT）。
         </div>
-        <div class="flex items-center gap-2 mb-3">
+        <div class="flex items-center gap-2 mt-3">
           <el-input v-model="keyword" placeholder="搜索配置 Key / 说明" clearable style="width: 280px" />
           <el-button @click="toggleExpand">{{ allExpanded ? '全部收起' : '全部展开' }}</el-button>
           <span v-if="keyword" class="text-xs text-gray-400">匹配 {{ filteredRows.length }} 项</span>
