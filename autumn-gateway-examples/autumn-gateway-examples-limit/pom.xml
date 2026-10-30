@@ -17,22 +17,28 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <java.version>25</java.version>
         <start-class>xyz.wewin.autumn.gateway.examples.limit.LimitAutumnGatewayApplication</start-class>
+        <!-- Bucket4j 版本不在 spring-boot / cloud / gateway 任何 BOM 里，必须自己锁版本；
+             8.15.0 与 Gateway 5.0.3 内部构建版本一致，最稳（且 CaffeineProxyManager 构造器在 8.21+ 才废弃） -->
+        <bucket4j-jdk17.version>8.15.0</bucket4j-jdk17.version>
     </properties>
+
     <dependencies>
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-gateway-server-webflux</artifactId>
-            <!-- 5.x webflux starter 本身不传 snakeyaml，
-                 但如果 Boot parent 还拉了，就从 spring-boot-starter 排 -->
         </dependency>
 
-        <!-- 单机内存限流要走 Bucket4j（Gateway 5.x 官方定的算法） -->
+        <!-- 官方 Bucket4jRateLimiter 的算法库（传递 bucket4j_jdk17-core，同版本） -->
         <dependency>
-            <groupId>com.github.vladimir-bukhtoyarov</groupId>
-            <artifactId>bucket4j-core</artifactId>
-            <version>8.0.1</version>
+            <groupId>com.bucket4j</groupId>
+            <artifactId>bucket4j_jdk17-caffeine</artifactId>
+            <version>${bucket4j-jdk17.version}</version>
         </dependency>
-
+        <!-- Caffeine 由 Spring Boot 管理版本 -->
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
+        </dependency>
     </dependencies>
 
     <build>

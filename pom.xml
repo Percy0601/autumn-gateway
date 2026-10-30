@@ -32,7 +32,6 @@
 		<maven.compiler.source>25</maven.compiler.source>
 		<maven.compiler.target>25</maven.compiler.target>
 		<lombok.version>1.18.48</lombok.version>
-        <bucket4j-core.version>8.0.1</bucket4j-core.version>
         <caffeine.version>3.2.4</caffeine.version>
 		<mybatis-spring-boot-starter.version>4.1.0</mybatis-spring-boot-starter.version>
 		<spring-boot-starter-security-oauth2-authorization-server.version>4.1.1</spring-boot-starter-security-oauth2-authorization-server.version>
@@ -56,11 +55,6 @@
 				<type>pom</type>
 				<scope>import</scope>
 			</dependency>
-            <dependency>
-                <groupId>com.github.vladimir-bukhtoyarov</groupId>
-                <artifactId>bucket4j-core</artifactId>
-                <version>${bucket4j-core.version}</version>
-            </dependency>
             <dependency>
                 <groupId>com.github.ben-manes.caffeine</groupId>
                 <artifactId>caffeine</artifactId>
@@ -102,11 +96,6 @@
             <dependency>
                 <groupId>xyz.wewin.autumn</groupId>
                 <artifactId>authz-autumn-gateway-starter</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>xyz.wewin.autumn</groupId>
-                <artifactId>limit-autumn-gateway-starter</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

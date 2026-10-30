@@ -24,6 +24,10 @@
   （Spring AOT 会写同名的 `reachability-metadata.json` 把我们的覆盖掉；旧格式名不会被覆盖且同样生效）。
   转换要点：`type`→`name`、跳过无点的原始类型、并补 `allDeclaredConstructors/Methods/Fields`（agent 对只 forName 的类不记成员，
   而 Jackson mixin 必须读到成员上的 `@JsonCreator` 才生效）。`resources` 段不要转（glob≠pattern），交给 Spring AOT。
+- **Caffeine 在 native 下必须额外注册反射**：Caffeine 运行时用 `Class.forName` 加载生成的缓存实现类（如 `com.github.benmanes.caffeine.cache.SSMSA`）并反射读写其静态 `FACTORY` 字段；GraalVM reachability metadata 仓库只覆盖 `caffeine:3.1.8`，而本仓库锁定 `3.2.4`（生成类命名不同），否则 native 启动报 `ClassNotFoundException`/`MissingReflectionRegistrationError`。已在 `autumn-gateway-common` 与 example 的 `META-INF/native-image/.../reflect-config.json` 注册全部 238 个生成类（constructors+methods+fields）。**本仓库任何 native 构建只要用到 Caffeine 都需要这份配置**（dashboard/authorization 经 common 间接依赖 Caffeine）。
+- **Windows 本机 native 构建**：`vcvars64.bat` 依赖 `reg.exe` 定位 Windows SDK 的 include 路径，但沙箱把 `reg.exe` 列入黑名单 → `INCLUDE` 未设置，`cl.exe` 编不出 `stdio.h`。本地构建改用 `D:/tmp/build-native2.bat`（手动 `set INCLUDE/LIB/PATH` 指向 VS2022 + Windows SDK `10.0.26100.0`），跳过 `vcvars64.bat`。102 Ubuntu VM 不受影响。
+
+
 - **Spring Security 的 Jackson 模块在 native 下会静默加载失败**（`SecurityJacksonModules.loadAndGetInstance` catch 掉只打 DEBUG），
   症状是 `InvalidTypeIdException: Could not resolve type id 'java.util.Collections$UnmodifiableMap' ... denied resolution`
   —— 看着像 JDK 类没注册，真因是默认多态类型的白名单没建起来。排查：
@@ -32,7 +36,7 @@
 - 验证「依赖改名是否生效」必须 `clean compile` 或 `dependency:tree`。
 - **Maven profile 坑**：命令行只要显式写了任何一个 `-P`，所有 `activeByDefault` 的 profile 都会被关闭。
   deploy 默认组件因此用「属性不存在则激活」：现在是 `component-authz` 的 `!no.authz`；其余组件显式启用。
-  用法：默认=轻量 authz，`-Pcomponent-authn -Dno.authz`=OAuth2 SSO，`-Pcomponent-limit`=轻量 authz+限流，`-Pcomponent-limit -Dno.authz`=只限流。
+  用法：默认=轻量 authz，`-Pcomponent-authn -Dno.authz`=OAuth2 SSO。**限流不再走 starter**：直接用官方 `RequestRateLimiter`+`Bucket4jRateLimiter`（Caffeine 后端，见 `autumn-gateway-examples-limit`），在路由 filter 里配即可，已移除 `limit-autumn-gateway*` 三个模块与 `component-limit` profile。
 - 后台起服务要用 Bash 工具的后台任务；普通 `nohup ... &` 在命令返回后会被回收。
 
 ## 认证 / 授权边界（双发行形态，2026-10-22）

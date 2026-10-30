@@ -59,12 +59,7 @@
 		       mvn ...
 		     例：OAuth2 单点认证（不用轻量 authz）
 		       mvn -Pcomponent-authn -Dno.authz ...
-		     例：轻量 authz + 限流
-		       mvn -Pcomponent-limit ...
-		     例：只装限流，不装任何认证
-		       mvn -Pcomponent-limit -Dno.authz ...
-
-		     ⚠️ Maven 坑：只要在命令行显式写了任何一个 -P，所有 activeByDefault
+⚠️ Maven 坑：只要在命令行显式写了任何一个 -P，所有 activeByDefault
 		     的 profile 都会被关闭。默认组件因此用「属性不存在则激活」（!no.authz）
 		     而不是 activeByDefault；其余组件均为显式 profile。
 		     ============================================================ -->
@@ -98,16 +93,6 @@
 					<groupId>com.mysql</groupId>
 					<artifactId>mysql-connector-j</artifactId>
 					<scope>runtime</scope>
-				</dependency>
-			</dependencies>
-		</profile>
-
-		<profile>
-			<id>component-limit</id>
-			<dependencies>
-				<dependency>
-					<groupId>xyz.wewin.autumn</groupId>
-					<artifactId>limit-autumn-gateway-starter</artifactId>
 				</dependency>
 			</dependencies>
 		</profile>
