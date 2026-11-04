@@ -42,7 +42,8 @@ public class DemoRegisteredClientInitializer implements ApplicationRunner {
     @Value("${autumn.authorization-server.demo-client.client-id:web-client}")
     private String clientId;
 
-    @Value("${autumn.authorization-server.demo-client.client-secret:secret}")
+    /** 无默认弱密钥：启用 demo 客户端时必须由 AUTHN_CLIENT_SECRET 注入 */
+    @Value("${autumn.authorization-server.demo-client.client-secret:}")
     private String clientSecret;
 
     /** 逗号分隔，可登记多个回调地址（网关 OAuth2 客户端 / 直连调试各一个） */
@@ -59,6 +60,11 @@ public class DemoRegisteredClientInitializer implements ApplicationRunner {
     public void run(ApplicationArguments args) {
         if (!enabled) {
             return;
+        }
+        // 不再回落到公开的默认密钥 secret：启用 demo 客户端就必须显式提供密钥。
+        if (!StringUtils.hasText(this.clientSecret)) {
+            throw new IllegalStateException(
+                    "演示客户端已启用但未配置密钥，请设置环境变量 AUTHN_CLIENT_SECRET（或关闭 DEMO_CLIENT_ENABLED）");
         }
         if (this.registeredClientRepository.findByClientId(this.clientId) != null) {
             return;

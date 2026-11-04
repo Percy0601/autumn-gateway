@@ -1,5 +1,7 @@
 package xyz.wewin.autumn.gateway.dashboard.controller.gw;
 
+import org.springframework.security.access.prepost.PreAuthorize;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -35,6 +37,7 @@ public class GwTemplateController {
         return Result.success(filterRepo.findByStatus(1));
     }
 
+    @PreAuthorize("@permissions.canManageGateway()")
     @PostMapping("/filter")
     public Result<GwFilterTemplate> createFilter(@RequestBody GwFilterTemplate t) {
         t.setId(null);
@@ -46,6 +49,7 @@ public class GwTemplateController {
         return Result.success(filterRepo.save(t));
     }
 
+    @PreAuthorize("@permissions.canManageGateway()")
     @PutMapping("/filter/{id}")
     public Result<GwFilterTemplate> updateFilter(@PathVariable Long id, @RequestBody GwFilterTemplate req) {
         GwFilterTemplate e = filterRepo.findById(id).orElseThrow();
@@ -59,6 +63,7 @@ public class GwTemplateController {
         return Result.success(filterRepo.save(e));
     }
 
+    @PreAuthorize("@permissions.canManageGateway()")
     @DeleteMapping("/filter/{id}")
     public Result<Object> deleteFilter(@PathVariable Long id) {
         filterRepo.deleteById(id);
@@ -70,6 +75,7 @@ public class GwTemplateController {
         return Result.success(predicateRepo.findByStatus(1));
     }
 
+    @PreAuthorize("@permissions.canManageGateway()")
     @PostMapping("/predicate")
     public Result<GwPredicateTemplate> createPredicate(@RequestBody GwPredicateTemplate t) {
         t.setId(null);
@@ -79,6 +85,7 @@ public class GwTemplateController {
         return Result.success(predicateRepo.save(t));
     }
 
+    @PreAuthorize("@permissions.canManageGateway()")
     @PutMapping("/predicate/{id}")
     public Result<GwPredicateTemplate> updatePredicate(@PathVariable Long id, @RequestBody GwPredicateTemplate req) {
         GwPredicateTemplate e = predicateRepo.findById(id).orElseThrow();
@@ -90,6 +97,7 @@ public class GwTemplateController {
         return Result.success(predicateRepo.save(e));
     }
 
+    @PreAuthorize("@permissions.canManageGateway()")
     @DeleteMapping("/predicate/{id}")
     public Result<Object> deletePredicate(@PathVariable Long id) {
         predicateRepo.deleteById(id);

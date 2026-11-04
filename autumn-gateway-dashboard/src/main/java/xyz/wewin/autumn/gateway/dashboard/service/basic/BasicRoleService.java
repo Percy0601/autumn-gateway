@@ -26,6 +26,7 @@ import xyz.wewin.autumn.gateway.dashboard.repo.BasicRoleRepository;
 import xyz.wewin.autumn.gateway.dashboard.repo.BasicUserRepository;
 import xyz.wewin.autumn.gateway.dashboard.repo.BasicUserRoleRepository;
 import xyz.wewin.autumn.gateway.dashboard.security.RequestContext;
+import xyz.wewin.autumn.gateway.dashboard.security.ProtectedFields;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -116,9 +117,10 @@ public class BasicRoleService {
         // name / remark 在库里是 NOT NULL DEFAULT ''；前端用 `|| undefined` 省略空字段时
         // 这里是 null，Spring Data JDBC 会插入显式 NULL 触发约束冲突，必须兜底
         if (role.getRemark() == null) role.setRemark("");
-        if (role.getStatus() == null) role.setStatus(1);
+        // D3：master=1 即超管角色，非超管不得靠「新增角色」凭空造一个出来
+        role.setStatus(ProtectedFields.guardCreate(1, role.getStatus()));
         if (role.getType() == null) role.setType(2);
-        if (role.getMaster() == null) role.setMaster(2);
+        role.setMaster(ProtectedFields.guardCreate(2, role.getMaster()));
         if (role.getDelFlag() == null) role.setDelFlag(0);
         role.setCreateUser(RequestContext.currentUserId());
         role.setUpdateUser(RequestContext.currentUserId());
@@ -153,8 +155,9 @@ public class BasicRoleService {
             existing.setName(req.getName());
         }
         if (req.getType() != null) existing.setType(req.getType());
-        if (req.getStatus() != null) existing.setStatus(req.getStatus());
-        if (req.getMaster() != null) existing.setMaster(req.getMaster());
+        // D3：master=1 让角色持有人成为超管；status 变更会绕过启停权限码，两者只允许超管改
+        existing.setStatus(ProtectedFields.guard(existing.getStatus(), req.getStatus()));
+        existing.setMaster(ProtectedFields.guard(existing.getMaster(), req.getMaster()));
         if (req.getRemark() != null) existing.setRemark(req.getRemark());
         existing.setUpdateUser(RequestContext.currentUserId());
         existing.setUpdateTime(LocalDateTime.now());

@@ -1,5 +1,7 @@
 package xyz.wewin.autumn.gateway.dashboard.controller.gw;
 
+import org.springframework.security.access.prepost.PreAuthorize;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -35,6 +37,7 @@ public class GwConfigCenterController {
         return Result.success(repo.findAllByStatus(1));
     }
 
+    @PreAuthorize("@permissions.canManageGateway()")
     @PostMapping
     public Result<GwConfigCenter> create(@RequestBody GwConfigCenter c) {
         c.setId(null);
@@ -44,6 +47,7 @@ public class GwConfigCenterController {
         return Result.success(repo.save(c));
     }
 
+    @PreAuthorize("@permissions.canManageGateway()")
     @PutMapping("/{id}")
     public Result<GwConfigCenter> update(@PathVariable Long id, @RequestBody GwConfigCenter req) {
         GwConfigCenter existing = repo.findById(id).orElseThrow();
@@ -60,6 +64,7 @@ public class GwConfigCenterController {
         return Result.success(repo.save(existing));
     }
 
+    @PreAuthorize("@permissions.canManageGateway()")
     @DeleteMapping("/{id}")
     public Result<Object> delete(@PathVariable Long id) {
         repo.deleteById(id);

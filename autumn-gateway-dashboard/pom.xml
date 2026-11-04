@@ -69,7 +69,13 @@
 			<artifactId>mysql-connector-j</artifactId>
 			<scope>runtime</scope>
 		</dependency>
-		<!-- H2：本地开发 / 沙箱验证用（application-h2.properties，内存库，不承担生产数据） -->
+		<!-- PostgreSQL：db-postgresql profile 用（版本由 Spring Boot BOM 管理） -->
+		<dependency>
+			<groupId>org.postgresql</groupId>
+			<artifactId>postgresql</artifactId>
+			<scope>runtime</scope>
+		</dependency>
+		<!-- H2：db-h2 profile，本地开发 / 沙箱验证用（不承担生产数据） -->
 		<dependency>
 			<groupId>com.h2database</groupId>
 			<artifactId>h2</artifactId>

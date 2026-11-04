@@ -103,7 +103,7 @@
 
 ### 数据库（102 虚拟机上的 MySQL）
 
-- 地址 `192.168.0.102:3306/autumn-security`，账号 `admin/123456`（root 密码同为 `123456`，跑在 Docker 容器 `mysql` 里）
+- 地址 `<VM_HOST>:3306/autumn-security`，账号 `admin/<DB_PASSWORD>`（root 密码同为 `<DB_PASSWORD>`，跑在 Docker 容器 `mysql` 里）
 - OAuth2 相关表：`oauth2_registered_client`（客户端注册）、`oauth2_authorization`（授权/令牌）、`oauth2_authorization_consent`
 - 已登记的客户端：`web-client` / `secret`，回调地址
   `http://localhost:8080/login/oauth2/code/web-client`、`http://127.0.0.1:8080/callback`
@@ -135,7 +135,7 @@ MySQL 没起时先到 102 上 `docker start mysql`。
 
 1. 打开 **http://localhost:8080/**
 2. 自动跳到 http://localhost:9000/login（统一认证中心）
-3. 输入 **`admin` / `Autumn@123456`** + 验证码
+3. 输入 **`admin` / `<INIT_ADMIN_PASSWORD>`** + 验证码
 4. 自动回跳 http://localhost:8080/ ，进入 dashboard
 
 > 前端登录页（`autumn-gateway-dashboard-ui/src/views/login/index.vue`）已经**没有账号密码表单**了，
@@ -179,7 +179,7 @@ MySQL 没起时先到 102 上 `docker start mysql`。
 | 前端一直提示「登录已过期」 | 网关会话过期/丢了吗？看浏览器是否带着 `SESSION` Cookie；网关多实例时要做会话共享 |
 | dashboard 报 `401 invalid_token` | 令牌过期或 JWKS 拉不到。确认 9000 起来了、`jwk-set-uri` 指向正确 |
 | 端口不对（连 8080 被拒但进程在） | 沙箱里 `SERVER__PORT=64884` 会覆盖 `server.port`，启动必须 `env -u SERVER__PORT` |
-| 后端起不来报 `JdbcAggregateOperations` 连环错 | 只是连不上 MySQL。先 `nc -z 192.168.0.102 3306`，到 102 上 `docker start mysql`，**不要改代码** |
+| 后端起不来报 `JdbcAggregateOperations` 连环错 | 只是连不上 MySQL。先 `nc -z <VM_HOST> 3306`，到 102 上 `docker start mysql`，**不要改代码** |
 | SPA 深链（`/system/user`）F5 后白屏 | `vite.config.ts` 的 `base` 必须是 `/`，不能是 `./` |
 
 ---
@@ -200,7 +200,7 @@ MySQL 没起时先到 102 上 `docker start mysql`。
 ## 七、附录 A：GraalVM native 构建配方
 
 ```bash
-# 102 虚拟机（ssh percy@192.168.0.102，密码 1）
+# 102 虚拟机（ssh percy@<VM_HOST>，密码 <SSH_PASSWORD>）
 export JAVA_HOME=/home/percy/opt/graalvm-jdk-25.0.3+9.1
 export PATH=$JAVA_HOME/bin:/home/percy/opt/apache-maven-3.9.16/bin:$PATH
 cd ~/work/project/autumn-gateway-native

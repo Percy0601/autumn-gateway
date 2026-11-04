@@ -20,6 +20,7 @@ import xyz.wewin.autumn.gateway.dashboard.repo.BasicResourceRepository;
 import xyz.wewin.autumn.gateway.dashboard.repo.BasicRolePermissionRepository;
 import xyz.wewin.autumn.gateway.dashboard.repo.BasicRoleRepository;
 import xyz.wewin.autumn.gateway.dashboard.security.RequestContext;
+import xyz.wewin.autumn.gateway.dashboard.security.ProtectedFields;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -133,13 +134,19 @@ public class BasicResourceService {
     public BasicResource update(Long id, BasicResource req) {
         BasicResource existing = repository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("资源不存在: " + id));
-        if (req.getAppId() != null) existing.setAppId(req.getAppId());
+        // D3：path / httpMethod / matchType / appId 决定 URL 层能匹配到哪些请求，
+        // 非超管不得改宽；status 顺带堵住绕过启停权限码。
+        // 新建资源仍可指定这些字段（新建的映射未被授权给任何人），因此 create 不设限。
+        existing.setAppId(ProtectedFields.guard(existing.getAppId(), req.getAppId()));
         if (req.getName() != null) existing.setName(req.getName());
-        if (req.getPath() != null) existing.setPath(req.getPath());
-        if (req.getHttpMethod() != null) existing.setHttpMethod(normalizeHttpMethods(req.getHttpMethod()));
-        if (req.getMatchType() != null) existing.setMatchType(req.getMatchType());
+        existing.setPath(ProtectedFields.guard(existing.getPath(), req.getPath()));
+        if (req.getHttpMethod() != null) {
+            existing.setHttpMethod(ProtectedFields.guard(
+                    existing.getHttpMethod(), normalizeHttpMethods(req.getHttpMethod())));
+        }
+        existing.setMatchType(ProtectedFields.guard(existing.getMatchType(), req.getMatchType()));
         if (req.getDescription() != null) existing.setDescription(req.getDescription());
-        if (req.getStatus() != null) existing.setStatus(req.getStatus());
+        existing.setStatus(ProtectedFields.guard(existing.getStatus(), req.getStatus()));
         if (existing.getAppId() != null) {
             existing.setAppCode(appRepository.findById(existing.getAppId()).map(BasicApp::getAppCode).orElse(""));
         }

@@ -35,7 +35,7 @@ find target -name "*.imports" -path "*spring*" | xargs grep -l "RefreshBootstrap
 ```
 curl -X POST http://localhost:8080/api/auth/login \
 -H "Content-Type: application/json" \
--d '{"identity_type":"password","identifier":"admin","credential":"ant.design"}'
+-d '{"identity_type":"password","identifier":"admin","credential":"<PASSWORD>"}'
 
 ```
 
@@ -43,10 +43,10 @@ curl -X POST http://localhost:8080/api/auth/login \
 
 ### 虚拟机-Postgres
 
-- 主机 Host: 192.168.0.102
+- 主机 Host: <VM_HOST>
 - 端口 Port: 5432
 - 用户名 User: postgres
-- 密码 Password: 5e0db08e654ac86f236e2dce
+- 密码 Password: <DB_PASSWORD>
 - 默认库 Database: postgres
 
 

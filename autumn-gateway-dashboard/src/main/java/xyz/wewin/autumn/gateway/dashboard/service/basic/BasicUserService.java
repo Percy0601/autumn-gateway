@@ -20,6 +20,7 @@ import xyz.wewin.autumn.gateway.dashboard.repo.BasicUserGroupRepository;
 import xyz.wewin.autumn.gateway.dashboard.repo.BasicUserRepository;
 import xyz.wewin.autumn.gateway.dashboard.repo.BasicUserRoleRepository;
 import xyz.wewin.autumn.gateway.dashboard.security.RequestContext;
+import xyz.wewin.autumn.gateway.dashboard.security.ProtectedFields;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -64,13 +65,13 @@ public class BasicUserService {
     /** 管理员重置密码时，新密码的最短长度 */
     private static final int MIN_PASSWORD_LENGTH = 8;
 
-    /** 管理员重置密码时未指定新密码，则回落到系统默认密码 */
+    /** 未指定新密码时的系统默认密码；为空表示每次生成一次性随机密码 */
     private final String defaultPassword;
 
     /** 登录允许的剩余重试次数（满额值）：新用户初始、改密后、管理员启用时都回填为该值 */
     private final int maxLoginErrorCount;
 
-    public BasicUserService(@Value("${autumn.user.default-password:Autumn@123456}") String defaultPassword,
+    public BasicUserService(@Value("${autumn.user.default-password:}") String defaultPassword,
                             @Value("${autumn.user.max-login-error-count:5}") int maxLoginErrorCount) {
         this.defaultPassword = defaultPassword;
         this.maxLoginErrorCount = maxLoginErrorCount;
@@ -78,6 +79,20 @@ public class BasicUserService {
 
     private static String nvl(String v) {
         return v == null ? "" : v.trim();
+    }
+
+    /**
+     * 解析实际生效的明文密码：显式指定优先，其次系统配置，都没有则生成一次性随机密码。
+     * 刻意不再回落任何公开的固定默认口令。
+     */
+    private String resolvePassword(String provided) {
+        if (provided != null && !provided.isBlank()) {
+            return provided.trim();
+        }
+        if (defaultPassword != null && !defaultPassword.isBlank()) {
+            return defaultPassword;
+        }
+        return "Au@" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
     }
 
     /** 空集合用 {-1} 占位，避免 SQL 出现 IN () */
@@ -106,8 +121,8 @@ public class BasicUserService {
     /**
      * 新增用户。
      *
-     * <p>密码由<b>后台下发</b>：请求未指定 password 时使用系统默认密码
-     * {@code autumn.user.default-password}（默认 {@code Autumn@123456}），
+     * <p>密码由<b>后台下发</b>：请求未指定 password 时取
+     * {@code autumn.user.default-password}，未配置则生成一次性随机密码，
      * 库中只存 BCrypt 哈希，<b>明文</b>随返回值一次性回给调用方，供弹窗转告用户。
      *
      * @param user 待创建用户；password 留空表示使用系统默认密码
@@ -135,18 +150,17 @@ public class BasicUserService {
         if (user.getAvatar() == null) user.setAvatar("");
         if (user.getEmail() == null) user.setEmail("");
         if (user.getPhone() == null) user.setPhone("");
-        if (user.getAdmin() == null) user.setAdmin(0);
-        if (user.getStatus() == null) user.setStatus(1);
+        // D2：非超管不得靠「新增用户」直接造出超管账号或指定启停状态
+        user.setAdmin(ProtectedFields.guardCreate(0, user.getAdmin()));
+        user.setStatus(ProtectedFields.guardCreate(1, user.getStatus()));
         if (user.getLatestRoleId() == null) user.setLatestRoleId(0L);
         // 登录重试次数给满额，与建表默认值一致
         if (user.getLoginErrorCount() == null) user.setLoginErrorCount(maxLoginErrorCount);
         // 新用户未登录过
         user.setLastLoginAt(null);
 
-        // 密码：未显式指定则用系统默认密码，库里只留哈希
-        String plain = (user.getPassword() == null || user.getPassword().isBlank())
-                ? defaultPassword
-                : user.getPassword().trim();
+        // 密码：未显式指定则用系统默认密码或一次性随机密码，库里只留哈希
+        String plain = resolvePassword(user.getPassword());
         if (plain.length() < MIN_PASSWORD_LENGTH) {
             throw new IllegalArgumentException("密码长度不能少于 " + MIN_PASSWORD_LENGTH + " 位");
         }
@@ -173,8 +187,10 @@ public class BasicUserService {
         if (req.getAvatar() != null) existing.setAvatar(req.getAvatar());
         if (req.getEmail() != null) existing.setEmail(req.getEmail());
         if (req.getPhone() != null) existing.setPhone(req.getPhone());
-        if (req.getAdmin() != null) existing.setAdmin(req.getAdmin());
-        if (req.getStatus() != null) existing.setStatus(req.getStatus());
+        // D2：admin / status 是权限与启停元数据，只允许超管变更；
+        // 非超管提交同值照常放行（前端整表单回传），改值静默忽略，堵死自我提权与绕过启停权限码。
+        existing.setAdmin(ProtectedFields.guard(existing.getAdmin(), req.getAdmin()));
+        existing.setStatus(ProtectedFields.guard(existing.getStatus(), req.getStatus()));
         if (req.getLatestRoleId() != null) existing.setLatestRoleId(req.getLatestRoleId());
         // username / uuid 创建后禁止修改，忽略传入值
         existing.setUpdateTime(LocalDateTime.now());
@@ -310,7 +326,7 @@ public class BasicUserService {
      * 需要引入 token 版本号或黑名单，本期不做。</p>
      *
      * @param id          用户 id
-     * @param newPassword 新密码明文；null/空白时回落默认密码
+     * @param newPassword 新密码明文；null/空白时取系统默认密码或生成一次性随机密码
      * @param unlock      是否同时解除禁用状态
      * @return 实际生效的明文密码
      */
@@ -318,9 +334,7 @@ public class BasicUserService {
         BasicUser existing = repository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("用户不存在: " + id));
 
-        String plain = (newPassword == null || newPassword.isBlank())
-                ? defaultPassword
-                : newPassword.trim();
+        String plain = resolvePassword(newPassword);
         if (plain.length() < MIN_PASSWORD_LENGTH) {
             throw new IllegalArgumentException("密码长度不能少于 " + MIN_PASSWORD_LENGTH + " 位");
         }

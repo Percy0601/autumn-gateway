@@ -29,6 +29,29 @@ import java.util.List;
 @Component("permissions")
 public class Permissions {
 
+    /** 网关配置细粒度权限码（尚未进入 basic_menu 种子，故一律以超管兜底） */
+    private static final String GATEWAY_CONFIG = "system:gateway:config";
+    private static final String GATEWAY_PUBLISH = "system:gateway:publish";
+
+    /**
+     * D4：网关配置写操作（路由 / 断言 / 过滤器 / 模板 / 配置项 / 配置中心）的准入判定。
+     *
+     * <p>刻意用「超管 或 持有权限码」而不是纯 {@code hasAuthority}：这两个权限码
+     * 目前不在 {@code basic_menu.menu_identification} 种子里，而超管的 authorities
+     * 来源于「库里全部权限标识」的字符串精确比对 —— 只写 hasAuthority 会让
+     * <b>连超管在内所有人对全部 gw 写接口 403</b>，等于把功能直接关掉。
+     * 以超管兜底可零数据库改动地收紧；将来把权限码加入种子并授权给角色后，
+     * 无需改代码即可细粒度放开。</p>
+     */
+    public boolean canManageGateway() {
+        return isSuperAdmin() || has(GATEWAY_CONFIG);
+    }
+
+    /** 发布 / 同步到外部配置中心：可直接影响线上网关运行，比普通写高一级。 */
+    public boolean canPublishGateway() {
+        return isSuperAdmin() || has(GATEWAY_PUBLISH);
+    }
+
     /** 是否拥有某权限标识；未登录或非 LoginUser 恒 false */
     public static boolean has(String authority) {
         LoginUser user = current();

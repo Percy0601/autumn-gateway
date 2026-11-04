@@ -61,3 +61,16 @@ autumn-gateway-dashboard-ui/src/**/*.d.ts.map
 *.njsproj
 *.sln
 *.sw?
+
+# ===== 敏感数据：只提交占位样例，绝不入库真实值 =====
+# 真实环境变量（只提交 .env.example）
+.env
+.env.*
+!.env.example
+
+# AI 工作记忆：含内网地址与运维口令，仅本地保留，不进版本库
+.workbuddy/
+
+# 本地数据库文件：含用户表与 BCrypt 哈希
+*.mv.db
+*.trace.db

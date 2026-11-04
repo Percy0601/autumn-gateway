@@ -81,11 +81,13 @@ public class PermissionService {
      *
      * <p>注意 ${inherit} 段：group_inherit_enabled = 1 时，
      * 用户所属的组以及该组的**所有下级组**（递归）都参与取角色；
-     * 关闭时只看用户直接挂的组。递归用 PostgreSQL / MySQL 8 都支持的
-     * WITH RECURSIVE，两库语法一致。</p>
+     * 关闭时只看用户直接挂的组。递归用 PostgreSQL / MySQL 8 / H2 都支持的
+     * WITH RECURSIVE；<b>列名清单不能省</b>——MySQL 允许省略，
+     * 但 H2 对 WITH RECURSIVE 下每一个 CTE 都要求列名清单，缺了会直接报
+     * "Syntax error ... expected ("，导致本地 db-h2 下所有非超管用户的请求 500。</p>
      */
     private static final String SQL_ROLE_IDS = """
-            WITH RECURSIVE user_groups AS (
+            WITH RECURSIVE user_groups(group_id) AS (
                 SELECT ug.group_id
                   FROM basic_user_group ug
                  WHERE ug.user_id = ? AND ug.deleted = 0
@@ -96,12 +98,12 @@ public class PermissionService {
                  WHERE gg.deleted = 0
                    AND (? = 1)
             ),
-            direct_roles AS (
+            direct_roles(role_id) AS (
                 SELECT ur.role_id
                   FROM basic_user_role ur
                  WHERE ur.user_id = ? AND ur.del_flag = 0
             ),
-            group_roles AS (
+            group_roles(role_id) AS (
                 SELECT rg.role_id
                   FROM basic_role_group rg
                  WHERE rg.deleted = 0

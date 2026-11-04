@@ -16,7 +16,7 @@
 -- 执行：
 --   java -cp D:\opt\h2\bin\h2-2.5.252.jar org.h2.tools.Shell ^
 --        -url "jdbc:h2:tcp://localhost:9092/autumn_security;MODE=MySQL;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE" ^
---        -user sa -password 123456 -script <本文件>
+--        -user sa -password "$DB_PASSWORD" -script <本文件>
 --
 -- 幂等：可重复执行（INSERT 均带 NOT EXISTS / 存在即跳过）。
 -- ============================================================

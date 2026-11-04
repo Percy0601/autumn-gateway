@@ -3,7 +3,9 @@ package xyz.wewin.autumn.gateway.dashboard.exception;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -36,6 +38,19 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Result<Void>> handleDataIntegrity(DataIntegrityViolationException e) {
         log.warn("数据约束冲突: {}", e.getMessage());
         return ResponseEntity.badRequest().body(Result.error(400, describe(e)));
+    }
+
+    /**
+     * 方法级鉴权失败（@PreAuthorize 未通过）：必须返回 403。
+     *
+     * <p>若并入下方兜底分支会变成 500「服务器内部错误」，前端就分不清
+     * 「无权限」和「服务故障」，只能一律提示系统异常。</p>
+     */
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<Result<Void>> handleAccessDenied(AccessDeniedException e) {
+        log.warn("权限不足: {}", e.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(Result.error(403, "无权限执行该操作"));
     }
 
     @ExceptionHandler(Exception.class)

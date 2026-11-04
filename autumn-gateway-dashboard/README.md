@@ -59,14 +59,16 @@ psql -h <host> -U <user> -d <db> -f src/main/resources/db/rbac/V2__rbac_init_dat
 
 ### 1.3 初始账号
 
-| 账号 | 密码 | 角色 | 用途 |
+| 账号 | 初始密码 | 角色 | 用途 |
 |---|---|---|---|
-| `admin` | `Autumn#Admin@2026` | SUPER_ADMIN（`admin=1`） | 超管，全权限直通 |
-| `auditor` | `Autumn#User@2026` | AUDITOR | **验证「非管理员视角」的专用账号** |
+| `admin` | 见下方说明 | SUPER_ADMIN（`admin=1`） | 超管，全权限直通 |
+| `auditor` | 见下方说明 | AUDITOR | **验证「非管理员视角」的专用账号** |
 
-> ⚠️ 这两个密码只用于交付初始化。**首次登录后必须立即修改**，并把 V2 脚本里的 BCrypt 哈希替换为团队内部值。
->
-> 注意 `auditor` 的密码是 `Autumn#User@2026`（`#` 不是 `@`），和 `admin` 的 `Autumn#Admin@2026` 保持同一分隔符。
+> ⚠️ **仓库与文档不再包含任何明文初始口令**。V2 脚本里的 BCrypt 哈希是随仓库公开的示例值
+> （对应弱口令，绝不能用于生产），上线前必须用
+> `new BCryptPasswordEncoder(10).encode("<你的强口令>")` 重新生成替换，见 V2 第 0 节。
+> 新库也可删除预置密码，交由 `NamespaceDataInitializer` 生成一次性随机初始密码
+> （启动日志 WARN 输出一次），首次登录后立即修改。
 >
 > **改哈希后请务必自验一次**：BCrypt 的坑在于「哈希和明文对不上」不会报错，只会让人登录失败，而失败信息又和「密码输错」完全一样，很容易被误判成配置问题。生成后跑一遍：
 >
@@ -110,7 +112,7 @@ curl -i $BASE/api/system/basic/user
 # 2) 登录拿 token
 TOKEN=$(curl -s -X POST $BASE/api/login/account \
   -H 'Content-Type: application/json' \
-  -d '{"username":"admin","password":"Autumn#Admin@2026"}' \
+  -d '{"username":"admin","password":"<ADMIN_INITIAL_PASSWORD>"}' \
   | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
 
 # 3) 带 token 访问 → 200
@@ -122,7 +124,7 @@ curl -s -H "Authorization: Bearer $TOKEN" $BASE/api/currentUser
 # 5) 用 auditor 验证受限视角：列表接口 403、菜单只剩只读项
 ATOKEN=$(curl -s -X POST $BASE/api/login/account \
   -H 'Content-Type: application/json' \
-  -d '{"username":"auditor","password":"Autumn#User@2026"}' \
+  -d '{"username":"auditor","password":"<AUDITOR_INITIAL_PASSWORD>"}' \
   | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
 curl -i -H "Authorization: Bearer $ATOKEN" $BASE/api/system/basic/user   # 期望 403
 ```
@@ -661,25 +663,18 @@ jwt.secret=${JWT_SECRET}
 
 通过环境变量或配置中心注入；不同环境用不同密钥；轮换时保留旧密钥一段时间的验证能力（双密钥过渡）。
 
-### 10.2 高：token 支持从 query 参数读取
+### 10.2 高：token 支持从 query 参数读取 —— ✅ 已修复
 
-```java
-private String resolveToken(HttpServletRequest request) {
-    // ... Authorization 头优先
-    String param = request.getParameter("token");   // ← 回退
-    return (param == null || param.isBlank()) ? null : param.trim();
-}
-```
+`JwtAuthenticationFilter#resolveToken` 已改为**只接受 `Authorization: Bearer <jwt>` 请求头**，
+不再读 query 参数。原风险（URL 被 Nginx access_log、浏览器历史、Referer 头、代理缓存记录）已消除。
+本节保留编号仅供对照历史版本，请勿据此把 query 回退加回来。
 
-token 在 URL 里会被 **Nginx access_log、浏览器历史、Referer 头、代理缓存**记录，属于凭据泄露的常见来源。
+### 10.3 中：`NamespaceDataInitializer` 默认密码 —— ✅ 已修复
 
-保留此回退仅为兼容既有网关透传方式。**建议后续只接受 `Authorization` 头**，并给一个过渡期：先记 WARN 日志统计调用量，确认无调用方后再摘掉。
-
-### 10.3 中：`NamespaceDataInitializer` 默认密码
-
-`Autumn@123456` 硬编码在初始化器里。与 V2 脚本的初始密码一样，都属于「交付便利 vs 生产安全」的权衡。
-
-**建议**：首次启动时若检测到仍是默认密码，强制跳转改密页；或在生产 profile 下拒绝启动并提示设置 `INIT_ADMIN_PASSWORD`。
+`autumn.user.default-password` 已无硬编码默认值：显式配置时用它，未配置时生成一次性随机密码
+并在启动日志 WARN 输出一次（仅新库或 admin 缺密码时写入，存量库不受影响）。
+`BasicUserService` 的新建用户 / 重置密码走同样的逻辑，不再回落任何公开固定口令。
+V2 脚本里的明文口令注释也已删除，哈希保留为示例值并要求上线前替换。
 
 ### 10.4 中：Spring Boot 自动生成 security password 的 WARN
 

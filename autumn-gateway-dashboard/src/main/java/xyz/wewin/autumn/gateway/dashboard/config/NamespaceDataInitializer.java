@@ -15,6 +15,7 @@ import xyz.wewin.autumn.gateway.dashboard.repo.BasicNamespaceRepository;
 import xyz.wewin.autumn.gateway.dashboard.service.basic.BasicNamespaceService;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 /**
  * 系统初始化（幂等，可重复执行，每次启动都会跑）：
@@ -27,7 +28,9 @@ import java.time.LocalDateTime;
  *   <li>播种 basic_* 演示数据（命名空间结构就绪时），让系统管理页面非空。</li>
  * </ol>
  *
- * <p>默认管理员：admin / autumn.user.default-password（默认 Autumn@123456）。</p>
+ * <p>默认管理员：admin。初始密码优先取 {@code autumn.user.default-password}；
+ * 未配置时生成一次性随机密码并在启动日志 WARN 输出（仅新库/补填时生效，存量库不受影响），
+ * 仓库里不再保留任何可用的公开默认口令。</p>
  *
  * <p>注意：basic_* 表结构由 spring.sql.init 的 schema 脚本（CREATE TABLE IF NOT EXISTS）
  * 在启动时自动建表；存量库的命名空间列变更需先执行 db/migration-v3-to-v4.sql
@@ -54,13 +57,21 @@ public class NamespaceDataInitializer implements ApplicationRunner {
                                     BasicNamespaceService namespaceService,
                                     JdbcTemplate jdbcTemplate,
                                     PasswordEncoder passwordEncoder,
-                                    @Value("${autumn.user.default-password:Autumn@123456}") String defaultPassword,
+                                    @Value("${autumn.user.default-password:}") String defaultPassword,
                                     @Value("${autumn.user.max-login-error-count:5}") int maxLoginErrorCount) {
         this.namespaceRepository = namespaceRepository;
         this.namespaceService = namespaceService;
         this.jdbcTemplate = jdbcTemplate;
         this.passwordEncoder = passwordEncoder;
-        this.defaultPassword = defaultPassword;
+        // 只解析一次：basic_user 与 user_auth_account 两张表必须用同一个初始密码。
+        // 不再提供公开固定口令；未配置时随机生成，日志只在本进程输出一次。
+        if (defaultPassword == null || defaultPassword.isBlank()) {
+            this.defaultPassword = "Au@" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+            log.warn("未配置 autumn.user.default-password，已生成一次性随机初始密码（仅本次启动可见）：{} "
+                    + "—— 仅在新库或 admin 缺密码时写入，请首次登录后立即修改", this.defaultPassword);
+        } else {
+            this.defaultPassword = defaultPassword;
+        }
         this.maxLoginErrorCount = maxLoginErrorCount;
     }
 

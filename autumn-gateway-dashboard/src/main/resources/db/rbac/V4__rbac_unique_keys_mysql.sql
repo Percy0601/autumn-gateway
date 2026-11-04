@@ -9,7 +9,7 @@
 --   应用账号 admin 只有 SELECT/INSERT/UPDATE/DELETE，没有 ALTER，
 --   所以这一段必须用 root（102 上 MySQL 跑在 docker 容器里）：
 --
---     docker exec -i mysql mysql -uroot -p123456 autumn-security \
+--     docker exec -i mysql mysql -uroot -p"$DB_PASSWORD" autumn-security \
 --         < db/rbac/V4__rbac_unique_keys_mysql.sql
 --
 -- 幂等：先清理重复行，再用 information_schema 判断键是否存在，存在则跳过。

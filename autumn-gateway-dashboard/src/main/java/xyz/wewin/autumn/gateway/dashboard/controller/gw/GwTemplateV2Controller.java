@@ -1,5 +1,7 @@
 package xyz.wewin.autumn.gateway.dashboard.controller.gw;
 
+import org.springframework.security.access.prepost.PreAuthorize;
+
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -43,16 +45,19 @@ public class GwTemplateV2Controller {
         return Result.success(service.listValueTypes(status));
     }
 
+    @PreAuthorize("@permissions.canManageGateway()")
     @PostMapping("/value-types")
     public Result<GwValueType> createValueType(@RequestBody GwValueType req) {
         return Result.success(service.createValueType(req));
     }
 
+    @PreAuthorize("@permissions.canManageGateway()")
     @PutMapping("/value-types/{id}")
     public Result<GwValueType> updateValueType(@PathVariable Long id, @RequestBody GwValueType req) {
         return Result.success(service.updateValueType(id, req));
     }
 
+    @PreAuthorize("@permissions.canManageGateway()")
     @DeleteMapping("/value-types/{id}")
     public Result<Void> deleteValueType(@PathVariable Long id) {
         service.deleteValueType(id);
@@ -60,6 +65,7 @@ public class GwTemplateV2Controller {
     }
 
     /** LIST/OBJECT 类型的结构字段保存（整体替换） */
+    @PreAuthorize("@permissions.canManageGateway()")
     @PutMapping("/value-types/{id}/fields")
     public Result<Void> saveTypeFields(@PathVariable Long id, @RequestBody List<GwValueTypeField> fields) {
         service.saveTypeFields(id, fields);
@@ -79,16 +85,19 @@ public class GwTemplateV2Controller {
         return Result.success(service.templateTree(id));
     }
 
+    @PreAuthorize("@permissions.canManageGateway()")
     @PostMapping("/templates")
     public Result<GwTplDefinition> createTemplate(@RequestBody GwTplSaveRequest req) {
         return Result.success(service.createTemplate(req));
     }
 
+    @PreAuthorize("@permissions.canManageGateway()")
     @PutMapping("/templates/{id}")
     public Result<GwTplDefinition> updateTemplate(@PathVariable Long id, @RequestBody GwTplSaveRequest req) {
         return Result.success(service.updateTemplate(id, req));
     }
 
+    @PreAuthorize("@permissions.canManageGateway()")
     @DeleteMapping("/templates/{id}")
     public Result<Void> deleteTemplate(@PathVariable Long id) {
         service.deleteTemplate(id);
@@ -102,16 +111,19 @@ public class GwTemplateV2Controller {
         return Result.success(service.listStructs(profile));
     }
 
+    @PreAuthorize("@permissions.canManageGateway()")
     @PostMapping("/structs")
     public Result<GwConfigStruct> createStruct(@RequestBody GwConfigStruct req) {
         return Result.success(service.createStruct(req));
     }
 
+    @PreAuthorize("@permissions.canManageGateway()")
     @PutMapping("/structs/{id}")
     public Result<GwConfigStruct> updateStruct(@PathVariable Long id, @RequestBody GwConfigStruct req) {
         return Result.success(service.updateStruct(id, req));
     }
 
+    @PreAuthorize("@permissions.canManageGateway()")
     @DeleteMapping("/structs/{id}")
     public Result<Void> deleteStruct(@PathVariable Long id) {
         service.deleteStruct(id);

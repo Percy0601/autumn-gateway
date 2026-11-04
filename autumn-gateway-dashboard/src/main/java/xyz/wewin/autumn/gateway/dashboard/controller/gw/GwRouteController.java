@@ -1,5 +1,7 @@
 package xyz.wewin.autumn.gateway.dashboard.controller.gw;
 
+import org.springframework.security.access.prepost.PreAuthorize;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -44,6 +46,7 @@ public class GwRouteController {
         return Result.success(routeRepo.findAllActive());
     }
 
+    @PreAuthorize("@permissions.canManageGateway()")
     @PostMapping
     public Result<GwRoute> create(@RequestBody GwRoute route) {
         if (route.getRouteCode() == null || route.getRouteCode().isBlank()) {
@@ -64,6 +67,7 @@ public class GwRouteController {
         return Result.success(routeRepo.save(route));
     }
 
+    @PreAuthorize("@permissions.canManageGateway()")
     @PutMapping("/{id}")
     public Result<GwRoute> update(@PathVariable Long id, @RequestBody GwRoute req) {
         GwRoute existing = routeRepo.findById(id)
@@ -87,6 +91,7 @@ public class GwRouteController {
         return Result.success(routeRepo.save(existing));
     }
 
+    @PreAuthorize("@permissions.canManageGateway()")
     @DeleteMapping("/{id}")
     public Result<Object> delete(@PathVariable Long id) {
         GwRoute existing = routeRepo.findById(id)
@@ -103,6 +108,7 @@ public class GwRouteController {
         return Result.success(predicateRepo.findByRouteId(id));
     }
 
+    @PreAuthorize("@permissions.canManageGateway()")
     @PostMapping("/{id}/predicates")
     public Result<GwRoutePredicate> addPredicate(@PathVariable Long id, @RequestBody GwRoutePredicate p) {
         p.setId(null);
@@ -114,6 +120,7 @@ public class GwRouteController {
         return Result.success(predicateRepo.save(p));
     }
 
+    @PreAuthorize("@permissions.canManageGateway()")
     @PutMapping("/predicates/{pid}")
     public Result<GwRoutePredicate> updatePredicate(@PathVariable Long pid, @RequestBody GwRoutePredicate p) {
         GwRoutePredicate existing = predicateRepo.findById(pid)
@@ -126,6 +133,7 @@ public class GwRouteController {
         return Result.success(predicateRepo.save(existing));
     }
 
+    @PreAuthorize("@permissions.canManageGateway()")
     @DeleteMapping("/predicates/{pid}")
     public Result<Object> deletePredicate(@PathVariable Long pid) {
         GwRoutePredicate existing = predicateRepo.findById(pid)
@@ -142,6 +150,7 @@ public class GwRouteController {
         return Result.success(filterRepo.findByRouteId(id));
     }
 
+    @PreAuthorize("@permissions.canManageGateway()")
     @PostMapping("/{id}/filters")
     public Result<GwRouteFilter> addFilter(@PathVariable Long id, @RequestBody GwRouteFilter f) {
         if (f.getFilterName() == null || f.getFilterName().isBlank()) {
@@ -166,6 +175,7 @@ public class GwRouteController {
         return Result.success(filterRepo.save(f));
     }
 
+    @PreAuthorize("@permissions.canManageGateway()")
     @PutMapping("/filters/{fid}")
     public Result<GwRouteFilter> updateFilter(@PathVariable Long fid, @RequestBody GwRouteFilter f) {
         GwRouteFilter existing = filterRepo.findById(fid)
@@ -178,6 +188,7 @@ public class GwRouteController {
         return Result.success(filterRepo.save(existing));
     }
 
+    @PreAuthorize("@permissions.canManageGateway()")
     @DeleteMapping("/filters/{fid}")
     public Result<Object> deleteFilter(@PathVariable Long fid) {
         GwRouteFilter existing = filterRepo.findById(fid)

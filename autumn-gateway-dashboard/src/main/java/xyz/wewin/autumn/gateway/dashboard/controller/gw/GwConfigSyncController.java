@@ -1,5 +1,7 @@
 package xyz.wewin.autumn.gateway.dashboard.controller.gw;
 
+import org.springframework.security.access.prepost.PreAuthorize;
+
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -33,6 +35,7 @@ public class GwConfigSyncController {
     }
 
     /** 推送到配置中心：body { profile, centerId }，返回单中心推送结果 */
+    @PreAuthorize("@permissions.canPublishGateway()")
     @PostMapping("/publish")
     public Result<Map<String, Object>> publish(@RequestBody Map<String, Object> req) {
         String profile = req.get("profile") == null ? null : String.valueOf(req.get("profile"));

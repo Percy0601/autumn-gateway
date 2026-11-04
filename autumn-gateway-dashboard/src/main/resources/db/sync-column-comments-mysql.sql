@@ -6,7 +6,7 @@
 --       必须用 ALTER TABLE ... MODIFY COLUMN 显式带上 COMMENT。
 --
 -- 用法（在能连到目标库的机器上）：
---   mysql -h192.168.0.102 -uadmin -p autumn-security < db/sync-column-comments-mysql.sql
+--   mysql -h<DB_HOST> -u<DB_USER> -p autumn-security < db/sync-column-comments-mysql.sql
 --
 -- ⚠️ 执行前必读：
 --   1. MODIFY COLUMN 需要完整列定义，本脚本的类型/默认值/NOT NULL 全部取自

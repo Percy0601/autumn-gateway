@@ -6,7 +6,7 @@
 --
 -- 用法：
 --   mysql -uroot -p autumn-security < db/rbac/verify-mysql.sql
---   docker exec -i mysql mysql -uroot -p123456 autumn-security < db/rbac/verify-mysql.sql
+--   docker exec -i mysql mysql -uroot -p"$DB_PASSWORD" autumn-security < db/rbac/verify-mysql.sql
 -- ================================================================
 
 -- ---------- 1. 数据规模总览（粗判是否跑过初始化） ----------

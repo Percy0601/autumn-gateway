@@ -17,6 +17,9 @@
 		<start-class>xyz.wewin.autumn.gateway.AutumnGatewayApplication</start-class>
 		<!-- 目标平台后缀，由 -Pos-* profile 覆盖；产物名形如 autumn-gateway-linux-amd64 -->
 		<image.suffix>-linux-amd64</image.suffix>
+		<!-- Bucket4j 不在 spring-boot / cloud / gateway 任何 BOM 里，必须自己锁版本；
+		     8.15.0 与 Gateway 5.0.3 内部构建版本一致（CaffeineProxyManager 构造器在 8.21+ 才废弃） -->
+		<bucket4j-jdk17.version>8.15.0</bucket4j-jdk17.version>
 	</properties>
 	<dependencies>
 		<!-- Spring Cloud Gateway -->
@@ -28,6 +31,42 @@
 			<groupId>joda-time</groupId>
 			<artifactId>joda-time</artifactId>
 			<version>2.12.7</version>
+		</dependency>
+
+		<!-- ============================================================
+		     运行时数据库驱动：三个都带上，让「一个二进制 + 运行时 spring.profiles.active=db-*」
+		     就能切库，不用重新构建、也不用再引入一层 Maven profile。
+		     驱动走 SPI 注册，未使用的会被 AOT 裁剪，对 native 产物体积影响可忽略。
+		     ============================================================ -->
+		<dependency>
+			<groupId>com.mysql</groupId>
+			<artifactId>mysql-connector-j</artifactId>
+			<scope>runtime</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.postgresql</groupId>
+			<artifactId>postgresql</artifactId>
+			<scope>runtime</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.h2database</groupId>
+			<artifactId>h2</artifactId>
+			<scope>runtime</scope>
+		</dependency>
+
+		<!-- ============================================================
+		     官方 RequestRateLimiter 的内存实现依赖。
+		     仅在 autumn.limit.enabled=true 时才注册 AsyncProxyManager / KeyResolver bean，
+		     默认不生效，因此不影响现有发行形态。示例见 feature/limit/。
+		     ============================================================ -->
+		<dependency>
+			<groupId>com.bucket4j</groupId>
+			<artifactId>bucket4j_jdk17-caffeine</artifactId>
+			<version>${bucket4j-jdk17.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.github.ben-manes.caffeine</groupId>
+			<artifactId>caffeine</artifactId>
 		</dependency>
 	</dependencies>
 
@@ -75,7 +114,8 @@
 
 		<!--
 			轻量认证 + 路由级鉴权：默认装配；用 -Dno.authz 关闭。
-			MySQL 驱动放在最终发行包而不是 starter 中，starter 本身只依赖 DataSource。
+			starter 本身只依赖 DataSource；三种 DB 驱动统一放在主 dependencies，
+			这样 -Pcomponent-authn -Dno.authz（OAuth2 版）与 db-* 运行时 profile 互不干扰。
 		-->
 		<profile>
 			<id>component-authz</id>
@@ -88,11 +128,6 @@
 				<dependency>
 					<groupId>xyz.wewin.autumn</groupId>
 					<artifactId>authz-autumn-gateway-starter</artifactId>
-				</dependency>
-				<dependency>
-					<groupId>com.mysql</groupId>
-					<artifactId>mysql-connector-j</artifactId>
-					<scope>runtime</scope>
 				</dependency>
 			</dependencies>
 		</profile>

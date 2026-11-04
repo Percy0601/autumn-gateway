@@ -1,5 +1,7 @@
 package xyz.wewin.autumn.gateway.dashboard.controller.gw;
 
+import org.springframework.security.access.prepost.PreAuthorize;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.StringUtils;
@@ -55,6 +57,7 @@ public class GwConfigController {
      * 服务端按模板校验（必填/类型/正则）→ 拼 config_key（模板前缀.exportKey）→ 落库，
      * sensitive 字段自动 is_encrypted=1；返回创建的配置项列表。
      */
+    @PreAuthorize("@permissions.canManageGateway()")
     @PostMapping("/from-template")
     public Result<List<GwConfigItem>> createFromTemplate(@RequestBody Map<String, Object> body) {
         if (body.get("tplId") == null) return Result.error(400, "tplId 不能为空");
@@ -108,6 +111,7 @@ public class GwConfigController {
         return Result.success(saved);
     }
 
+    @PreAuthorize("@permissions.canManageGateway()")
     @PostMapping
     public Result<GwConfigItem> create(@RequestBody GwConfigItem item) {
         if (item.getConfigKey() == null || item.getConfigKey().isBlank()) {
@@ -124,6 +128,7 @@ public class GwConfigController {
         return Result.success(repo.save(item));
     }
 
+    @PreAuthorize("@permissions.canManageGateway()")
     @PutMapping("/{id}")
     public Result<GwConfigItem> update(@PathVariable Long id, @RequestBody GwConfigItem req) {
         GwConfigItem existing = repo.findById(id)
@@ -140,6 +145,7 @@ public class GwConfigController {
         return Result.success(repo.save(existing));
     }
 
+    @PreAuthorize("@permissions.canManageGateway()")
     @DeleteMapping("/{id}")
     public Result<Object> delete(@PathVariable Long id) {
         repo.deleteById(id);

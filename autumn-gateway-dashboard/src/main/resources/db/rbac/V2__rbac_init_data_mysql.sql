@@ -37,12 +37,16 @@
 
 -- ================================================================
 -- 0. 会话变量：统一时间戳 & 初始密码哈希
---    初始密码明文见脚本末尾的说明，首次登录后必须修改。
 --    哈希由 Spring Security BCryptPasswordEncoder(strength=10) 生成。
+--    ⚠️ 下面两个哈希是随仓库公开的示例值，对应弱口令，绝不能直接用于生产。
+--       上线前必须替换为自己的强口令哈希：
+--         new BCryptPasswordEncoder(10).encode("<你的强口令>")
+--       或干脆不预置密码，交由 NamespaceDataInitializer 生成一次性随机初始密码
+--       （启动日志 WARN 输出一次，首次登录后立即修改）。
 -- ================================================================
 SET @now = NOW();
-SET @pwd_admin = '$2a$10$CHXp6w9c5x48j.G4Jwzc7O/7HNwOxdkkHDaPyBZ9mrHuYGZpx6KYS'; -- Autumn#Admin@2026
-SET @pwd_user  = '$2a$10$0HoFfcVIWnvvpttEKt6d.uO.9NZvKANE.YKcFG/PEx.YeN4CVWaSC'; -- Autumn#User@2026
+SET @pwd_admin = '$2a$10$CHXp6w9c5x48j.G4Jwzc7O/7HNwOxdkkHDaPyBZ9mrHuYGZpx6KYS';
+SET @pwd_user  = '$2a$10$0HoFfcVIWnvvpttEKt6d.uO.9NZvKANE.YKcFG/PEx.YeN4CVWaSC';
 
 
 -- ================================================================
@@ -362,11 +366,12 @@ ON DUPLICATE KEY UPDATE `name` = VALUES(`name`), `remark` = VALUES(`remark`), `m
 -- 6. 用户（basic_user）
 --
 --    初始账号两个：
---      admin  / Autumn#Admin@2026   （admin=1，SUPER_ADMIN）
---      auditor/ Autumn#User@2026    （admin=0，AUDITOR，用于验证「非管理员」视角）
+--      admin    （admin=1，SUPER_ADMIN）
+--      auditor  （admin=0，AUDITOR，用于验证「非管理员」视角）
 --
---    ⚠️ 这两个密码只用于初始化交付，首次登录后必须立即修改，
---       上线前请确认已改密，并把本脚本的密码哈希替换为团队内部值。
+--    ⚠️ 密码哈希见本脚本第 0 节，是随仓库公开的示例值（对应弱口令）。
+--       仓库与文档中不再保留任何明文初始口令；上线前必须替换哈希或删除预置密码，
+--       交由 NamespaceDataInitializer 生成一次性随机初始密码，首次登录后立即修改。
 -- ================================================================
 INSERT INTO `basic_user` (`id`, `uuid`, `username`, `nickname`, `avatar`, `email`, `phone`, `emp_no`, `admin`, `status`, `password`, `login_error_count`, `latest_role_id`, `password_updated_at`, `last_login_at`, `create_time`, `update_time`)
 VALUES

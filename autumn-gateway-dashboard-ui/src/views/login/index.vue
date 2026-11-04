@@ -116,7 +116,7 @@
 					</el-form-item>
 				</el-form>
 
-				<div class="login-tip">默认账号 admin / Autumn@123456</div>
+				<div class="login-tip">账号由管理员分配</div>
 			</div>
 		</div>
 	</div>

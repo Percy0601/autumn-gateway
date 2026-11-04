@@ -18,6 +18,7 @@ import xyz.wewin.autumn.gateway.dashboard.repo.BasicResourceRepository;
 import xyz.wewin.autumn.gateway.dashboard.repo.BasicRolePermissionRepository;
 import xyz.wewin.autumn.gateway.dashboard.repo.BasicRoleRepository;
 import xyz.wewin.autumn.gateway.dashboard.security.RequestContext;
+import xyz.wewin.autumn.gateway.dashboard.security.ProtectedFields;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -104,15 +105,20 @@ public class BasicMenuService {
     public BasicMenu update(Long id, BasicMenu req) {
         BasicMenu existing = repository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("菜单不存在: " + id));
-        if (req.getAppId() != null) existing.setAppId(req.getAppId());
+        // D3：menu_identification 就是 @PreAuthorize 比对的权限码本身。
+        // 非超管若能把「已授权菜单」的标识改成 system:user:delete，就等于给自己发权限；
+        // appId / menuStatus 同理会绕过应用隔离与启停权限码。三者只允许超管变更。
+        // 新建菜单仍需能指定权限码（新菜单未授权给任何人），因此 create 不设限。
+        existing.setAppId(ProtectedFields.guard(existing.getAppId(), req.getAppId()));
         if (req.getParentId() != null) existing.setParentId(req.getParentId());
         if (req.getMenuType() != null) existing.setMenuType(req.getMenuType());
         if (req.getMenuName() != null) existing.setMenuName(req.getMenuName());
         if (req.getMenuUrl() != null) existing.setMenuUrl(req.getMenuUrl());
-        if (req.getMenuIdentification() != null) existing.setMenuIdentification(req.getMenuIdentification());
+        existing.setMenuIdentification(ProtectedFields.guard(
+                existing.getMenuIdentification(), req.getMenuIdentification()));
         if (req.getMenuIcon() != null) existing.setMenuIcon(req.getMenuIcon());
         if (req.getSortNum() != null) existing.setSortNum(req.getSortNum());
-        if (req.getMenuStatus() != null) existing.setMenuStatus(req.getMenuStatus());
+        existing.setMenuStatus(ProtectedFields.guard(existing.getMenuStatus(), req.getMenuStatus()));
         if (req.getRemark() != null) existing.setRemark(req.getRemark());
         existing.setUpdateUser(RequestContext.currentUserId());
         existing.setUpdateTime(LocalDateTime.now());

@@ -1,5 +1,7 @@
 package xyz.wewin.autumn.gateway.dashboard.controller.gw;
 
+import org.springframework.security.access.prepost.PreAuthorize;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -31,6 +33,7 @@ public class GwGlobalFilterController {
         return Result.success(repo.findAllActive());
     }
 
+    @PreAuthorize("@permissions.canManageGateway()")
     @PostMapping
     public Result<GwGlobalFilter> create(@RequestBody GwGlobalFilter f) {
         if (f.getFilterName() == null || f.getFilterName().isBlank()) {
@@ -46,6 +49,7 @@ public class GwGlobalFilterController {
         return Result.success(repo.save(f));
     }
 
+    @PreAuthorize("@permissions.canManageGateway()")
     @PutMapping("/{id}")
     public Result<GwGlobalFilter> update(@PathVariable Long id, @RequestBody GwGlobalFilter req) {
         GwGlobalFilter existing = repo.findById(id)
@@ -59,6 +63,7 @@ public class GwGlobalFilterController {
         return Result.success(repo.save(existing));
     }
 
+    @PreAuthorize("@permissions.canManageGateway()")
     @DeleteMapping("/{id}")
     public Result<Object> delete(@PathVariable Long id) {
         GwGlobalFilter existing = repo.findById(id)
