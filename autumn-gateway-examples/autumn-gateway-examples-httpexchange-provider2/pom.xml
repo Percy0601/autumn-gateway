@@ -30,11 +30,10 @@
                 </exclusion>
             </exclusions>
         </dependency>
-        <!-- 自定义服务发现（autumn-gateway-discovery）：提供服务注册 + DiscoveryClient -->
+        <!-- 服务发现：autumn-cloud-extension consul starter（提供服务注册 + DiscoveryClient） -->
         <dependency>
-            <groupId>xyz.wewin.autumn</groupId>
-            <artifactId>autumn-gateway-discovery</artifactId>
-            <version>0.0.1-SNAPSHOT</version>
+            <groupId>com.autumn.cloud</groupId>
+            <artifactId>autumn-cloud-extension-discovery-consul-starter</artifactId>
         </dependency>
 
         <!-- LoadBalancer：配合 @LoadBalanced WebClient.Builder 解析 lb://，实现负载均衡 -->

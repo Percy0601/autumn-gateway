@@ -14,8 +14,8 @@ import xyz.wewin.autumn.gateway.examples.discovery.loadbalancer.AutumnLoadBalanc
  *
  * <p>注意：不要用 @ComponentScan 扫整个 xyz.wewin.autumn.gateway——
  * defaultConfiguration 类绝不能被主上下文组件扫描到（会在根上下文创建缺 serviceId 的
- * supplier bean 导致启动失败），autumn-gateway-discovery 通过 AutoConfiguration.imports
- * 自动装配，无需手动扫描。</p>
+ * supplier bean 导致启动失败），autumn-cloud-extension-discovery-consul-starter 通过
+ * AutoConfiguration.imports 自动装配，无需手动扫描。</p>
  */
 @LoadBalancerClients(defaultConfiguration = AutumnLoadBalancerConfiguration.class)
 @SpringBootApplication

@@ -30,10 +30,10 @@
             <artifactId>spring-cloud-starter-loadbalancer</artifactId>
         </dependency>
 
+        <!-- 服务发现：autumn-cloud-extension consul starter（Consul HTTP API 实现） -->
         <dependency>
-            <groupId>xyz.wewin.autumn</groupId>
-            <artifactId>autumn-gateway-discovery</artifactId>
-            <version>0.0.1-SNAPSHOT</version>
+            <groupId>com.autumn.cloud</groupId>
+            <artifactId>autumn-cloud-extension-discovery-consul-starter</artifactId>
         </dependency>
     </dependencies>
 

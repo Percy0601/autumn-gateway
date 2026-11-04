@@ -101,8 +101,8 @@
 			<id>component-discovery</id>
 			<dependencies>
 				<dependency>
-					<groupId>xyz.wewin.autumn</groupId>
-					<artifactId>config-discovery-autumn-gateway-starter</artifactId>
+					<groupId>com.autumn.cloud</groupId>
+					<artifactId>autumn-cloud-extension-discovery-consul-starter</artifactId>
 				</dependency>
 			</dependencies>
 		</profile>

@@ -13,9 +13,6 @@
 	<modules>
         <module>authn-autumn-gateway-starter</module>
         <module>authz-autumn-gateway-starter</module>
-        <module>config-discovery-autumn-gateway</module>
-        <module>config-discovery-autumn-gateway-starter</module>
-        <module>config-discovery-autumn-gateway-starter-using</module>
 	</modules>
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -32,16 +29,6 @@
             <dependency>
                 <groupId>xyz.wewin.autumn</groupId>
                 <artifactId>authz-autumn-gateway-starter</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>xyz.wewin.autumn</groupId>
-                <artifactId>config-discovery-autumn-gateway</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>xyz.wewin.autumn</groupId>
-                <artifactId>config-discovery-autumn-gateway-starter</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

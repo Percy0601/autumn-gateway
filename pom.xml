@@ -16,7 +16,6 @@
 
 	<modules>
 		<module>autumn-gateway-deploy</module>
-		<module>autumn-gateway-discovery</module>
 		<module>autumn-gateway-examples</module>
 		<module>autumn-gateway-dashboard</module>
 		<module>autumn-gateway-starters</module>
@@ -36,6 +35,7 @@
 		<mybatis-spring-boot-starter.version>4.1.0</mybatis-spring-boot-starter.version>
 		<spring-boot-starter-security-oauth2-authorization-server.version>4.1.1</spring-boot-starter-security-oauth2-authorization-server.version>
         <spring-cloud-starter-gateway-server-webflux.version>5.0.3</spring-cloud-starter-gateway-server-webflux.version>
+        <autumn-cloud-extension.version>1.0.0-SNAPSHOT</autumn-cloud-extension.version>
 	</properties>
 
 	<dependencies>
@@ -98,10 +98,11 @@
                 <artifactId>authz-autumn-gateway-starter</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <!-- 服务发现：autumn-cloud-extension 扩展模块（Consul HTTP API 实现） -->
             <dependency>
-                <groupId>xyz.wewin.autumn</groupId>
-                <artifactId>config-discovery-autumn-gateway-starter</artifactId>
-                <version>${project.version}</version>
+                <groupId>com.autumn.cloud</groupId>
+                <artifactId>autumn-cloud-extension-discovery-consul-starter</artifactId>
+                <version>${autumn-cloud-extension.version}</version>
             </dependency>
 			<dependency>
 				<groupId>org.springframework.boot</groupId>
