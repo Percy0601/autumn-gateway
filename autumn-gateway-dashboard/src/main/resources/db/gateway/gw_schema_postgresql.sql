@@ -327,3 +327,50 @@ CREATE TABLE IF NOT EXISTS gw_config_struct (
 CREATE INDEX IF NOT EXISTS idx_gw_struct_profile ON gw_config_struct (profile_code, struct_name, status);
 COMMENT ON TABLE  gw_config_struct IS '结构化全局配置实例（STRUCT 模板落点）';
 COMMENT ON COLUMN gw_config_struct.value_json IS '树形 JSON（含 map 键、嵌套 object/list），按模板校验';
+
+
+-- ================================================================
+-- 协议转换（HTTP → Thrift 泛化调用）：表 9 ~ 10
+-- ================================================================
+
+CREATE TABLE IF NOT EXISTS gw_thrift_service (
+    id               BIGINT       GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    service_code     VARCHAR(64)  NOT NULL,
+    service_name     VARCHAR(128) NOT NULL DEFAULT '',
+    host             VARCHAR(128) NOT NULL,
+    port             INT          NOT NULL,
+    idl_content      TEXT,
+    idl_location     VARCHAR(512) NOT NULL DEFAULT '',
+    framed           SMALLINT     NOT NULL DEFAULT 1,
+    multiplexed      SMALLINT     NOT NULL DEFAULT 0,
+    multiplexed_name VARCHAR(128) NOT NULL DEFAULT '',
+    status           SMALLINT     NOT NULL DEFAULT 1,
+    del_flag         SMALLINT     NOT NULL DEFAULT 0,
+    remark           VARCHAR(512) NOT NULL DEFAULT '',
+    created_at       TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at       TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uk_gw_thrift_service_code ON gw_thrift_service (service_code);
+COMMENT ON TABLE  gw_thrift_service IS 'Thrift 服务（协议转换目标）';
+COMMENT ON COLUMN gw_thrift_service.service_code IS '服务编码：必须等于 IDL 里的 service 名，导出为 autumn.thrift.services[].name';
+COMMENT ON COLUMN gw_thrift_service.idl_content IS '内联 IDL（与 idl_location 二选一）';
+
+CREATE TABLE IF NOT EXISTS gw_thrift_conversion (
+    id              BIGINT       GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    conversion_code VARCHAR(64)  NOT NULL,
+    conversion_name VARCHAR(128) NOT NULL DEFAULT '',
+    service_code    VARCHAR(64)  NOT NULL DEFAULT '',
+    method_name     VARCHAR(128) NOT NULL DEFAULT '',
+    http_path       VARCHAR(512) NOT NULL DEFAULT '',
+    include_body    SMALLINT     NOT NULL DEFAULT 1,
+    arguments_json  TEXT,
+    response_mode   VARCHAR(16)  NOT NULL DEFAULT 'ENVELOPE',
+    success_status  INT          NOT NULL DEFAULT 0,
+    status          SMALLINT     NOT NULL DEFAULT 1,
+    del_flag        SMALLINT     NOT NULL DEFAULT 0,
+    remark          VARCHAR(512) NOT NULL DEFAULT '',
+    created_at      TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uk_gw_thrift_conversion_code ON gw_thrift_conversion (conversion_code);
+COMMENT ON TABLE  gw_thrift_conversion IS 'Thrift 协议转换规则（HTTP 入参/出参映射）';

@@ -13,6 +13,7 @@
 	<modules>
         <module>authn-autumn-gateway-starter</module>
         <module>authz-autumn-gateway-starter</module>
+        <module>thrift-autumn-gateway-starter</module>
 	</modules>
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -34,6 +35,11 @@
             <dependency>
                 <groupId>xyz.we-win.autumn</groupId>
                 <artifactId>autumn-gateway-common</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>xyz.we-win.autumn</groupId>
+                <artifactId>thrift-autumn-gateway-starter</artifactId>
                 <version>${project.version}</version>
             </dependency>
 

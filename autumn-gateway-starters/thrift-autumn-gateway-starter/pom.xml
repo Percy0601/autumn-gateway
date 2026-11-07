@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>xyz.we-win.autumn</groupId>
+		<artifactId>autumn-gateway-starters</artifactId>
+		<version>0.0.1-SNAPSHOT</version>
+	</parent>
+	<artifactId>thrift-autumn-gateway-starter</artifactId>
+	<name>thrift-autumn-gateway-starter</name>
+	<description>Thrift 泛化调用 starter：ThriftGeneric 路由过滤器（IDL 运行时解析 + 免 stub 编解码 + 短路返回 JSON），默认关闭</description>
+
+	<dependencies>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-autoconfigure</artifactId>
+		</dependency>
+
+		<!-- 泛化调用内核：IDL 解析 / 服务描述表 / 按 field id 编解码 / 调用门面；不带 Spring，无反射 -->
+		<dependency>
+			<groupId>xyz.we-win.autumn</groupId>
+			<artifactId>autumn-protocol-extension</artifactId>
+			<!--
+				autumn-api 把 lombok 声明成了 compile 作用域，会顺着依赖链带进网关运行时。
+				这里是编译期注解处理器，运行期不需要，从这条依赖上剔掉即可，不必改动上游。
+			-->
+			<exclusions>
+				<exclusion>
+					<groupId>org.projectlombok</groupId>
+					<artifactId>lombok</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+
+		<!-- 网关过滤器工厂基类：由部署方提供（deploy），编译期需要，provided 不打包 -->
+		<dependency>
+			<groupId>org.springframework.cloud</groupId>
+			<artifactId>spring-cloud-starter-gateway-server-webflux</artifactId>
+			<scope>provided</scope>
+		</dependency>
+
+		<!-- 请求/响应 JSON：deploy 侧由 webflux 提供，这里只编译期引用 -->
+		<dependency>
+			<groupId>tools.jackson.core</groupId>
+			<artifactId>jackson-databind</artifactId>
+			<scope>provided</scope>
+		</dependency>
+
+		<!-- 生成 spring-configuration-metadata.json（IDE 自动提示 autumn.thrift.*） -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-configuration-processor</artifactId>
+			<optional>true</optional>
+		</dependency>
+	</dependencies>
+
+	<build>
+		<plugins>
+			<!-- 同 authz starter：显式打开注解处理，否则生成不出配置元数据 -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<configuration>
+					<proc>full</proc>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
+
+</project>

@@ -43,7 +43,8 @@ const fallbackMenu = [
 			{ id: 33, name: '全局过滤器', url: 'gateway/globalFilter/index', openStyle: 0, icon: 'filter' },
 			{ id: 35, name: '配置中心', url: 'gateway/center/index', openStyle: 0, icon: 'link' },
 			{ id: 36, name: '模板管理', url: 'gateway/template/index', openStyle: 0, icon: 'block' },
-			{ id: 37, name: '配置同步', url: 'gateway/sync/index', openStyle: 0, icon: 'cloud-sync' }
+			{ id: 37, name: '配置同步', url: 'gateway/sync/index', openStyle: 0, icon: 'cloud-sync' },
+			{ id: 38, name: '协议转换', url: 'gateway/thrift/index', openStyle: 0, icon: 'swap' }
 		]
 	}
 ]

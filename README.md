@@ -54,6 +54,7 @@ mvn -B -pl autumn-gateway-deploy -am package -Dno.authz
 | `component-config` | 配置中心：Consul KV | `autumn-cloud-extension-config-consul-starter` |
 | `component-config-nacos` | 配置中心：Nacos 长轮询 | `autumn-cloud-extension-config-nacos-starter` |
 | `component-traffic` | 泳道路由（`X-Traffic` 标签选实例） | `autumn-cloud-extension-traffic-starter` |
+| `component-thrift` | Thrift 泛化路由（HTTP → Thrift，默认关） | `thrift-autumn-gateway-starter` |
 
 > ⚠️ Maven 的坑：命令行只要显式写了任意一个 `-P`，所有 `activeByDefault` 的 profile 都会失效。
 > 所以默认组件用「属性不存在则激活」（`!no.authz`）而不是 `activeByDefault`。
@@ -208,6 +209,111 @@ curl --noproxy '*' -H "X-Traffic: beta" http://127.0.0.1:8080/api/hello
 扩展库侧的完整说明见其 `README.md` 的「配置项」章节。
 历史上网关自研的服务发现实现已删除，统一改用扩展库的 Consul/Nacos/组播实现。
 
+### 3.6 Thrift 泛化路由（前缀 `autumn.thrift`，可选，默认关闭）
+
+方向是单向的：**HTTP 请求进来（JSON 参数）→ 按 IDL 泛化转换成 Thrift 调用 → JSON 响应出去**。
+网关在运行期解析 IDL、按 field id 编解码，不生成也不依赖任何 Thrift stub，后端仍是普通 Thrift 服务。
+
+开启方式：
+
+```bash
+mvn -B -Pcomponent-authz,component-thrift -pl autumn-gateway-deploy -am package -DskipTests
+# 还要在配置里显式打开（引入依赖 ≠ 开启能力）
+# autumn.thrift.enabled=true
+```
+
+路由写法（`uri` 是占位，过滤器会短路，不会真的发 HTTP）：
+
+```yaml
+# 动态分发：一条路由覆盖整个服务，服务名/方法名从路径变量取（也可用请求头）
+- id: thrift-dynamic
+  uri: thrift://demo-service
+  predicates:
+    - Path=/thrift/{service}/{method}
+  filters:
+    - Authz=authenticate
+    - ThriftGeneric
+
+# 固定映射：一条路由一个方法
+- id: thrift-demo
+  uri: thrift://demo-service
+  predicates:
+    - Path=/thrift/demo
+  filters:
+    - ThriftGeneric=demoService,sayHello
+
+# 固定映射 + 参数规则：第三参引用 autumn.thrift.mappings[].name
+- id: thrift-demo-mapped
+  uri: thrift://demo-service
+  predicates:
+    - Path=/thrift/greeting/{id}
+  filters:
+    - ThriftGeneric=demoService,sayHello,demoGreeting
+```
+
+**入参/出参可配置**（HTTP 的 header / queryString / requestBody / path 变量 / 常量 → thrift 参数）：
+
+```properties
+autumn.thrift.mappings[0].name=demoGreeting
+autumn.thrift.mappings[0].include-body=true          # 请求体先作为参数基座
+autumn.thrift.mappings[0].arguments[0].arg=name      # thrift 参数名
+autumn.thrift.mappings[0].arguments[0].source=QUERY  # BODY/QUERY/HEADER/PATH/FIXED
+autumn.thrift.mappings[0].arguments[0].key=userName  # query 参数名
+autumn.thrift.mappings[0].arguments[0].required=true
+autumn.thrift.mappings[0].arguments[1].arg=id
+autumn.thrift.mappings[0].arguments[1].source=PATH
+autumn.thrift.mappings[0].arguments[1].key=id
+autumn.thrift.mappings[0].arguments[2].arg=tenant
+autumn.thrift.mappings[0].arguments[2].source=HEADER
+autumn.thrift.mappings[0].arguments[2].key=X-Tenant
+autumn.thrift.mappings[0].arguments[3].arg=source
+autumn.thrift.mappings[0].arguments[3].source=FIXED
+autumn.thrift.mappings[0].arguments[3].value=gateway
+autumn.thrift.mappings[0].response.mode=ENVELOPE     # ENVELOPE（默认）| DATA（只返回 data）
+# autumn.thrift.mappings[0].response.success-status=200
+```
+
+不配 `mapping` 时保持最朴素的行为：请求体 JSON 整体作为参数（对象按参数名、数组按声明顺序）。
+
+dashboard 侧对应「网关配置 → 协议转换」页（表 `gw_thrift_service` / `gw_thrift_conversion`），
+配好之后由「配置同步」导出 `autumn.thrift.*` 到文件 / Consul / Nacos；上线初始化语句见
+`docs/网关协议转换-上线初始化清单.md`。
+
+动态分发解析优先级：路由写死 → 路径变量 `{service}` / `{method}` → 请求头 `X-Thrift-Service` /
+`X-Thrift-Method`；都拿不到返回 400，不猜。
+
+| 配置 | 默认值 | 说明 |
+|---|---|---|
+| `enabled` | `false` | 总开关；关着时 `ThriftGeneric` 路由直接 503，不碰网络 |
+| `connect-timeout-millis` | `2000` | TCP 连接超时 |
+| `socket-timeout-millis` | `5000` | 读超时 |
+| `max-concurrent-calls` | `256` | 在飞调用上限，超出快速失败 |
+| `framed` | `true` | 与后端 `transportFactory` 保持一致 |
+| `multiplexed` | `false` | 后端用 `TMultiplexedProcessor` 时打开 |
+| `expose-error-detail` | `false` | 是否把后端异常原文透给调用方 |
+| `attachment-header-mapping` | `{X-Traffic: traffic}` | HTTP 头 → thrift 隐式参数（field-0 attachment） |
+| `services[n].name` | — | 服务名，需与 IDL 中 `service` 名一致（IDL 只有一个 service 时可省） |
+| `services[n].host` / `.port` | `127.0.0.1` / — | 后端地址（P1 改为注册中心解析） |
+| `services[n].idl` | — | 内联 IDL（换行写 `\n`） |
+| `services[n].idl-location` | — | `classpath:idl/x.thrift` 或 `file:/path/x.thrift` |
+| `mappings[n].name` | — | 入参/出参规则名，路由过滤器第三参引用 |
+| `mappings[n].include-body` | `true` | 请求体是否作为参数基座 |
+| `mappings[n].arguments[k].arg/source/key/value/required/default-value` | `BODY`… | 参数规则：thrift 参数名 + 取值来源 + key + 常量 + 必填 + 兜底 |
+| `mappings[n].response.mode` | `ENVELOPE` | `ENVELOPE` / `DATA` |
+| `mappings[n].response.success-status` | `200` | 成功时覆盖状态码 |
+
+响应语义与错误码：成功 200；`BAD_REQUEST` 400；后端声明异常 `SERVICE` 500；
+`TApplicationException` 502；网络/超时 `TRANSPORT` 503。响应头带 `X-Thrift-Cost-Millis`。
+
+```bash
+curl --noproxy '*' -XPOST 'http://127.0.0.1:8080/thrift/demoService/sayHello' \
+     -H 'Content-Type: application/json' -H 'X-Traffic: gray' -d '{"name":"gateway"}'
+# {"success":true,"costMillis":12,"data":"hello gateway"}
+```
+
+`X-Traffic` 会被翻成 thrift 的隐式参数 `traffic` 随调用透传，与 HTTP 侧泳道语义一致。
+分期规划见 `docs/网关Thrift泛化路由规划.md`（P0 已落地，P1 连接池 + 注册中心实例解析待做）。
+
 ## 4. 安全基线
 
 - `AUTUMN_SHARED_JWT_SECRET` 没有默认值：漏配直接启动失败，不回落到公开开发密钥；
@@ -220,6 +326,7 @@ curl --noproxy '*' -H "X-Traffic: beta" http://127.0.0.1:8080/api/hello
 - `docs/权限与授权设计.md` — 认证授权模型
 - `docs/OAuth2 统一认证登录使用手册.md` — OAuth2 单点配方与 native 元数据再生成
 - `docs/网关可视化配置-表结构设计.md`、`docs/网关可视化配置-常用配置参数清单.md` — dashboard 侧
+- `docs/网关Thrift泛化路由规划.md` — Thrift 泛化的能力边界与 P0–P3 分期
 - `docs/工作记录.md` — 变更流水
 
 ## 6. 能力规划（原 README 保留）

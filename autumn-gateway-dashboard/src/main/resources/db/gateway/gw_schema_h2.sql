@@ -294,3 +294,48 @@ UNION ALL SELECT 'gw_value_type_field',  COUNT(*) FROM `gw_value_type_field`
 UNION ALL SELECT 'gw_tpl_definition',    COUNT(*) FROM `gw_tpl_definition`
 UNION ALL SELECT 'gw_tpl_field',         COUNT(*) FROM `gw_tpl_field`
 UNION ALL SELECT 'gw_config_struct',     COUNT(*) FROM `gw_config_struct`;
+
+
+-- ================================================================
+-- 协议转换（HTTP → Thrift 泛化调用）：表 9 ~ 10
+-- ================================================================
+
+CREATE TABLE IF NOT EXISTS `gw_thrift_service` (
+    `id`               BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+    `service_code`     VARCHAR(64)  NOT NULL COMMENT '服务编码：必须等于 IDL 里的 service 名，导出为 autumn.thrift.services[].name',
+    `service_name`     VARCHAR(128) NOT NULL DEFAULT '' COMMENT '展示名（中文），仅页面展示用',
+    `host`             VARCHAR(128) NOT NULL COMMENT 'thrift 服务端地址',
+    `port`             INT          NOT NULL COMMENT 'thrift 服务端端口',
+    `idl_content`      CLOB                  COMMENT '内联 IDL（与 idl_location 二选一）',
+    `idl_location`     VARCHAR(512) NOT NULL DEFAULT '' COMMENT 'IDL 位置：classpath:/xx.thrift 或 file:/xx.thrift',
+    `framed`           TINYINT      NOT NULL DEFAULT 1 COMMENT '是否 framed 传输：1 是 0 否',
+    `multiplexed`      TINYINT      NOT NULL DEFAULT 0 COMMENT '是否 multiplexed：1 是 0 否',
+    `multiplexed_name` VARCHAR(128) NOT NULL DEFAULT '' COMMENT 'multiplexed 服务名',
+    `status`           TINYINT      NOT NULL DEFAULT 1 COMMENT '1 启用 0 停用',
+    `del_flag`         TINYINT      NOT NULL DEFAULT 0 COMMENT '0 未删除 1 已删除',
+    `remark`           VARCHAR(512) NOT NULL DEFAULT '' COMMENT '备注',
+    `created_at`       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_at`       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (`id`),
+    CONSTRAINT `uk_gw_thrift_service_code` UNIQUE (`service_code`)
+);
+
+CREATE TABLE IF NOT EXISTS `gw_thrift_conversion` (
+    `id`              BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+    `conversion_code` VARCHAR(64)  NOT NULL COMMENT '规则名：路由过滤器第三参 / autumn.thrift.mappings[].name',
+    `conversion_name` VARCHAR(128) NOT NULL DEFAULT '' COMMENT '展示名',
+    `service_code`    VARCHAR(64)  NOT NULL DEFAULT '' COMMENT '关联 gw_thrift_service.service_code',
+    `method_name`     VARCHAR(128) NOT NULL DEFAULT '' COMMENT 'thrift 方法名；空=由路由/动态分发决定',
+    `http_path`       VARCHAR(512) NOT NULL DEFAULT '' COMMENT '建议的 HTTP 路径（展示/联调参考）',
+    `include_body`    TINYINT      NOT NULL DEFAULT 1 COMMENT '1=请求体打底 0=只看映射规则',
+    `arguments_json`  CLOB                  COMMENT '入参规则 JSON：[{arg,source,key,value,required,defaultValue}]',
+    `response_mode`   VARCHAR(16)  NOT NULL DEFAULT 'ENVELOPE' COMMENT '响应形态：ENVELOPE / DATA',
+    `success_status`  INT          NOT NULL DEFAULT 0 COMMENT '成功时覆盖 HTTP 状态码；0=默认 200',
+    `status`          TINYINT      NOT NULL DEFAULT 1 COMMENT '1 启用 0 停用',
+    `del_flag`        TINYINT      NOT NULL DEFAULT 0 COMMENT '0 未删除 1 已删除',
+    `remark`          VARCHAR(512) NOT NULL DEFAULT '' COMMENT '备注',
+    `created_at`      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_at`      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (`id`),
+    CONSTRAINT `uk_gw_thrift_conversion_code` UNIQUE (`conversion_code`)
+);

@@ -214,6 +214,25 @@
 		</profile>
 
 		<!-- ============================================================
+		     Thrift 泛化路由（可选，默认不在部署包里）：路由上写
+		     ThriftGeneric=<service>,<method> 即可把 HTTP 请求转成对后端 Thrift 服务的调用，
+		     响应体是 GenericResponse 的 JSON。纯增量：不选这个 profile 时
+		     网关的 HTTP 路由、装配、启动耗时都不受影响。
+
+		     引入依赖 ≠ 开启能力：还要显式设置 autumn.thrift.enabled=true。
+		     示例：-Pcomponent-authz,component-thrift
+		     ============================================================ -->
+		<profile>
+			<id>component-thrift</id>
+			<dependencies>
+				<dependency>
+					<groupId>xyz.we-win.autumn</groupId>
+					<artifactId>thrift-autumn-gateway-starter</artifactId>
+				</dependency>
+			</dependencies>
+		</profile>
+
+		<!-- ============================================================
 		     目标操作系统。GraalVM 不做交叉编译：要出哪个平台的二进制，
 		     就得在哪个平台上构建（或用对应架构的 GraalVM 容器 + qemu 模拟）。
 

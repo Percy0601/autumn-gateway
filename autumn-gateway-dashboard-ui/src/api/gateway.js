@@ -82,3 +82,17 @@ export const gatewaySyncApi = {
   preview: (profile = 'dev') => service.get(`${BASE}/sync/preview`, { params: { profile } }),
   publish: (profile, centerId) => service.post(`${BASE}/sync/publish`, { profile, centerId }),
 }
+
+// 协议转换（HTTP → Thrift 泛化调用）：thrift 服务（含 IDL）+ 入参/出参映射规则
+export const gatewayThriftApi = {
+  services: () => service.get(`${BASE}/thrift/services`),
+  createService: (data) => service.post(`${BASE}/thrift/services`, data),
+  updateService: (id, data) => service.put(`${BASE}/thrift/services/${id}`, data),
+  removeService: (id) => service.delete(`${BASE}/thrift/services/${id}`),
+  conversions: () => service.get(`${BASE}/thrift/conversions`),
+  createConversion: (data) => service.post(`${BASE}/thrift/conversions`, data),
+  updateConversion: (id, data) => service.put(`${BASE}/thrift/conversions/${id}`, data),
+  removeConversion: (id) => service.delete(`${BASE}/thrift/conversions/${id}`),
+  // 导出 autumn.thrift.* 配置块（会随「配置同步」一起下发）
+  preview: () => service.get(`${BASE}/thrift/preview`),
+}

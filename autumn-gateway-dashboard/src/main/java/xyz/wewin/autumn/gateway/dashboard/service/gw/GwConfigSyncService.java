@@ -27,6 +27,7 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -80,6 +81,7 @@ public class GwConfigSyncService {
     private final GwConfigCenterRepository centerRepo;
     private final GwConfigStructRepository structRepo;
     private final GwTemplateV2Service tplService;
+    private final GwThriftConfigService thriftConfigService;
 
     public GwConfigSyncService(GwRouteRepository routeRepo,
                                GwRoutePredicateRepository predicateRepo,
@@ -88,7 +90,8 @@ public class GwConfigSyncService {
                                GwConfigItemRepository configItemRepo,
                                GwConfigCenterRepository centerRepo,
                                GwConfigStructRepository structRepo,
-                               GwTemplateV2Service tplService) {
+                               GwTemplateV2Service tplService,
+                               GwThriftConfigService thriftConfigService) {
         this.routeRepo = routeRepo;
         this.predicateRepo = predicateRepo;
         this.routeFilterRepo = routeFilterRepo;
@@ -97,6 +100,7 @@ public class GwConfigSyncService {
         this.centerRepo = centerRepo;
         this.structRepo = structRepo;
         this.tplService = tplService;
+        this.thriftConfigService = thriftConfigService;
     }
 
     /**
@@ -248,6 +252,17 @@ public class GwConfigSyncService {
         counts.put("routes", routes.size());
         counts.put("predicates", pc);
         counts.put("filters", fc);
+
+        // ---------- 5. 协议转换（HTTP → Thrift 泛化调用） ----------
+        Map<String, Object> thrift = this.thriftConfigService.preview();
+        String thriftText = (String) thrift.get("text");
+        if (StringUtils.hasText(thriftText)) {
+            lines.add("");
+            lines.addAll(Arrays.asList(thriftText.split("\n")));
+            @SuppressWarnings("unchecked")
+            Map<String, Integer> thriftCounts = (Map<String, Integer>) thrift.get("counts");
+            counts.putAll(thriftCounts);
+        }
 
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("profile", p);

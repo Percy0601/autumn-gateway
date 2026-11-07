@@ -37,6 +37,9 @@
         <spring-cloud-starter-gateway-server-webflux.version>5.0.3</spring-cloud-starter-gateway-server-webflux.version>
         <!-- 与 autumn-cloud-extension 保持同一发布坐标：xyz.we-win.autumn:1.0.0-RELEASE -->
         <autumn-cloud-extension.version>1.0.0-RELEASE</autumn-cloud-extension.version>
+        <!-- 与 autumn-service-framework 保持同一发布坐标（thrift 泛化调用内核） -->
+        <autumn-service-framework.version>1.0.0-RELEASE</autumn-service-framework.version>
+        <libthrift.version>0.25.0</libthrift.version>
 	</properties>
 
 	<dependencies>
@@ -136,6 +139,26 @@
                 <groupId>xyz.we-win.autumn</groupId>
                 <artifactId>autumn-cloud-extension-traffic-starter</artifactId>
                 <version>${autumn-cloud-extension.version}</version>
+            </dependency>
+            <!-- ============================================================
+                 Thrift 泛化调用（xyz.we-win.autumn:1.0.0-RELEASE，Maven Central）
+                 由 autumn-gateway-deploy 的 -Pcomponent-thrift 选择装配，默认不在部署包里。
+                 libthrift 显式锁版本：网关自己的 BOM 不管理它，避免解析到别的版本。
+                 ============================================================ -->
+            <dependency>
+                <groupId>xyz.we-win.autumn</groupId>
+                <artifactId>autumn-protocol-extension</artifactId>
+                <version>${autumn-service-framework.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.thrift</groupId>
+                <artifactId>libthrift</artifactId>
+                <version>${libthrift.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>xyz.we-win.autumn</groupId>
+                <artifactId>thrift-autumn-gateway-starter</artifactId>
+                <version>${project.version}</version>
             </dependency>
 			<dependency>
 				<groupId>org.springframework.boot</groupId>
