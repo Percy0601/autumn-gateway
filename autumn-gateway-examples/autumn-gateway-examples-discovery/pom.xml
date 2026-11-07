@@ -2,7 +2,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>xyz.wewin.autumn</groupId>
+        <groupId>xyz.we-win.autumn</groupId>
         <artifactId>autumn-gateway-examples</artifactId>
         <version>0.0.1-SNAPSHOT</version>
     </parent>
@@ -32,7 +32,7 @@
 
         <!-- 服务发现：autumn-cloud-extension consul starter（Consul HTTP API 实现） -->
         <dependency>
-            <groupId>com.autumn.cloud</groupId>
+            <groupId>xyz.we-win.autumn</groupId>
             <artifactId>autumn-cloud-extension-discovery-consul-starter</artifactId>
         </dependency>
     </dependencies>

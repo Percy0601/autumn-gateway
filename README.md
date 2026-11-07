@@ -1,29 +1,253 @@
-## 限流
-### 限制上游流量
-- URL
-- IP
-- Other
+# autumn-gateway
 
-### 限制下游
-- 服务限流
-- 服务的节点限流
+Spring Cloud Gateway（WebFlux）之上的**可视化配置网关**：路由/断言/过滤器在 dashboard 里配、落库、运行时下发；认证鉴权、服务发现、配置中心、泳道路由按需装配。
 
-## 负载均衡
+| 项 | 值 |
+|---|---|
+| Maven 坐标 | `xyz.we-win.autumn:autumn-gateway:0.0.1-SNAPSHOT`（根 POM 为 parent） |
+| Java 包根 | `xyz.wewin.autumn.gateway` |
+| 技术基线 | Spring Boot 4.1.1 / Spring Cloud 2025.1.3 / Spring Cloud Gateway 5.0.3 / Java 25 |
+| 扩展依赖 | `xyz.we-win.autumn:autumn-cloud-extension-*:1.0.0-RELEASE` |
+
+> 坐标里的 `xyz.we-win` 是 Maven Central 校验过的域名反写（域名 `we-win.xyz`，带连字符）；
+> Java 包名不允许连字符，所以包根统一写成 `xyz.wewin.autumn`。这与
+> `autumn-cloud-extension`（包根 `xyz.wewin.autumn.cloud.extension`）同根，两边保持一致。
+
+## 1. 模块结构
+
+| 模块 | 作用 |
+|---|---|
+| `autumn-gateway-deploy` | 最终发行包。按 Maven profile 选组件、统一做 GraalVM native 构建 |
+| `autumn-gateway-dashboard` | 可视化配置后台（WebMVC + JDBC）：路由/应用/角色/资源的增删改查 |
+| `autumn-gateway-authorization` | 演示/配套的 OAuth2 授权服务器（RS256 + JWKS） |
+| `autumn-gateway-common` | 公共工具（缓存等），零业务依赖 |
+| `autumn-gateway-starters/authn-autumn-gateway-starter` | OAuth2 客户端登录（`TokenRelay`） |
+| `autumn-gateway-starters/authz-autumn-gateway-starter` | 轻量 JWT 认证 + 路由级鉴权（`Authz=` FilterFactory） |
+| `autumn-gateway-examples/*` | 可运行样例（basic、consul、discovery、limit、security、httpexchange…） |
+| `autumn-gateway-dashboard-ui` | dashboard 前端（Vue 构建产物进 dashboard 的 `static/`） |
+
+## 2. 构建
+
+```bash
+# 全量编译
+mvn -B -DskipTests compile
+
+# 默认发行形态：轻量 JWT 认证 + 路由级鉴权
+mvn -B -pl autumn-gateway-deploy -am package
+
+# OAuth2 单点认证（不用轻量 authz）
+mvn -B -pl autumn-gateway-deploy -am package -Pcomponent-authn -Dno.authz
+
+# 纯路由网关：组件全关
+mvn -B -pl autumn-gateway-deploy -am package -Dno.authz
+```
+
+### 组件编排（`-Pcomponent-*`）
+
+| profile | 装进来的能力 | 依赖坐标（groupId 均为 `xyz.we-win.autumn`） |
+|---|---|---|
+| `component-authn` | OAuth2 客户端登录（可选，与 authz 二选一优先） | `authn-autumn-gateway-starter` |
+| `component-authz` | 轻量 JWT + 路由级鉴权（**默认开启**，`-Dno.authz` 关闭） | `authz-autumn-gateway-starter` |
+| `component-discovery` | 服务发现：Consul HTTP API | `autumn-cloud-extension-discovery-consul-starter` |
+| `component-discovery-nacos` | 服务发现：Nacos OpenAPI v1 | `autumn-cloud-extension-discovery-nacos-starter` |
+| `component-discovery-multicast` | 服务发现：UDP 组播（零外部依赖，本地开发） | `autumn-cloud-extension-discovery-multicast-starter` |
+| `component-config` | 配置中心：Consul KV | `autumn-cloud-extension-config-consul-starter` |
+| `component-config-nacos` | 配置中心：Nacos 长轮询 | `autumn-cloud-extension-config-nacos-starter` |
+| `component-traffic` | 泳道路由（`X-Traffic` 标签选实例） | `autumn-cloud-extension-traffic-starter` |
+
+> ⚠️ Maven 的坑：命令行只要显式写了任意一个 `-P`，所有 `activeByDefault` 的 profile 都会失效。
+> 所以默认组件用「属性不存在则激活」（`!no.authz`）而不是 `activeByDefault`。
+
+### 运行时形态（Spring profile，与 Maven profile 不是一回事）
+
+| profile | 说明 |
+|---|---|
+| `db-mysql`（默认） | MySQL，需要注入 `DB_*` / `AUTUMN_SHARED_JWT_SECRET` |
+| `db-postgresql` | PostgreSQL |
+| `db-h2` | 内存库，零环境变量，用于启动/路由/限流冒烟 |
+
+### GraalVM native
+
+```bash
+# 必须只针对单个模块，不能加 -am（parent 的 native profile 会报 Image classpath is empty）
+mvn -B -pl autumn-gateway-deploy -am install -DskipTests
+mvn -B -Pnative,native-image -pl autumn-gateway-deploy package -DskipTests
+```
+
+native 元数据放在 `src/main/resources/META-INF/native-image/xyz.we-win.autumn/<artifactId>/`，
+目录名与 groupId/artifactId 一致。
+
+## 3. 配置项
+
+分四块：**网关自身**（`autumn.authn` / `autumn.authz` / `autumn.limit`）、
+**注册发现**（`autumn.discovery`）、**配置中心**（`autumn.config`）、**泳道路由**（`autumn.traffic`）。
+后三块由 [`autumn-cloud-extension`](../autumn-cloud-extension/README.md) 提供，本仓库的键名与默认值**逐项对齐**扩展库。
+
+### 3.1 网关自身
+
+#### `autumn.authn`（OAuth2 客户端登录，`-Pcomponent-authn`）
+
+| 配置 | 默认值 | 说明 |
+|---|---|---|
+| `enabled` | `false`（deploy 里显式关闭，默认走轻量 authz） | 总开关，`false` 时不注册任何认证 Bean |
+| `registration-id` | `web-client` | 登录入口 `/oauth2/authorization/{registration-id}` |
+| `client-id` / `client-secret` | `web-client` / `secret` | OAuth2 客户端凭据 |
+| `issuer-uri` | `http://localhost:9000` | 授权服务器地址，OIDC 端点按约定拼接 |
+| `scope` | `openid,profile` | 含 `openid` 时走 OIDC（会拿到 id_token） |
+| `redirect-uri-template` | `{baseUrl}/login/oauth2/code/{registrationId}` | 回调地址，`{baseUrl}` 运行时展开 |
+| `logout-url` | `/logout` | 登出路径 |
+
+#### `autumn.authz`（轻量 JWT + 路由级鉴权，默认开启）
+
+| 配置 | 默认值 | 说明 |
+|---|---|---|
+| `enabled` | `true` | 总开关，`false` 时网关退化为纯路由 |
+| `app-code` | `dashboard` | 路由未给 appCode 时的兜底应用编码 |
+| `login-app-code` | `dashboard` | 登录装配 authorities 用的应用编码 |
+| `max-login-attempts` | `5` | 密码错误递减，减到 0 置 `status=0` |
+| `jwt.secret` | 空（**必填**，deploy 取 `${AUTUMN_SHARED_JWT_SECRET}`） | 与 dashboard 验签必须同值，漏配直接启动失败 |
+| `jwt.issuer` | `autumn-gateway` | 签发者 |
+| `jwt.ttl-seconds` | `86400` | 令牌有效期 |
+| `headers.user-id` / `headers.username` / `headers.roles` | `X-Autumn-User-Id` / `X-Autumn-Username` / `X-Autumn-Roles` | 透传给下游的身份头 |
+| `captcha.enabled` | `true` | 登录验证码 |
+| `captcha.length` | `4` | 验证码位数 |
+| `captcha.ttl-seconds` | `180` | 验证码有效期 |
+| `captcha.cookie-name` | `captchaId` | 验证码 cookie |
+| `sql.user-query` / `roles-query` / `resource-query` / `login-failure-sql` / `login-success-sql` | 见 `application.properties` | SQL 全量外置；**列别名即契约**，覆盖时必须保留 |
+
+#### `autumn.limit`（官方 RequestRateLimiter + Bucket4j 内存后端，默认关闭）
+
+| 配置 | 默认值 | 说明 |
+|---|---|---|
+| `enabled` | `false` | 为 `true` 才注册限流 Bean |
+| `cache-maximum-size` | `10000` | 桶缓存条目上限 |
+| `cache-expiration` | `1m` | 桶缓存过期 |
+| `trusted-header` | 空 | 仅此时才读该头取真实 IP，须由边缘代理保证不可伪造 |
+
+> `capacity` / `refill-tokens` / `refill-period` 写在**路由的 filter 参数**里：
+> `RequestRateLimiter=...,capacity=4,refill-tokens=2,refill-period=10s`。
+
+#### 路由（Spring Cloud Gateway 原生键）
+
+```properties
+spring.cloud.gateway.server.webflux.routes[0].id=user-route
+spring.cloud.gateway.server.webflux.routes[0].uri=lb://user-service
+spring.cloud.gateway.server.webflux.routes[0].predicates[0]=Path=/users/**
+spring.cloud.gateway.server.webflux.routes[0].filters[0]=Authz=authorize,user-app
+```
+
+### 3.2 注册发现（前缀 `autumn.discovery`）
+
+与 autumn-cloud-extension 的 `autumn.discovery` 一致：
+
+| 配置 | 默认值 | 说明 |
+|---|---|---|
+| `backend` | 可省略 | `consul` / `nacos` / `multicast`。**只引一个 discovery Starter 时可省略**；同时引多个必须显式指定，否则启动失败 |
+| `register` | `true` | 是否注册自身；**网关侧应设为 `false`**（只做发现者） |
+| `service` | `spring.application.name` | 注册的服务名 |
+| `host` | 自动探测本机 IP | 注册地址 |
+| `port` | `server.port` | 注册端口 |
+| `traffic` | `default` | 本实例泳道标签，写入 metadata `traffic` |
+| `metadata.xxx` | - | 附加元数据 |
+
+后端专属前缀：
+
+| 前缀 | 键与默认值 |
+|---|---|
+| `autumn.discovery.consul` | `host`=`127.0.0.1`、`port`=`8500`、`scheme`=`http`、`token`、`namespace`、`health-check-ttl-seconds`=`30` |
+| `autumn.discovery.nacos` | `server-addr`=`127.0.0.1:8848`、`namespace`=`public`、`group`=`DEFAULT`、`access-token`、`beat-interval-ms`=`5000` |
+| `autumn.discovery.multicast` | `group`=`239.192.71.88`、`port`=`47891`、`ttl`=`1`、`heartbeat-interval-ms`=`3000`、`evict-after-ms`=`15000`、`network-interface` |
+
+### 3.3 配置中心（前缀 `autumn.config`，可选）
+
+| 配置 | 默认值 | 说明 |
+|---|---|---|
+| `enabled` | `true` | `false` 时完全不装配（真实生效） |
+| `backend` | 无 | `consul` / `nacos`。**必须显式设置才启用**；拼错或没引对应 Starter 会启动失败 |
+| `data-id` | `${spring.application.name}.properties` | 远程配置 dataId，内容按 `.properties` 解析 |
+| `group` | 空 | 本次拉取分组，优先于 `default-group` |
+| `default-group` | `DEFAULT_GROUP` | 通用默认分组 |
+| `default-namespace` | 后端默认值 | Nacos 命名空间 / Consul datacenter |
+| `refresh-enabled` | `true` | 是否注册变更监听；`false` 时只加载启动期配置 |
+
+后端专属前缀：
+
+| 前缀 | 键与默认值 |
+|---|---|
+| `autumn.config.consul` | `host`=`127.0.0.1`、`port`=`8500`、`scheme`=`http`、`token`、`datacenter`=`dc1`、`default-group`=`DEFAULT_GROUP` |
+| `autumn.config.nacos` | `server-addr`=`127.0.0.1:8848`、`namespace`=`public`、`default-group`=`DEFAULT_GROUP`、`access-token`、`polling-timeout-ms`=`30000` |
+
+### 3.4 泳道路由（前缀 `autumn.traffic`，可选）
+
+| 配置 | 默认值 | 说明 |
+|---|---|---|
+| `header` | `X-Traffic` | 携带泳道标签的请求头 |
+| `fallback-to-main` | `true` | 目标标签无实例时回落 `default` 主干；`false` 则快速失败（503） |
+
+语义：实例未打标、请求未带头，都归入 `default` 主干；只有 `lb://` 路由会走这段选择逻辑，
+`uri=http://…` 的直连路由不受影响。
+
+```bash
+# 主干
+curl --noproxy '*' http://127.0.0.1:8080/api/hello
+# 灰度
+curl --noproxy '*' -H "X-Traffic: gray" http://127.0.0.1:8080/api/hello
+# 不存在的标签 → 回落主干
+curl --noproxy '*' -H "X-Traffic: beta" http://127.0.0.1:8080/api/hello
+```
+
+### 3.5 与 autumn-cloud-extension 的对齐关系
+
+| 能力 | 本仓库开启方式 | 依赖（`xyz.we-win.autumn:*:1.0.0-RELEASE`） | 配置前缀 |
+|---|---|---|---|
+| 服务发现 | `-Pcomponent-discovery` / `-discovery-nacos` / `-discovery-multicast` | `autumn-cloud-extension-discovery-{consul,nacos,multicast}-starter` | `autumn.discovery.*` |
+| 配置中心 | `-Pcomponent-config` / `-config-nacos` | `autumn-cloud-extension-config-{consul,nacos}-starter` | `autumn.config.*` |
+| 泳道路由 | `-Pcomponent-traffic` | `autumn-cloud-extension-traffic-starter` | `autumn.traffic.*` |
+
+三块配置的前缀、键名、默认值全部取自扩展库的 `@ConfigurationProperties`，本仓库不做二次改名；
+扩展库侧的完整说明见其 `README.md` 的「配置项」章节。
+历史上网关自研的服务发现实现已删除，统一改用扩展库的 Consul/Nacos/组播实现。
+
+## 4. 安全基线
+
+- `AUTUMN_SHARED_JWT_SECRET` 没有默认值：漏配直接启动失败，不回落到公开开发密钥；
+- 数据库口令、内网地址不进仓库，由 `application-db-*.properties` + 环境变量提供（见 `.env.example`）；
+- `autumn.authz` 不注册 GlobalFilter，也不接管 Spring Security 过滤器链，只对显式写了 `Authz=` 的路由生效。
+
+## 5. 相关文档
+
+- `docs/本地启动与测试顺序.md` — 起 dashboard / authorization / gateway 的顺序与命令
+- `docs/权限与授权设计.md` — 认证授权模型
+- `docs/OAuth2 统一认证登录使用手册.md` — OAuth2 单点配方与 native 元数据再生成
+- `docs/网关可视化配置-表结构设计.md`、`docs/网关可视化配置-常用配置参数清单.md` — dashboard 侧
+- `docs/工作记录.md` — 变更流水
+
+## 6. 能力规划（原 README 保留）
+
+### 限流
+- 限制上游流量：URL / IP / Other
+- 限制下游：服务限流 / 服务的节点限流
+
+### 负载均衡
 - 轮询
 - 自定义
-- 按照流量的标签进行负载均衡
+- 按流量标签负载均衡（已由 `autumn-cloud-extension-traffic-starter` 提供）
 
-## 服务发现
-### 解决Consul无法Native问题
-### 解决Nacos无法Native问题
+### 服务发现
+- 解决 Consul 无法 Native 问题（已由扩展库 HTTP API 实现解决）
+- 解决 Nacos 无法 Native 问题（同上）
 
-## 配置中心
-### 解决Consul无法Native问题
-### 解决Nacos无法Native问题
+### 配置中心
+- 解决 Consul 无法 Native 问题
+- 解决 Nacos 无法 Native 问题
 
-## 度量观察
-### OpenTelemetry
+### 度量观察
+- OpenTelemetry
 
-## 安全
+### 安全
 - 认证
 - 授权
+
+## License
+
+Apache License 2.0

@@ -2,7 +2,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>xyz.wewin.autumn</groupId>
+        <groupId>xyz.we-win.autumn</groupId>
         <artifactId>autumn-gateway-examples</artifactId>
         <version>0.0.1-SNAPSHOT</version>
     </parent>
@@ -42,7 +42,7 @@
             <artifactId>spring-cloud-starter-loadbalancer</artifactId>
         </dependency>
         <dependency>
-            <groupId>xyz.wewin.autumn</groupId>
+            <groupId>xyz.we-win.autumn</groupId>
             <artifactId>autumn-gateway-examples-httpexchange-api</artifactId>
             <version>0.0.1-SNAPSHOT</version>
             <scope>compile</scope>

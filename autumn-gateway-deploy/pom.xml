@@ -3,7 +3,7 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<parent>
-		<groupId>xyz.wewin.autumn</groupId>
+		<groupId>xyz.we-win.autumn</groupId>
 		<artifactId>autumn-gateway</artifactId>
 		<version>0.0.1-SNAPSHOT</version>
 	</parent>
@@ -106,7 +106,7 @@
 			<id>component-authn</id>
 			<dependencies>
 				<dependency>
-					<groupId>xyz.wewin.autumn</groupId>
+					<groupId>xyz.we-win.autumn</groupId>
 					<artifactId>authn-autumn-gateway-starter</artifactId>
 				</dependency>
 			</dependencies>
@@ -126,18 +126,89 @@
 			</activation>
 			<dependencies>
 				<dependency>
-					<groupId>xyz.wewin.autumn</groupId>
+					<groupId>xyz.we-win.autumn</groupId>
 					<artifactId>authz-autumn-gateway-starter</artifactId>
 				</dependency>
 			</dependencies>
 		</profile>
 
+		<!-- ============================================================
+		     服务发现（三选一）：autumn-cloud-extension discovery starter。
+		     三种后端互斥；只引一个时可以省略 autumn.discovery.backend，
+		     同时引多个则必须显式指定，否则启动期 BackendValidator 直接失败。
+		       -Pcomponent-discovery            Consul HTTP API（默认推荐，无 SDK）
+		       -Pcomponent-discovery-nacos      Nacos OpenAPI v1
+		       -Pcomponent-discovery-multicast  UDP 组播，零外部依赖，本地开发用
+		     ============================================================ -->
 		<profile>
 			<id>component-discovery</id>
 			<dependencies>
 				<dependency>
-					<groupId>com.autumn.cloud</groupId>
+					<groupId>xyz.we-win.autumn</groupId>
 					<artifactId>autumn-cloud-extension-discovery-consul-starter</artifactId>
+				</dependency>
+			</dependencies>
+		</profile>
+
+		<profile>
+			<id>component-discovery-nacos</id>
+			<dependencies>
+				<dependency>
+					<groupId>xyz.we-win.autumn</groupId>
+					<artifactId>autumn-cloud-extension-discovery-nacos-starter</artifactId>
+				</dependency>
+			</dependencies>
+		</profile>
+
+		<profile>
+			<id>component-discovery-multicast</id>
+			<dependencies>
+				<dependency>
+					<groupId>xyz.we-win.autumn</groupId>
+					<artifactId>autumn-cloud-extension-discovery-multicast-starter</artifactId>
+				</dependency>
+			</dependencies>
+		</profile>
+
+		<!-- ============================================================
+		     配置中心（可选，二选一）：启动期注入远程 PropertySource，
+		     变更时原地刷新并触发 ContextRefresher。
+		     必须显式设置 autumn.config.backend 才启用，否则只打 WARN 不装配。
+		       -Pcomponent-config         Consul KV（blocking query）
+		       -Pcomponent-config-nacos   Nacos 长轮询（真实 MD5）
+		     ============================================================ -->
+		<profile>
+			<id>component-config</id>
+			<dependencies>
+				<dependency>
+					<groupId>xyz.we-win.autumn</groupId>
+					<artifactId>autumn-cloud-extension-config-consul-starter</artifactId>
+				</dependency>
+			</dependencies>
+		</profile>
+
+		<profile>
+			<id>component-config-nacos</id>
+			<dependencies>
+				<dependency>
+					<groupId>xyz.we-win.autumn</groupId>
+					<artifactId>autumn-cloud-extension-config-nacos-starter</artifactId>
+				</dependency>
+			</dependencies>
+		</profile>
+
+		<!-- ============================================================
+		     泳道路由（可选）：按 X-Traffic 把请求打到同标签实例，
+		     未打标/未带头归入 default 主干，目标标签无实例时回落主干或 503。
+		     依赖 LoadBalancer（lb:// 路由）与服务发现，所以单独开它没有意义，
+		     实际组合示例：-Pcomponent-discovery,component-traffic
+		     ============================================================ -->
+		<profile>
+			<id>component-traffic</id>
+			<dependencies>
+				<dependency>
+					<groupId>xyz.we-win.autumn</groupId>
+					<artifactId>autumn-cloud-extension-traffic-starter</artifactId>
 				</dependency>
 			</dependencies>
 		</profile>

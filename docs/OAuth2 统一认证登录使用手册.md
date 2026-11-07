@@ -249,7 +249,7 @@ InvalidTypeIdException: Could not resolve type id 'java.util.Collections$Unmodif
 修法有两种，我们**两个都做了**：
 1. `AuthorizationRuntimeHints` 手写注册模块类 + JDK 集合类型（保留作根因说明）；
 2. **用 tracing agent 生成完整元数据**（真正兜底）：
-   `src/main/resources/META-INF/native-image/xyz.wewin.autumn/autumn-gateway-authorization/reachability-metadata.json`
+   `src/main/resources/META-INF/native-image/xyz.we-win.autumn/autumn-gateway-authorization/reachability-metadata.json`
 
 ### 附录 B：native 元数据怎么重新生成
 
@@ -271,7 +271,7 @@ kill -TERM <pid>
 # 4) 覆盖回去
 cp /tmp/nia-authz/reachability-metadata.json \
    autumn-gateway-authorization/src/main/resources/META-INF/native-image/\
-xyz.wewin.autumn/autumn-gateway-authorization/reachability-metadata.json
+xyz.we-win.autumn/autumn-gateway-authorization/reachability-metadata.json
 ```
 
 ---

@@ -2,7 +2,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
-	<groupId>xyz.wewin.autumn</groupId>
+	<groupId>xyz.we-win.autumn</groupId>
 	<artifactId>autumn-gateway</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<packaging>pom</packaging>
@@ -35,7 +35,8 @@
 		<mybatis-spring-boot-starter.version>4.1.0</mybatis-spring-boot-starter.version>
 		<spring-boot-starter-security-oauth2-authorization-server.version>4.1.1</spring-boot-starter-security-oauth2-authorization-server.version>
         <spring-cloud-starter-gateway-server-webflux.version>5.0.3</spring-cloud-starter-gateway-server-webflux.version>
-        <autumn-cloud-extension.version>1.0.0-SNAPSHOT</autumn-cloud-extension.version>
+        <!-- 与 autumn-cloud-extension 保持同一发布坐标：xyz.we-win.autumn:1.0.0-RELEASE -->
+        <autumn-cloud-extension.version>1.0.0-RELEASE</autumn-cloud-extension.version>
 	</properties>
 
 	<dependencies>
@@ -83,25 +84,57 @@
                 <version>${spring-cloud-starter-gateway-server-webflux.version}</version>
 			</dependency>
             <dependency>
-                <groupId>xyz.wewin.autumn</groupId>
+                <groupId>xyz.we-win.autumn</groupId>
                 <artifactId>autumn-gateway-common</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <!-- 网关可选组件 starter：由 autumn-gateway-deploy 用 -Pcomponent-* 选择装配 -->
             <dependency>
-                <groupId>xyz.wewin.autumn</groupId>
+                <groupId>xyz.we-win.autumn</groupId>
                 <artifactId>authn-autumn-gateway-starter</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>xyz.wewin.autumn</groupId>
+                <groupId>xyz.we-win.autumn</groupId>
                 <artifactId>authz-autumn-gateway-starter</artifactId>
                 <version>${project.version}</version>
             </dependency>
-            <!-- 服务发现：autumn-cloud-extension 扩展模块（Consul HTTP API 实现） -->
+            <!-- ============================================================
+                 spring-cloud 扩展：autumn-cloud-extension（xyz.we-win.autumn，Maven Central 1.0.0-RELEASE）
+                 三类能力按需装配，由 autumn-gateway-deploy 的 -Pcomponent-* profile 选择：
+                   服务发现  discovery-{consul|nacos|multicast}-starter  （三选一）
+                   配置中心  config-{consul|nacos}-starter              （可选，二选一）
+                   泳道路由  traffic-starter                            （可选，网关侧）
+                 这里只做版本锁定，不引入任何运行时依赖。
+                 ============================================================ -->
             <dependency>
-                <groupId>com.autumn.cloud</groupId>
+                <groupId>xyz.we-win.autumn</groupId>
                 <artifactId>autumn-cloud-extension-discovery-consul-starter</artifactId>
+                <version>${autumn-cloud-extension.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>xyz.we-win.autumn</groupId>
+                <artifactId>autumn-cloud-extension-discovery-nacos-starter</artifactId>
+                <version>${autumn-cloud-extension.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>xyz.we-win.autumn</groupId>
+                <artifactId>autumn-cloud-extension-discovery-multicast-starter</artifactId>
+                <version>${autumn-cloud-extension.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>xyz.we-win.autumn</groupId>
+                <artifactId>autumn-cloud-extension-config-consul-starter</artifactId>
+                <version>${autumn-cloud-extension.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>xyz.we-win.autumn</groupId>
+                <artifactId>autumn-cloud-extension-config-nacos-starter</artifactId>
+                <version>${autumn-cloud-extension.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>xyz.we-win.autumn</groupId>
+                <artifactId>autumn-cloud-extension-traffic-starter</artifactId>
                 <version>${autumn-cloud-extension.version}</version>
             </dependency>
 			<dependency>
