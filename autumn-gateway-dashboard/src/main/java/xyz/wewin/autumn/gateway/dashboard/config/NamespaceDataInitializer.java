@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.core.annotation.Order;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -22,7 +23,7 @@ import java.util.UUID;
  * <ol>
  *   <li>保证存在默认租户（命名空间）default；</li>
  *   <li>把存量 basic_app / basic_role / basic_group 中未归属命名空间的记录回填到默认租户
- *       （缺列时只告警不中断启动——说明存量库还没执行 db/migration-v3-to-v4.sql）；</li>
+ *       （缺列时只告警不中断启动——说明存量库还没执行 db/upgrade/upgrade-to-latest.sql）；</li>
  *   <li>播种登录账号（旧表 user / user_auth_account / user_app / role / user_role），
  *       保证新库或切换数据库后能直接登录；</li>
  *   <li>播种 basic_* 演示数据（命名空间结构就绪时），让系统管理页面非空。</li>
@@ -33,10 +34,12 @@ import java.util.UUID;
  * 仓库里不再保留任何可用的公开默认口令。</p>
  *
  * <p>注意：basic_* 表结构由 spring.sql.init 的 schema 脚本（CREATE TABLE IF NOT EXISTS）
- * 在启动时自动建表；存量库的命名空间列变更需先执行 db/migration-v3-to-v4.sql
- * （需要具备 ALTER 权限的账号）。</p>
+ * 在启动时自动建表；存量库的命名空间列变更由 {@link SchemaUpgradeRunner} 执行
+ * （脚本 db/upgrade/upgrade-to-latest.sql，需要具备 ALTER 权限的账号；
+ * 历史 v3→v4 增量已归档到 db/migration/archive/）。</p>
  */
 @Component
+@Order(0)
 public class NamespaceDataInitializer implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(NamespaceDataInitializer.class);
@@ -122,7 +125,7 @@ public class NamespaceDataInitializer implements ApplicationRunner {
         try {
             jdbcTemplate.update(sql, def.getId(), def.getCode());
         } catch (DataAccessException e) {
-            log.warn("回填 {} 命名空间失败：{}。大概率是存量库尚未执行 db/migration-v3-to-v4.sql"
+            log.warn("回填 {} 命名空间失败：{}。大概率是存量库尚未执行 db/upgrade/upgrade-to-latest.sql"
                             + "（缺少 namespace_id / namespace_code 列），请用具备 ALTER 权限的账号执行后重启",
                     table, e.getMostSpecificCause().getMessage());
         }
@@ -237,7 +240,7 @@ public class NamespaceDataInitializer implements ApplicationRunner {
     private void seedBasicDemoData(BasicNamespace def) {
         if (!basicSchemaReady()) {
             log.warn("basic_* 演示数据未播种：检测到存量库缺少命名空间列，"
-                    + "请先执行 db/migration-v3-to-v4.sql（需 ALTER 权限）后重启");
+                    + "请先执行 db/upgrade/upgrade-to-latest.sql（需 ALTER 权限）后重启");
             return;
         }
         try {

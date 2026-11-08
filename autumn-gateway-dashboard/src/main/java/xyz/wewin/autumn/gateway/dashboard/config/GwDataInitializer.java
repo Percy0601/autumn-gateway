@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.core.annotation.Order;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.core.io.ClassPathResource;
@@ -32,6 +33,7 @@ import java.time.LocalDateTime;
  * 本类在其后运行。若存量库未加载 gw_schema，这里只告警不中断启动。</p>
  */
 @Component
+@Order(1)
 public class GwDataInitializer implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(GwDataInitializer.class);
