@@ -1,257 +1,361 @@
 <template>
   <div class="page">
-    <el-alert
-      type="info"
-      :closable="false"
-      show-icon
-      title="协议转换：HTTP endpoint → Thrift 泛化调用"
-      description="header / queryString / requestBody / path 变量 / 常量按规则映射到 thrift 参数，响应形态也可配。路由上写 ThriftGeneric=<service>,<method>,<conversion_code> 引用这里的规则。"
-      style="margin-bottom: 12px"
-    />
+    <!-- ================= 配置闭环引导 ================= -->
+    <el-card shadow="never" class="guide-card">
+      <div class="guide-head">
+        <div>
+          <div class="guide-title">协议转换 · HTTP → Thrift 泛化调用</div>
+          <div class="guide-desc">
+            Dashboard 落库（gw_thrift_service / gw_thrift_conversion）→ 导出 autumn.thrift.* →「配置同步」下发 Consul / Nacos →
+            thrift-autumn-gateway-starter 在网关侧按 IDL 泛化调用。下面 4 步走完才会真正生效。
+          </div>
+        </div>
+        <div class="guide-actions">
+          <el-button size="small" :loading="loading" @click="load">刷新</el-button>
+          <el-button size="small" @click="openPreview">导出预览</el-button>
+          <el-button size="small" type="primary" @click="goTo('/gateway/sync/index')">去配置同步</el-button>
+        </div>
+      </div>
 
-    <el-card shadow="never" style="margin-bottom: 14px">
+      <div class="steps">
+        <div v-for="(s, i) in GUIDE_STEPS" :key="s.key" class="step" :class="`state-${guideState(s.key)}`">
+          <div class="step-idx">{{ i + 1 }}</div>
+          <div class="step-main">
+            <div class="step-title">
+              {{ s.title }}
+              <el-tag size="small" :type="guideState(s.key) === 'done' ? 'success' : guideState(s.key) === 'manual' ? 'info' : 'warning'" effect="plain">
+                {{ guideState(s.key) === 'done' ? '已完成' : guideState(s.key) === 'manual' ? '需手工确认' : '待处理' }}
+              </el-tag>
+            </div>
+            <div class="step-desc">{{ s.desc }}</div>
+          </div>
+          <el-button link type="primary" @click="stepAction(s.key)">{{ s.action }} →</el-button>
+        </div>
+      </div>
+
+      <el-alert
+        type="warning"
+        :closable="false"
+        show-icon
+        title="最容易踩的坑"
+        :description="'规则表里的「服务 / 方法 / HTTP 路径」不参与导出，只是标注。真正决定调用目标的是路由过滤器 ThriftGeneric=<service>,<method>,<规则名>；且 IDL 服务目录在网关启动期加载，改完配置必须下发并重启网关（当前版本不支持热注册）。'"
+        style="margin-top: 12px"
+      />
+      <el-alert
+        v-if="healthIssues.length"
+        type="error"
+        :closable="false"
+        show-icon
+        title="配置体检发现问题"
+        style="margin-top: 8px"
+      >
+        <template #default>
+          <div v-for="(issue, i) in healthIssues" :key="i" class="issue-line">· {{ issue }}</div>
+          <div v-if="healthIssueTotal > healthIssues.length" class="issue-line">· 另有 {{ healthIssueTotal - healthIssues.length }} 条，展开导出预览逐条核对</div>
+        </template>
+      </el-alert>
+
+      <el-collapse class="quick-ref">
+        <el-collapse-item title="联调速查：autumn-service-framework（点开看可直接照抄的值）" name="ref">
+          <div class="ref-grid">
+            <div class="ref-k">联调环境</div>
+            <div class="ref-v">Ubuntu 虚拟机 <code>192.168.0.102</code>，Consul 在 Docker（8500 从本机可达）；两个服务用 native image 在 screen 会话 <code>autumn-provider</code> / <code>autumn-consumer</code> 中启动，日志 <code>/tmp/autumn-*-native.log</code></div>
+            <div class="ref-k">多网卡提醒</div>
+            <div class="ref-v">provider 可能把 Docker 网桥地址（如 <code>172.17.0.1</code>）注册进 Consul；网关 P0 走静态 host/port，这里直接填可达 IP <code>192.168.0.102</code>，不依赖注册中心解析</div>
+            <div class="ref-k">启动被测服务</div>
+            <div class="ref-v">JVM 版 <code>./scripts/run-boot.sh autumn-sample-boot-provider</code>，native 版直接执行 <code>target/autumn-sample-boot-provider-native</code>（另一个是 consumer）；两者都用 <code>autumn.registry-type=consul</code> 注册。jar / native 都是 Java 25 编译，跑之前确认 <code>java -version</code></div>
+            <div class="ref-k">Thrift 端口 / host</div>
+            <div class="ref-v">provider <code>30880</code>、consumer <code>30881</code>。服务在虚拟机上时，「目标地址」的 host 填 <code>192.168.0.102</code>，不要填 127.0.0.1</div>
+            <div class="ref-k">HTTP 端口</div>
+            <div class="ref-v">provider <code>8080</code>、consumer <code>8081</code>；只有当网关和 provider 在同一台机器时才与网关端口冲突，需要换端口</div>
+            <div class="ref-k">配置中心</div>
+            <div class="ref-v">「配置同步 → 配置中心」填 <code>CONSUL</code> + <code>192.168.0.102:8500</code>；从网关所在机器验证过可达再下发</div>
+            <div class="ref-k">IDL / 服务编码</div>
+            <div class="ref-v">用「登记服务 → 插入示例 IDL → autumn-service-framework · SomeService」；服务编码填 <code>SomeService</code></div>
+            <div class="ref-k">传输</div>
+            <div class="ref-v">framed ✓、multiplexed ✓，multiplexed 服务名填 <code>xyz.wewin.autumn.sample.api.SomeService$Iface</code>（带 <code>$Iface</code>）；以 provider 启动日志 <code>autumn provider export service:</code> 打印的名字为准，不是 IDL 里的短名</div>
+            <div class="ref-k">方法 / 参数</div>
+            <div class="ref-v"><code>echo(1: string msg)</code>；规则参数名填 <code>msg</code>，来源 BODY 即可</div>
+            <div class="ref-k">路由短写</div>
+            <div class="ref-v"><code>ThriftGeneric=SomeService,echo,demoEcho</code></div>
+            <div class="ref-k">验证请求</div>
+            <div class="ref-v"><code>curl -XPOST 'http://&lt;网关地址&gt;/thrift/SomeService/echo' -H 'Content-Type: application/json' -d '{"msg":"hi"}'</code></div>
+          </div>
+        </el-collapse-item>
+      </el-collapse>
+    </el-card>
+
+    <!-- ================= 服务 ================= -->
+    <el-card shadow="never" class="block-card">
       <template #header>
         <div class="hd">
-          <span>Thrift 服务（IDL 元数据）</span>
-          <div>
-            <el-button size="small" @click="openPreview">导出预览</el-button>
-            <el-button size="small" type="primary" @click="openService()">新增服务</el-button>
+          <div class="hd-left">
+            <span class="hd-title">Thrift 服务</span>
+            <el-tag size="small" type="info" effect="plain">{{ services.length }} 条 / 启用 {{ enabledServices.length }} 条</el-tag>
+          </div>
+          <div class="hd-right">
+            <el-input v-model="serviceKeyword" clearable size="small" placeholder="搜服务编码 / 地址 / 备注" style="width: 220px" />
+            <el-button size="small" type="primary" @click="openService()">登记服务</el-button>
           </div>
         </div>
       </template>
-      <el-table v-loading="loading" :data="services" border size="small">
-        <el-table-column prop="serviceCode" label="服务编码（=IDL service 名）" min-width="190" />
-        <el-table-column prop="serviceName" label="展示名" width="130" />
-        <el-table-column label="地址" width="160">
-          <template #default="{ row }">{{ row.host }}:{{ row.port }}</template>
-        </el-table-column>
-        <el-table-column label="IDL 来源" min-width="180">
-          <template #default="{ row }">{{ row.idlLocation || (row.idlContent ? '内联 IDL' : '') }}</template>
-        </el-table-column>
-        <el-table-column label="传输" width="170">
+      <el-table v-loading="loading" :data="filteredServices" border size="small" empty-text="还没有 Thrift 服务，点右上「登记服务」开始">
+        <el-table-column label="服务编码（= IDL service 名）" min-width="190">
           <template #default="{ row }">
-            framed={{ row.framed === 1 ? 'Y' : 'N' }} · mux={{ row.multiplexed === 1 ? 'Y' : 'N' }}
+            <div class="mono">{{ row.serviceCode }}</div>
+            <div class="sub">{{ row.serviceName || '—' }}</div>
           </template>
         </el-table-column>
-        <el-table-column label="状态" width="80">
+        <el-table-column label="目标地址" width="170">
+          <template #default="{ row }"><span class="mono">{{ row.host }}:{{ row.port }}</span></template>
+        </el-table-column>
+        <el-table-column label="IDL 核对" min-width="190">
           <template #default="{ row }">
-            <el-tag :type="row.status === 1 ? 'success' : 'info'" size="small">
-              {{ row.status === 1 ? '启用' : '停用' }}
-            </el-tag>
+            <template v-if="idlInfo(row).state === 'unchecked'">
+              <el-tag size="small" type="info" effect="plain">外部文件</el-tag>
+              <div class="sub">{{ row.idlLocation }}</div>
+            </template>
+            <template v-else>
+              <el-tag size="small" :type="idlInfo(row).state === 'ok' ? 'success' : 'danger'" effect="plain">
+                {{ idlInfo(row).state === 'ok' ? '名称一致' : '名称不一致' }}
+              </el-tag>
+              <div class="sub">{{ idlInfo(row).methodCount }} 个方法 · 内联 IDL</div>
+              <div v-if="idlInfo(row).state !== 'ok'" class="sub bad">IDL: {{ idlInfo(row).names.join('、') || '解析失败' }}</div>
+            </template>
           </template>
         </el-table-column>
-        <el-table-column prop="remark" label="备注" min-width="140" show-overflow-tooltip />
-        <el-table-column label="操作" width="130" fixed="right">
+        <el-table-column label="传输" width="150">
           <template #default="{ row }">
-            <el-button link type="primary" @click="openService(row)">编辑</el-button>
-            <el-button link type="danger" @click="removeService(row)">删除</el-button>
+            <el-tag size="small" effect="plain">{{ row.framed === 1 ? 'framed' : '裸 TSocket' }}</el-tag>
+            <el-tag v-if="row.multiplexed === 1" size="small" effect="plain" style="margin-left: 4px">mux</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="状态" width="90">
+          <template #default="{ row }">
+            <el-switch
+              v-model="row.status"
+              :active-value="1"
+              :inactive-value="0"
+              size="small"
+              @change="(v) => toggleEnabled(row, 'service', v)"
+            />
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="200" fixed="right">
+          <template #default="{ row }">
+            <el-button link type="primary" size="small" @click="openIdl(row)">看 IDL</el-button>
+            <el-button link type="primary" size="small" @click="openService(row)">编辑</el-button>
+            <el-button link type="danger" size="small" @click="removeService(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
     </el-card>
 
-    <el-card shadow="never">
+    <!-- ================= 规则 ================= -->
+    <el-card shadow="never" class="block-card">
       <template #header>
         <div class="hd">
-          <span>转换规则（HTTP 入参/出参映射）</span>
-          <el-button size="small" type="primary" @click="openConversion()">新增规则</el-button>
+          <div class="hd-left">
+            <span class="hd-title">转换规则（HTTP 入参 / 出参映射）</span>
+            <el-tag size="small" type="info" effect="plain">{{ conversions.length }} 条 / 启用 {{ enabledConversions.length }} 条</el-tag>
+          </div>
+          <div class="hd-right">
+            <el-input v-model="conversionKeyword" clearable size="small" placeholder="搜规则名 / 服务 / 方法" style="width: 220px" />
+            <el-button size="small" type="primary" @click="openConversion()">新增规则</el-button>
+          </div>
         </div>
       </template>
-      <el-table v-loading="loading" :data="conversions" border size="small">
-        <el-table-column prop="conversionCode" label="规则名（路由第三参）" min-width="170" />
-        <el-table-column prop="conversionName" label="展示名" width="130" />
-        <el-table-column prop="serviceCode" label="Thrift 服务" width="160" />
-        <el-table-column prop="methodName" label="方法" width="120" />
-        <el-table-column prop="httpPath" label="HTTP 路径（参考）" min-width="160" show-overflow-tooltip />
-        <el-table-column label="入参" width="150">
+      <el-table v-loading="loading" :data="filteredConversions" border size="small" empty-text="还没有转换规则，点右上「新增规则」开始">
+        <el-table-column label="规则名（路由第三参）" min-width="180">
+          <template #default="{ row }">
+            <div class="mono">{{ row.conversionCode }}</div>
+            <div class="sub">{{ row.conversionName || '—' }}</div>
+          </template>
+        </el-table-column>
+        <el-table-column label="标注的目标" min-width="190">
+          <template #default="{ row }">
+            <div class="mono">{{ row.serviceCode }}{{ row.methodName ? '.' + row.methodName : '' }}</div>
+            <div class="sub">{{ row.httpPath || '未填 HTTP 路径' }}（仅标注）</div>
+          </template>
+        </el-table-column>
+        <el-table-column label="入参" width="160">
           <template #default="{ row }">
             {{ row.includeBody === 1 ? '请求体打底' : '仅规则取值' }} · {{ argCount(row) }} 条
           </template>
         </el-table-column>
-        <el-table-column label="响应" width="110">
-          <template #default="{ row }">{{ row.responseMode || 'ENVELOPE' }}</template>
-        </el-table-column>
-        <el-table-column label="操作" width="130" fixed="right">
+        <el-table-column label="响应" width="120">
           <template #default="{ row }">
-            <el-button link type="primary" @click="openConversion(row)">编辑</el-button>
-            <el-button link type="danger" @click="removeConversion(row)">删除</el-button>
+            <el-tag size="small" effect="plain">{{ row.responseMode || 'ENVELOPE' }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="状态" width="90">
+          <template #default="{ row }">
+            <el-switch
+              v-model="row.status"
+              :active-value="1"
+              :inactive-value="0"
+              size="small"
+              @change="(v) => toggleEnabled(row, 'conversion', v)"
+            />
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="220" fixed="right">
+          <template #default="{ row }">
+            <el-button link type="primary" size="small" @click="copyShortWrite(row)">复制短写</el-button>
+            <el-button link type="primary" size="small" @click="openConversion(row)">编辑</el-button>
+            <el-button link type="danger" size="small" @click="removeConversion(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
     </el-card>
 
-    <!-- 服务编辑 -->
-    <el-dialog v-model="serviceDlg" :title="editingServiceId ? '编辑 Thrift 服务' : '新增 Thrift 服务'" width="720px">
-      <el-form :model="serviceForm" label-width="130px" size="small">
-        <el-form-item label="服务编码" required>
-          <el-input v-model="serviceForm.serviceCode" placeholder="必须等于 IDL 里的 service 名，如 DemoService" />
-        </el-form-item>
-        <el-form-item label="展示名">
-          <el-input v-model="serviceForm.serviceName" placeholder="中文描述，仅页面展示" />
-        </el-form-item>
-        <el-form-item label="host / port" required>
-          <div style="display: flex; gap: 8px">
-            <el-input v-model="serviceForm.host" placeholder="127.0.0.1" />
-            <el-input-number v-model="serviceForm.port" :min="1" :max="65535" controls-position="right" style="width: 140px" />
-          </div>
-        </el-form-item>
-        <el-form-item label="IDL 位置">
-          <el-input v-model="serviceForm.idlLocation" placeholder="classpath:/idl/demo.thrift 或 file:/opt/idl/demo.thrift" />
-        </el-form-item>
-        <el-form-item label="内联 IDL">
-          <el-input v-model="serviceForm.idlContent" type="textarea" :rows="8" placeholder="service DemoService { string echo(1: string name) }" />
-        </el-form-item>
-        <el-form-item label="传输">
-          <el-checkbox v-model="framedFlag">framed</el-checkbox>
-          <el-checkbox v-model="multiplexedFlag">multiplexed</el-checkbox>
-          <el-input v-model="serviceForm.multiplexedName" placeholder="multiplexed 服务名" style="width: 200px; margin-left: 8px" />
-        </el-form-item>
-        <el-form-item label="状态">
-          <el-switch v-model="serviceEnabled" active-text="启用" inactive-text="停用" />
-        </el-form-item>
-        <el-form-item label="备注">
-          <el-input v-model="serviceForm.remark" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="serviceDlg = false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="saveService">保存</el-button>
-      </template>
-    </el-dialog>
+    <!-- ================= 弹窗 ================= -->
+    <ServiceDialog v-model="serviceDlg" :row="editingService" :services="services" @saved="load" />
+    <ConversionDialog
+      v-model="conversionDlg"
+      :row="editingConversion"
+      :services="services"
+      :conversions="conversions"
+      @saved="load"
+    />
 
-    <!-- 转换规则编辑 -->
-    <el-dialog v-model="conversionDlg" :title="editingConversionId ? '编辑转换规则' : '新增转换规则'" width="900px">
-      <el-form :model="conversionForm" label-width="130px" size="small">
-        <el-form-item label="规则名" required>
-          <el-input v-model="conversionForm.conversionCode" placeholder="路由过滤器第三参引用它，如 demoEcho" />
-        </el-form-item>
-        <el-form-item label="展示名">
-          <el-input v-model="conversionForm.conversionName" />
-        </el-form-item>
-        <el-form-item label="Thrift 服务 / 方法">
-          <div style="display: flex; gap: 8px">
-            <el-select v-model="conversionForm.serviceCode" placeholder="选择服务" style="width: 260px">
-              <el-option v-for="s in services" :key="s.serviceCode" :label="s.serviceCode" :value="s.serviceCode" />
-            </el-select>
-            <el-input v-model="conversionForm.methodName" placeholder="方法名，留空则由路由/动态分发决定" />
-          </div>
-        </el-form-item>
-        <el-form-item label="HTTP 路径（参考）">
-          <el-input v-model="conversionForm.httpPath" placeholder="POST /thrift/DemoService/echo" />
-        </el-form-item>
-        <el-form-item label="入参模式">
-          <el-checkbox v-model="includeBodyFlag">请求体 JSON 作为参数基座（include-body）</el-checkbox>
-        </el-form-item>
-        <el-form-item label="参数规则">
-          <div style="width: 100%">
-            <el-table :data="argRules" size="small" border>
-              <el-table-column label="thrift 参数" width="140">
-                <template #default="{ row }"><el-input v-model="row.arg" size="small" /></template>
-              </el-table-column>
-              <el-table-column label="来源" width="120">
-                <template #default="{ row }">
-                  <el-select v-model="row.source" size="small">
-                    <el-option label="BODY" value="BODY" />
-                    <el-option label="QUERY" value="QUERY" />
-                    <el-option label="HEADER" value="HEADER" />
-                    <el-option label="PATH" value="PATH" />
-                    <el-option label="FIXED" value="FIXED" />
-                  </el-select>
-                </template>
-              </el-table-column>
-              <el-table-column label="取值 key" min-width="150">
-                <template #default="{ row }"><el-input v-model="row.key" size="small" placeholder="BODY 字段 / query 名 / header 名 / 路径变量" /></template>
-              </el-table-column>
-              <el-table-column label="常量值" width="140">
-                <template #default="{ row }"><el-input v-model="row.value" size="small" :disabled="row.source !== 'FIXED'" /></template>
-              </el-table-column>
-              <el-table-column label="必填" width="70">
-                <template #default="{ row }"><el-checkbox v-model="row.required" /></template>
-              </el-table-column>
-              <el-table-column label="" width="60">
-                <template #default="{ $index }"><el-button link type="danger" @click="argRules.splice($index, 1)">删</el-button></template>
-              </el-table-column>
-            </el-table>
-            <el-button size="small" style="margin-top: 8px" @click="addArgRule">+ 加一条</el-button>
-          </div>
-        </el-form-item>
-        <el-form-item label="响应形态">
-          <div style="display: flex; gap: 12px; align-items: center">
-            <el-select v-model="conversionForm.responseMode" style="width: 180px">
-              <el-option label="ENVELOPE（success/cost/data）" value="ENVELOPE" />
-              <el-option label="DATA（只返回 data）" value="DATA" />
-            </el-select>
-            <el-input-number v-model="conversionForm.successStatus" :min="0" :max="599" controls-position="right" style="width: 150px" />
-            <span style="color: #909399">成功状态码，0=默认 200</span>
-          </div>
-        </el-form-item>
-        <el-form-item label="备注">
-          <el-input v-model="conversionForm.remark" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="conversionDlg = false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="saveConversion">保存</el-button>
-      </template>
-    </el-dialog>
-
-    <el-dialog v-model="previewDlg" title="autumn.thrift.* 导出预览" width="860px">
-      <el-input v-model="previewText" type="textarea" :rows="18" readonly />
+    <el-dialog v-model="previewDlg" title="autumn.thrift.* 导出预览（后端生成 · 权威文本）" width="900px" top="6vh">
+      <div class="preview-bar">
+        <el-tag v-if="previewCounts" size="small" effect="plain">启用服务 {{ previewCounts.thriftServices || 0 }}</el-tag>
+        <el-tag v-if="previewCounts" size="small" effect="plain">启用规则 {{ previewCounts.thriftConversions || 0 }}</el-tag>
+        <el-tag v-if="previewText" size="small" type="info" effect="plain">{{ previewText.split('\n').length }} 行</el-tag>
+        <div style="margin-left: auto; display: flex; gap: 8px">
+          <el-button size="small" :disabled="!previewText" @click="copyText(previewText, '导出文本')">复制</el-button>
+          <el-button size="small" :disabled="!previewText" @click="downloadPreview">下载 .properties</el-button>
+          <el-button size="small" type="primary" @click="goTo('/gateway/sync/index')">去配置同步下发</el-button>
+        </div>
+      </div>
       <el-alert
         v-if="!previewText"
         type="warning"
         :closable="false"
-        title="还没有启用中的 thrift 服务，配置不会进入导出文本"
-        style="margin-top: 8px"
+        title="还没有启用中的 Thrift 服务，协议转换配置不会进入导出文本"
+        style="margin-bottom: 10px"
       />
+      <el-alert
+        v-else
+        type="info"
+        :closable="false"
+        title="这段文本会与路由、全局配置一起由「配置同步」下发；注意导出时会自动写入 autumn.thrift.enabled=true"
+        style="margin-bottom: 10px"
+      />
+      <el-input v-model="previewText" type="textarea" :rows="18" readonly class="mono-area" />
+      <div class="hint" style="margin-top: 8px">
+        下发后需重启网关：ThriftServiceCatalog 在启动期解析 IDL 建服务目录，当前版本不支持热注册。
+      </div>
+    </el-dialog>
+
+    <el-dialog v-model="idlDlg" :title="`IDL · ${idlRow?.serviceCode || ''}`" width="760px">
+      <el-alert
+        v-if="idlRow && idlInfo(idlRow).state === 'mismatch'"
+        type="error"
+        :closable="false"
+        title="服务编码与 IDL 里解析出的 service 名不一致，网关启动会失败"
+        style="margin-bottom: 10px"
+      />
+      <el-input :model-value="idlRow?.idlContent || idlRow?.idlLocation || ''" type="textarea" :rows="14" readonly class="mono-area" />
+      <template #footer>
+        <el-button @click="copyText(idlRow?.idlContent || idlRow?.idlLocation || '', 'IDL')">复制</el-button>
+        <el-button type="primary" @click="idlDlg = false">关闭</el-button>
+      </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { gatewayThriftApi } from '@/api/gateway'
 import { isConfirmed } from '@/utils/confirm'
+import ServiceDialog from './ServiceDialog.vue'
+import ConversionDialog from './ConversionDialog.vue'
+import { GUIDE_STEPS } from './constants'
+import { checkServiceCode, parseIdl } from './idl'
+import { thriftGenericValue } from './export'
 
+const router = useRouter()
 const loading = ref(false)
-const saving = ref(false)
 const services = ref([])
 const conversions = ref([])
+const serviceKeyword = ref('')
+const conversionKeyword = ref('')
 
 const serviceDlg = ref(false)
-const editingServiceId = ref(null)
-const serviceForm = reactive({
-  serviceCode: '', serviceName: '', host: '127.0.0.1', port: 19090,
-  idlLocation: '', idlContent: '', multiplexedName: '', remark: '', status: 1, framed: 1, multiplexed: 0,
-})
-const framedFlag = computed({
-  get: () => serviceForm.framed === 1,
-  set: (v) => { serviceForm.framed = v ? 1 : 0 },
-})
-const multiplexedFlag = computed({
-  get: () => serviceForm.multiplexed === 1,
-  set: (v) => { serviceForm.multiplexed = v ? 1 : 0 },
-})
-const serviceEnabled = computed({
-  get: () => serviceForm.status === 1,
-  set: (v) => { serviceForm.status = v ? 1 : 0 },
-})
-
+const editingService = ref(null)
 const conversionDlg = ref(false)
-const editingConversionId = ref(null)
-const conversionForm = reactive({
-  conversionCode: '', conversionName: '', serviceCode: '', methodName: '', httpPath: '',
-  includeBody: 1, responseMode: 'ENVELOPE', successStatus: 0, remark: '', status: 1, argumentsJson: '',
-})
-const argRules = ref([])
-const includeBodyFlag = computed({
-  get: () => conversionForm.includeBody === 1,
-  set: (v) => { conversionForm.includeBody = v ? 1 : 0 },
-})
+const editingConversion = ref(null)
 
 const previewDlg = ref(false)
 const previewText = ref('')
+const previewCounts = ref(null)
+const idlDlg = ref(false)
+const idlRow = ref(null)
+
+const enabledServices = computed(() => services.value.filter((s) => s.status === 1))
+const enabledConversions = computed(() => conversions.value.filter((c) => c.status === 1))
+const filteredServices = computed(() => matchKeyword(services.value, serviceKeyword.value, ['serviceCode', 'serviceName', 'host', 'remark']))
+const filteredConversions = computed(() => matchKeyword(conversions.value, conversionKeyword.value, ['conversionCode', 'conversionName', 'serviceCode', 'methodName', 'httpPath']))
+
+function matchKeyword(list, keyword, fields) {
+  const k = String(keyword || '').trim().toLowerCase()
+  if (!k) return list
+  return list.filter((row) => fields.some((f) => String(row[f] || '').toLowerCase().includes(k)))
+}
+
+function idlInfo(row) {
+  if (!row?.idlContent) return { state: 'unchecked', names: [], methodCount: 0 }
+  const parsed = parseIdl(row.idlContent)
+  const check = checkServiceCode(row.idlContent, row.serviceCode)
+  return {
+    state: check.state === 'ok' ? 'ok' : 'mismatch',
+    names: check.names,
+    methodCount: parsed.services.reduce((n, s) => n + s.methods.length, 0),
+  }
+}
+
+/** 配置体检：把"保存成功但下发出去会炸"的问题提前摆到页面上 */
+const healthIssues = computed(() => {
+  const issues = []
+  services.value.forEach((s) => {
+    const info = idlInfo(s)
+    if (info.state === 'mismatch') issues.push(`服务 ${s.serviceCode}：IDL 里的 service 名是 ${info.names.join('、') || '解析失败'}，编码对不上，网关启动会失败`)
+  })
+  conversions.value.forEach((c) => {
+    if (String(c.conversionCode || '').includes(',')) issues.push(`规则 ${c.conversionCode}：名字含逗号，路由短写会被拆成多个参数`)
+    const svc = services.value.find((s) => s.serviceCode === c.serviceCode)
+    if (!svc) issues.push(`规则 ${c.conversionCode}：关联的 Thrift 服务 ${c.serviceCode} 未登记（标注失效，不影响导出）`)
+    else if (svc.status !== 1) issues.push(`规则 ${c.conversionCode}：关联服务 ${c.serviceCode} 已停用`)
+    if (svc?.idlContent && c.methodName) {
+      const methods = parseIdl(svc.idlContent).services.flatMap((s) => s.methods.map((m) => m.name))
+      if (methods.length && !methods.includes(c.methodName)) issues.push(`规则 ${c.conversionCode}：方法 ${c.methodName} 不在 ${c.serviceCode} 的 IDL 方法列表里`)
+    }
+  })
+  return issues
+})
+const healthIssueTotal = computed(() => healthIssues.value.length)
+
+function guideState(key) {
+  if (key === 'service') return enabledServices.value.length ? 'done' : 'todo'
+  if (key === 'mapping') return enabledConversions.value.length ? 'done' : 'todo'
+  return 'manual'
+}
+
+function stepAction(key) {
+  if (key === 'service') openService()
+  else if (key === 'mapping') openConversion()
+  else if (key === 'route') goTo('/gateway/route/index')
+  else if (key === 'publish') goTo('/gateway/sync/index')
+}
+
+function goTo(path) {
+  router.push(path).catch(() => ElMessage.warning(`请从左侧菜单打开：${path}`))
+}
 
 async function load() {
   loading.value = true
@@ -259,6 +363,8 @@ async function load() {
     const [s, c] = await Promise.all([gatewayThriftApi.services(), gatewayThriftApi.conversions()])
     services.value = s.data || []
     conversions.value = c.data || []
+  } catch {
+    // 拦截器已提示
   } finally {
     loading.value = false
   }
@@ -272,88 +378,135 @@ function argCount(row) {
   } catch { return 0 }
 }
 
-function openService(row) {
-  editingServiceId.value = row ? row.id : null
-  Object.assign(serviceForm, {
-    serviceCode: '', serviceName: '', host: '127.0.0.1', port: 19090,
-    idlLocation: '', idlContent: '', multiplexedName: '', remark: '', status: 1, framed: 1, multiplexed: 0,
-    ...(row || {}),
-  })
+function openService(row = null) {
+  editingService.value = row
   serviceDlg.value = true
 }
+function openConversion(row = null) {
+  editingConversion.value = row
+  conversionDlg.value = true
+}
+function openIdl(row) {
+  idlRow.value = row
+  idlDlg.value = true
+}
 
-async function saveService() {
-  if (!serviceForm.serviceCode) return ElMessage.warning('服务编码必填')
-  if (!serviceForm.idlContent && !serviceForm.idlLocation) return ElMessage.warning('IDL 位置和内联 IDL 至少填一个')
-  saving.value = true
+function servicePayload(row, patch = {}) {
+  return {
+    serviceCode: row.serviceCode, serviceName: row.serviceName || '', host: row.host, port: row.port,
+    idlLocation: row.idlLocation || '', idlContent: row.idlContent || '',
+    multiplexedName: row.multiplexedName || '', framed: row.framed, multiplexed: row.multiplexed,
+    status: row.status, remark: row.remark || '', ...patch,
+  }
+}
+function conversionPayload(row, patch = {}) {
+  return {
+    conversionCode: row.conversionCode, conversionName: row.conversionName || '',
+    serviceCode: row.serviceCode, methodName: row.methodName || '', httpPath: row.httpPath || '',
+    includeBody: row.includeBody, argumentsJson: row.argumentsJson || '[]',
+    responseMode: row.responseMode || 'ENVELOPE', successStatus: row.successStatus || 0,
+    status: row.status, remark: row.remark || '', ...patch,
+  }
+}
+
+/** 列表里直接启停，不必进弹窗；失败把开关回滚 */
+async function toggleEnabled(row, kind, value) {
   try {
-    if (editingServiceId.value) await gatewayThriftApi.updateService(editingServiceId.value, serviceForm)
-    else await gatewayThriftApi.createService(serviceForm)
-    ElMessage.success('已保存')
-    serviceDlg.value = false
-    load()
-  } catch (e) {
-    ElMessage.error(e?.response?.data?.message || e.message)
-  } finally { saving.value = false }
+    if (kind === 'service') await gatewayThriftApi.updateService(row.id, servicePayload(row, { status: value }))
+    else await gatewayThriftApi.updateConversion(row.id, conversionPayload(row, { status: value }))
+    ElMessage.success(value === 1 ? '已启用，会进入导出文本' : '已停用，不会进入导出文本')
+  } catch {
+    row.status = value === 1 ? 0 : 1
+  }
 }
 
 async function removeService(row) {
-  if (!await isConfirmed(`删除 thrift 服务 ${row.serviceCode}？引用它的转换规则会一起失效`)) return
-  await gatewayThriftApi.removeService(row.id)
-  load()
-}
-
-function addArgRule() {
-  argRules.value.push({ arg: '', source: 'BODY', key: '', value: '', required: false, defaultValue: '' })
-}
-
-function openConversion(row) {
-  editingConversionId.value = row ? row.id : null
-  Object.assign(conversionForm, {
-    conversionCode: '', conversionName: '', serviceCode: '', methodName: '', httpPath: '',
-    includeBody: 1, responseMode: 'ENVELOPE', successStatus: 0, remark: '', status: 1, argumentsJson: '',
-    ...(row || {}),
-  })
+  const used = conversions.value.filter((c) => c.serviceCode === row.serviceCode).length
+  const extra = used ? `\n有 ${used} 条转换规则标注了它（规则本身仍会导出，但标注会失效）。` : ''
+  if (!await isConfirmed(`删除 Thrift 服务「${row.serviceCode}」？${extra}\n删除后该服务不再进入导出文本，网关重启后将找不到它。`)) return
   try {
-    const parsed = JSON.parse(conversionForm.argumentsJson || '[]')
-    argRules.value = Array.isArray(parsed)
-      ? parsed.map((r) => ({ arg: r.arg || '', source: r.source || 'BODY', key: r.key || '', value: r.value || '', required: !!r.required, defaultValue: r.defaultValue || '' }))
-      : []
-  } catch { argRules.value = [] }
-  conversionDlg.value = true
-}
-
-async function saveConversion() {
-  if (!conversionForm.conversionCode) return ElMessage.warning('规则名必填')
-  if (!conversionForm.serviceCode) return ElMessage.warning('请选择 thrift 服务')
-  const rules = argRules.value.filter((r) => r.arg)
-  conversionForm.argumentsJson = JSON.stringify(rules)
-  saving.value = true
-  try {
-    if (editingConversionId.value) await gatewayThriftApi.updateConversion(editingConversionId.value, conversionForm)
-    else await gatewayThriftApi.createConversion(conversionForm)
-    ElMessage.success('已保存')
-    conversionDlg.value = false
+    await gatewayThriftApi.removeService(row.id)
+    ElMessage.success('已删除，记得重新下发配置并重启网关')
     load()
-  } catch (e) {
-    ElMessage.error(e?.response?.data?.message || e.message)
-  } finally { saving.value = false }
+  } catch { /* 拦截器已提示 */ }
 }
 
 async function removeConversion(row) {
-  if (!await isConfirmed(`删除转换规则 ${row.conversionCode}？`)) return
-  await gatewayThriftApi.removeConversion(row.id)
-  load()
+  if (!await isConfirmed(`删除转换规则「${row.conversionCode}」？\n如果已有路由的 ThriftGeneric 第三参引用了它，网关启动会报 unknown_mapping。`)) return
+  try {
+    await gatewayThriftApi.removeConversion(row.id)
+    ElMessage.success('已删除，记得重新下发配置并重启网关')
+    load()
+  } catch { /* 拦截器已提示 */ }
 }
 
 async function openPreview() {
-  const res = await gatewayThriftApi.preview()
-  previewText.value = res.data?.text || ''
-  previewDlg.value = true
+  try {
+    const res = await gatewayThriftApi.preview()
+    previewText.value = res.data?.text || ''
+    previewCounts.value = res.data?.counts || null
+    previewDlg.value = true
+  } catch { /* 拦截器已提示 */ }
+}
+
+function copyText(text, label) {
+  if (!navigator.clipboard?.writeText) return ElMessage.warning('浏览器不支持自动复制，请手动选择文本')
+  navigator.clipboard.writeText(text || '').then(
+    () => ElMessage.success(`已复制${label || ''}`),
+    () => ElMessage.warning('复制失败，请手动选择复制'),
+  )
+}
+
+function copyShortWrite(row) {
+  copyText(`ThriftGeneric=${thriftGenericValue(row)}`, '过滤器短写')
+}
+
+function downloadPreview() {
+  const blob = new Blob([previewText.value], { type: 'text/plain;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'autumn-thrift.properties'
+  a.click()
+  URL.revokeObjectURL(url)
 }
 </script>
 
 <style scoped>
 .page { padding: 4px; }
-.hd { display: flex; align-items: center; justify-content: space-between; }
+.guide-card { margin-bottom: 14px; }
+.guide-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.guide-title { font-size: 17px; font-weight: 600; color: #303133; }
+.guide-desc { margin-top: 6px; font-size: 12px; line-height: 1.8; color: #909399; max-width: 900px; }
+.guide-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.steps { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 14px; }
+.step { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border: 1px solid #ebeef5; border-radius: 6px; background: #fff; }
+.step.state-done { border-color: #d1eddb; background: #f7fcf9; }
+.step.state-todo { border-color: #f5dfb8; background: #fffcf6; }
+.step-idx { flex: none; width: 22px; height: 22px; border-radius: 50%; background: #409eff; color: #fff; font-size: 12px; display: flex; align-items: center; justify-content: center; font-weight: 600; }
+.state-done .step-idx { background: #67c23a; }
+.state-todo .step-idx { background: #e6a23c; }
+.state-manual .step-idx { background: #909399; }
+.step-main { flex: 1; min-width: 0; }
+.step-title { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: #303133; flex-wrap: wrap; }
+.step-desc { margin-top: 4px; font-size: 12px; line-height: 1.6; color: #909399; }
+.issue-line { font-size: 12px; line-height: 1.8; }
+.quick-ref { margin-top: 12px; }
+.quick-ref :deep(.el-collapse-item__header) { font-size: 13px; color: #409eff; }
+.quick-ref :deep(.el-collapse-item__content) { padding-bottom: 10px; }
+.ref-grid { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 8px 14px; font-size: 12px; line-height: 1.7; }
+.ref-k { color: #909399; }
+.ref-v { color: #303133; word-break: break-all; }
+code { background: #eef1f6; padding: 1px 4px; border-radius: 3px; font-size: 12px; font-family: Consolas, Menlo, Monaco, monospace; }
+.block-card { margin-bottom: 14px; }
+.hd { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.hd-left, .hd-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.hd-title { font-weight: 600; color: #303133; }
+.mono { font-family: Consolas, Menlo, Monaco, monospace; font-size: 12px; color: #303133; }
+.sub { color: #a8abb2; font-size: 11px; line-height: 1.5; }
+.bad { color: #f56c6c; }
+.hint { color: #909399; font-size: 12px; line-height: 1.7; }
+.preview-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+.mono-area :deep(textarea) { font-family: Consolas, Menlo, Monaco, monospace; font-size: 12px; line-height: 1.6; background: #f8f9fb; color: #2f3a4a; }
+@media (max-width: 1100px) { .steps { grid-template-columns: 1fr; } }
 </style>
