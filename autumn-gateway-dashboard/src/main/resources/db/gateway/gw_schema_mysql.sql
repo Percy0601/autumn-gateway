@@ -438,3 +438,22 @@ CREATE TABLE IF NOT EXISTS `gw_thrift_conversion` (
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_gw_thrift_conversion_code` (`conversion_code`)
 ) COMMENT='Thrift 协议转换规则（HTTP 入参/出参映射）';
+
+-- ================================================================
+-- 服务治理表：autumn service framework 服务实例登记
+--   框架控制面 ControlApi 没有「枚举所有实例」的远程方法，地址由页面登记；
+--   观测/度量数据每次实时 invoke，不落库。
+-- ================================================================
+CREATE TABLE IF NOT EXISTS `gw_service_instance` (
+    `id`            BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+    `service_name`  VARCHAR(128) NOT NULL COMMENT '展示名 / 注册中心 application.name',
+    `host`          VARCHAR(128) NOT NULL COMMENT 'Thrift 服务地址',
+    `port`          INT          NOT NULL DEFAULT 30880 COMMENT 'Thrift 服务端口（框架默认 30880）',
+    `control_port`  INT          NULL     COMMENT '独立控制面端口；>0 时优先于 port',
+    `status`        TINYINT      NOT NULL DEFAULT 1 COMMENT '1 启用 0 停用',
+    `del_flag`      TINYINT      NOT NULL DEFAULT 0 COMMENT '0 未删除 1 已删除',
+    `remark`        VARCHAR(512) NOT NULL DEFAULT '' COMMENT '备注',
+    `created_at`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_at`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='服务治理： autumn service framework 实例登记';

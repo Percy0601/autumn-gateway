@@ -374,3 +374,22 @@ CREATE TABLE IF NOT EXISTS gw_thrift_conversion (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS uk_gw_thrift_conversion_code ON gw_thrift_conversion (conversion_code);
 COMMENT ON TABLE  gw_thrift_conversion IS 'Thrift 协议转换规则（HTTP 入参/出参映射）';
+
+-- ================================================================
+-- 服务治理表：autumn service framework 服务实例登记
+--   框架控制面 ControlApi 没有「枚举所有实例」的远程方法，地址由页面登记；
+--   观测/度量数据每次实时 invoke，不落库。
+-- ================================================================
+CREATE TABLE IF NOT EXISTS gw_service_instance (
+    id            BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    service_name  VARCHAR(128) NOT NULL,
+    host          VARCHAR(128) NOT NULL,
+    port          INT          NOT NULL DEFAULT 30880,
+    control_port  INT,
+    status        SMALLINT     NOT NULL DEFAULT 1,
+    del_flag      SMALLINT     NOT NULL DEFAULT 0,
+    remark        VARCHAR(512) NOT NULL DEFAULT '',
+    created_at    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+COMMENT ON TABLE gw_service_instance IS '服务治理：autumn service framework 实例登记';

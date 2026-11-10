@@ -17,7 +17,7 @@
 |---|---|---|---|---|
 | **OAuth2 客户端（Client）** | `autumn-gateway` | 8080 | 发起登录跳转、拿授权码、换令牌、**保管令牌**（放在自己的服务端会话里）、把令牌中继给下游 | 不签发令牌、不知道密码 |
 | **授权服务器（Authorization Server / IdP）** | `autumn-gateway-authorization` | 9000 | 显示登录页、校验账号密码/验证码、**签发 JWT**（RS256 + JWKS） | 不认识任何业务接口 |
-| **资源服务器（Resource Server）** | `autumn-gateway-dashboard` | 8081 | 只**验签**网关转发来的 `Authorization: Bearer`，然后干活 | 不签发令牌、不跳转登录 |
+| **资源服务器（Resource Server）** | `autumn-gateway-dashboard` | 18081 | 只**验签**网关转发来的 `Authorization: Bearer`，然后干活 | 不签发令牌、不跳转登录 |
 
 ### 为什么不是 dashboard 当客户端
 
@@ -33,7 +33,7 @@
 ### 一次登录的完整时序
 
 ```
-浏览器                     网关 :8080                 授权服务器 :9000              dashboard :8081
+浏览器                     网关 :8080                 授权服务器 :9000              dashboard :18081
   │                           │                            │                            │
   │─ GET / ─────────────────►│                            │                            │
   │                           │ 未认证                     │                            │
@@ -90,16 +90,16 @@
 | http://localhost:8080/oauth2/authorization/web-client | **登录入口**（`registration-id=web-client`） |
 | http://localhost:8080/login/oauth2/code/web-client | 授权码回调（**必须在授权服务器登记过**） |
 
-### 后台（dashboard :8081，内部服务，浏览器不该直接访问）
+### 后台（dashboard :18081，内部服务，浏览器不该直接访问）
 
 | URL | 说明 |
 |---|---|
-| http://localhost:8081/api/currentUser | 当前登录用户（含权限清单），未登录回 401 + `loginUrl` |
-| http://localhost:8081/api/login/outLogin | 返回登出地址（前端据此跳转） |
-| http://localhost:8081/api/system/basic/** | 各业务接口 |
+| http://localhost:18081/api/currentUser | 当前登录用户（含权限清单），未登录回 401 + `loginUrl` |
+| http://localhost:18081/api/login/outLogin | 返回登出地址（前端据此跳转） |
+| http://localhost:18081/api/system/basic/** | 各业务接口 |
 
-> dashboard 也在 8081 上托管前端产物（`/`、`/assets/**`），但**请一律从 8080 访问**，
-> 直连 8081 会绕过认证。
+> dashboard 也在 18081 上托管前端产物（`/`、`/assets/**`），但**请一律从 8080 访问**，
+> 直连 18081 会绕过认证。
 
 ### 数据库（102 虚拟机上的 MySQL）
 
@@ -120,7 +120,7 @@ cd /Users/mac/work/project/autumn-gateway
 # ① 授权服务器 :9000（注意：必须去掉沙箱的 SERVER__PORT，否则端口会被抢成 64884）
 env -u SERVER__PORT ./mvnw -pl autumn-gateway-authorization spring-boot:run
 
-# ② dashboard :8081（连 102 的真实 MySQL）
+# ② dashboard :18081（连 102 的真实 MySQL）
 env -u SERVER__PORT ./mvnw -pl autumn-gateway-dashboard spring-boot:run
 
 # ③ 网关 :8080
@@ -278,7 +278,7 @@ xyz.we-win.autumn/autumn-gateway-authorization/reachability-metadata.json
 
 ## 八、附录 C：本次验证的原始记录
 
-macOS 本地三服务（9000 / 8081 / 8080）端到端脚本 `/tmp/e2e_full.py` 输出：
+macOS 本地三服务（9000 / 18081 / 8080）端到端脚本 `/tmp/e2e_full.py` 输出：
 
 ```
 1. 未认证访问 8080/            -> 302 → http://localhost:9000/login

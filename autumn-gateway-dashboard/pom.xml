@@ -81,6 +81,16 @@
 			<artifactId>h2</artifactId>
 			<scope>runtime</scope>
 		</dependency>
+		<!--
+			服务治理：远程 invoke autumn service framework 控制面 ControlApi。
+			只用官方协议 API 手写 5 个方法的编解码（参数/返回都是 string/i32），
+			不依赖另一个仓库的 autumn-api 生成 stub，避免跨仓库 SNAPSHOT 构建耦合。
+			版本由根 pom 的 dependencyManagement 锁定（libthrift.version）。
+		-->
+		<dependency>
+			<groupId>org.apache.thrift</groupId>
+			<artifactId>libthrift</artifactId>
+		</dependency>
 	</dependencies>
 
 	<build>

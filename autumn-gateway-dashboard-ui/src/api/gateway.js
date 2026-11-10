@@ -96,3 +96,15 @@ export const gatewayThriftApi = {
   // 导出 autumn.thrift.* 配置块（会随「配置同步」一起下发）
   preview: () => service.get(`${BASE}/thrift/preview`),
 }
+
+// 服务治理：远程 invoke autumn service framework 控制面 ControlApi，实时观测与度量
+export const gatewayGovernanceApi = {
+  instances: () => service.get(`${BASE}/governance/instances`),
+  createInstance: (data) => service.post(`${BASE}/governance/instances`, data),
+  updateInstance: (id, data) => service.put(`${BASE}/governance/instances/${id}`, data),
+  removeInstance: (id) => service.delete(`${BASE}/governance/instances/${id}`),
+  overview: () => service.get(`${BASE}/governance/overview`),
+  observe: (id) => service.get(`${BASE}/governance/instances/${id}/observe`),
+  methods: () => service.get(`${BASE}/governance/methods`),
+  invoke: (data) => service.post(`${BASE}/governance/invoke`, data),
+}

@@ -385,6 +385,7 @@ public class GwDataInitializer implements ApplicationRunner {
         ensureMenu(appId, "gateway:center", "配置中心", "gateway/center/index", 2, dirId, "link", "Consul/Nacos 连接管理");
         ensureMenu(appId, "gateway:template", "模板管理", "gateway/template/index", 2, dirId, "block", "模板化可视化配置（v2）：过滤器/断言/结构化模板 + 值类型目录");
         ensureMenu(appId, "gateway:sync", "配置同步", "gateway/sync/index", 2, dirId, "cloud-sync", "聚合预览全部网关配置，推送到配置中心或下载");
+        ensureMenu(appId, "gateway:governance", "服务治理", "gateway/governance/index", 2, dirId, "dashboard", "远程 invoke autumn service framework 控制面，观测服务健康与调用度量");
     }
 
     /** 网关菜单挂到 admin 应用下；找不到 admin 时退回任意启用应用，再退回 app_id=0（findAll 仍可见） */

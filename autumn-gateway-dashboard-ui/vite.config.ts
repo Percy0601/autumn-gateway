@@ -6,6 +6,12 @@ import WindiCSS from 'vite-plugin-windicss'
 import { createSvgIconsPlugin } from 'vite-plugin-svg-icons'
 import vueSetupExtend from 'vite-plugin-vue-setup-extend'
 
+// ===== dashboard 后端端口：前端唯一的端口改动点 =====
+// 换端口只改这一行，下面 /api 的代理 target 会自动跟着变。
+// 必须与 autumn-gateway-dashboard/src/main/resources/application.properties 的 server.port 一致。
+// 仅影响本地 npm run dev；经网关 :8080 访问时前端产物同源托管，不走这里的代理。
+const DASHBOARD_PORT = 18081
+
 // 参考：https://cn.vitejs.dev/config/
 export default defineConfig({
 	// 站点根路径部署（经网关访问 http://localhost:8080/）。
@@ -38,7 +44,7 @@ export default defineConfig({
 		// 开发环境将 /api 直接代理到 dashboard 服务（直连方式，不经过网关；网关可能未启动）
 		proxy: {
 			'/api': {
-				target: 'http://localhost:8081',
+				target: `http://localhost:${DASHBOARD_PORT}`,
 				changeOrigin: true
 			},
 			'/gateway': {
