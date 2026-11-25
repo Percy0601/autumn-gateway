@@ -1,6 +1,6 @@
 # autumn-gateway-dashboard
 
-网关控制台后端（Spring Boot 4.1 / Java 25 / Spring Security 7）。
+网关控制台后端（Spring Boot 4.2 / Java 25 / Spring Security 7）。
 
 本文件聚焦 **RBAC 权限体系** 的接入方式、设计决策与踩坑复盘。
 构建与 native 相关问题见 `src/main/resources/README.md`。

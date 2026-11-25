@@ -13,7 +13,8 @@ import io.opentelemetry.sdk.OpenTelemetrySdk;
 import io.opentelemetry.sdk.resources.Resource;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.export.BatchSpanProcessor;
-import io.opentelemetry.semconv.ResourceAttributes;
+import io.opentelemetry.semconv.DeploymentAttributes;
+import io.opentelemetry.semconv.ServiceAttributes;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -30,8 +31,8 @@ public class OpenTelemetryConfig {
         // 资源属性（服务名）
         Resource resource = Resource.getDefault()
                 .merge(Resource.create(Attributes.of(
-                        ResourceAttributes.SERVICE_NAME, "gate-service",
-                        ResourceAttributes.DEPLOYMENT_ENVIRONMENT, "dev"
+                        ServiceAttributes.SERVICE_NAME, "gate-service",
+                        DeploymentAttributes.DEPLOYMENT_ENVIRONMENT_NAME, "dev"
                 )));
 
         // Tracer Provider

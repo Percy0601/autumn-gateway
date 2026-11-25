@@ -80,7 +80,7 @@ java -jar target/autumn-gateway-deploy.jar --spring.profiles.active=db-h2
 
 **先澄清一个常见误解**：官方 `RequestRateLimiter` 的默认实现是 `RedisRateLimiter`（需要 Redis），**不是内存**。单机内存版是 Gateway 5.x 的 `Bucket4jRateLimiter`（Caffeine 后端），需要：
 
-1. `bucket4j_jdk17-caffeine`（已随本模块引入，锁 `8.15.0`）；
+1. `bucket4j_jdk17-caffeine`（已随本模块引入，锁 `8.22.0`（与 Gateway 5.1.0 内建版本一致））；
 2. 一个 `AsyncProxyManager<String>` bean；
 3. 一个 `KeyResolver` bean。
 

@@ -18,8 +18,8 @@
         <java.version>25</java.version>
         <start-class>xyz.wewin.autumn.gateway.examples.limit.LimitAutumnGatewayApplication</start-class>
         <!-- Bucket4j 版本不在 spring-boot / cloud / gateway 任何 BOM 里，必须自己锁版本；
-             8.15.0 与 Gateway 5.0.3 内部构建版本一致，最稳（且 CaffeineProxyManager 构造器在 8.21+ 才废弃） -->
-        <bucket4j-jdk17.version>8.15.0</bucket4j-jdk17.version>
+             8.22.0 与 Gateway 5.1.0 内部构建版本一致（CaffeineProxyManager 构造器在 8.21+ 已标废弃但保留） -->
+        <bucket4j-jdk17.version>8.22.0</bucket4j-jdk17.version>
     </properties>
 
     <dependencies>

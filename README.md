@@ -6,7 +6,7 @@ Spring Cloud Gateway（WebFlux）之上的**可视化配置网关**：路由/断
 |---|---|
 | Maven 坐标 | `xyz.we-win.autumn:autumn-gateway:0.0.1-SNAPSHOT`（根 POM 为 parent） |
 | Java 包根 | `xyz.wewin.autumn.gateway` |
-| 技术基线 | Spring Boot 4.1.1 / Spring Cloud 2025.1.3 / Spring Cloud Gateway 5.0.3 / Java 25 |
+| 技术基线 | Spring Boot 4.2.0 / Spring Cloud 2026.0.0 / Spring Cloud Gateway 5.1.0 / Java 25 |
 | 扩展依赖 | `xyz.we-win.autumn:autumn-cloud-extension-*:1.0.0-RELEASE` |
 
 > 坐标里的 `xyz.we-win` 是 Maven Central 校验过的域名反写（域名 `we-win.xyz`，带连字符）；

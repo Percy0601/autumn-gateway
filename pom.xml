@@ -10,7 +10,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>4.1.1</version>
+		<version>4.2.0</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 
@@ -26,15 +26,15 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 		<java.version>25</java.version>
-		<spring-cloud.version>2025.1.3</spring-cloud.version>
+		<spring-cloud.version>2026.0.0</spring-cloud.version>
 		<jjwt-api.version>0.13.0</jjwt-api.version>
 		<maven.compiler.source>25</maven.compiler.source>
 		<maven.compiler.target>25</maven.compiler.target>
 		<lombok.version>1.18.48</lombok.version>
-        <caffeine.version>3.2.4</caffeine.version>
+        <!-- 与 Gateway 5.1.0 内部构建版本一致（Boot 4.2 BOM 同为 3.3.1） -->
+        <caffeine.version>3.3.1</caffeine.version>
 		<mybatis-spring-boot-starter.version>4.1.0</mybatis-spring-boot-starter.version>
-		<spring-boot-starter-security-oauth2-authorization-server.version>4.1.1</spring-boot-starter-security-oauth2-authorization-server.version>
-        <spring-cloud-starter-gateway-server-webflux.version>5.0.3</spring-cloud-starter-gateway-server-webflux.version>
+		<spring-cloud-starter-gateway-server-webflux.version>5.1.0</spring-cloud-starter-gateway-server-webflux.version>
         <!-- 与 autumn-cloud-extension 保持同一发布坐标：xyz.we-win.autumn:1.0.0-RELEASE -->
         <autumn-cloud-extension.version>1.0.0-RELEASE</autumn-cloud-extension.version>
         <!-- 与 autumn-service-framework 保持同一发布坐标（thrift 泛化调用内核） -->
@@ -177,12 +177,7 @@
 			</dependency>
 
             <!-- OAuth2 授权服务器：Boot 4 起 starter 更名为 spring-boot-starter-security-oauth2-authorization-server
-                 （旧名 spring-boot-starter-oauth2-authorization-server 已废弃）；此处显式锁版本与 Boot 对齐 -->
-            <dependency>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-starter-security-oauth2-authorization-server</artifactId>
-                <version>${spring-boot-starter-security-oauth2-authorization-server.version}</version>
-            </dependency>
+                 （旧名 spring-boot-starter-oauth2-authorization-server 已废弃）；版本由 Boot BOM 统一管理，无需再锁 -->
 		</dependencies>
 	</dependencyManagement>
 
